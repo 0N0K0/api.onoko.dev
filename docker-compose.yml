@@ -1,0 +1,40 @@
+services:
+  api:
+    build: ./api
+    container_name: api
+    restart: always
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=db
+      - DB_USER=root
+      - DB_PASSWORD=root
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "4000:4000"
+    depends_on:
+      - db
+  db:
+    image: mariadb:11
+    container_name: db
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=onokodb
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+  apache:
+    image: httpd:2.4
+    container_name: apache
+    restart: always
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+    volumes:
+      - ./apache/httpd.conf:/usr/local/apache2/conf/httpd.conf:ro
+volumes:
+  db_data:
