@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { initAdmin } from "./auth/initAdmin";
 import { createAuthRoutes } from "./auth/authRoutes";
+import { createAccountRoutes } from "./auth/accountRoutes";
 import express from "express";
 import { graphqlHTTP } from "express-graphql";
 import { buildSchema } from "graphql";
@@ -67,6 +68,8 @@ async function main() {
 
   // Auth routes (non documenté, non indexé)
   app.use(createAuthRoutes(settingsRepo));
+  // Account routes (JWT sécurisé)
+  app.use(createAccountRoutes(settingsRepo));
 
   app.listen(port, () => {
     console.log(`API server running at http://localhost:${port}/graphql`);
