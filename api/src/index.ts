@@ -20,9 +20,11 @@ const pool = mariadb.createPool({
 
 async function main() {
   // Détecte si on est en dev (ts) ou en prod (js)
-  const migrationsPath = fs.existsSync(path.join(__dirname, 'migrations', '202603252047.js'))
-    ? path.join(__dirname, 'migrations', '*.js')
-    : path.join(__dirname, 'migrations', '*.ts');
+  const migrationsPath = fs.existsSync(
+    path.join(__dirname, "migrations", "202603252047.js"),
+  )
+    ? path.join(__dirname, "migrations", "*.js")
+    : path.join(__dirname, "migrations", "*.ts");
 
   const umzug = new Umzug({
     migrations: { glob: migrationsPath },
