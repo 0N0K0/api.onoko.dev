@@ -4,9 +4,6 @@ import { hashPassword, isStrongPassword } from "../../utils/passwordUtils";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
 
-// En mémoire pour la démo, à remplacer par une table si besoin
-const resetTokens: Record<string, { email: string; expires: number }> = {};
-
 export function createPasswordResetRoutes(settingsRepo: SettingsRepository) {
   const router = Router();
 
@@ -18,7 +15,19 @@ export function createPasswordResetRoutes(settingsRepo: SettingsRepository) {
       return res.json({ success: true });
     }
     const token = crypto.randomBytes(32).toString("hex");
-    resetTokens[token] = { email, expires: Date.now() + 1000 * 60 * 15 };
+    const expires = new Date(Date.now() + 1000 * 60 * 15); // 15 min
+    // Stocke le token en base
+    const pool = settingsRepo["pool"];
+    let conn;
+    try {
+      conn = await pool.getConnection();
+      await conn.query(
+        "INSERT INTO password_reset_tokens (token, email, expires) VALUES (?, ?, ?)",
+        [token, email, expires],
+      );
+    } finally {
+      if (conn) conn.release();
+    }
     const resetUrl = `${process.env.RESET_URL || "http://localhost:4000"}/auth/reset/confirm?token=${token}`;
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
@@ -42,9 +51,25 @@ export function createPasswordResetRoutes(settingsRepo: SettingsRepository) {
     const { token, newPassword } = req.body;
     if (!token || !newPassword)
       return res.status(400).json({ error: "Token and newPassword required" });
-    const entry = resetTokens[token];
-    if (!entry || entry.expires < Date.now()) {
-      return res.status(400).json({ error: "Invalid or expired token" });
+    // Vérifie le token en base
+    const pool = settingsRepo["pool"];
+    let conn;
+    let entry;
+    try {
+      conn = await pool.getConnection();
+      const rows = await conn.query(
+        "SELECT email, expires FROM password_reset_tokens WHERE token = ?",
+        [token],
+      );
+      if (!rows.length) {
+        return res.status(400).json({ error: "Invalid or expired token" });
+      }
+      entry = rows[0];
+      if (new Date(entry.expires).getTime() < Date.now()) {
+        return res.status(400).json({ error: "Invalid or expired token" });
+      }
+    } finally {
+      if (conn) conn.release();
     }
     if (!isStrongPassword(newPassword)) {
       return res.status(400).json({
@@ -53,7 +78,15 @@ export function createPasswordResetRoutes(settingsRepo: SettingsRepository) {
     }
     const hash = await hashPassword(newPassword);
     await settingsRepo.set("password_hash", hash);
-    delete resetTokens[token];
+    // Supprime le token en base
+    try {
+      conn = await pool.getConnection();
+      await conn.query("DELETE FROM password_reset_tokens WHERE token = ?", [
+        token,
+      ]);
+    } finally {
+      if (conn) conn.release();
+    }
     res.json({ success: true });
   });
 

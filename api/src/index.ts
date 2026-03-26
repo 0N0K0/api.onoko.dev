@@ -21,9 +21,10 @@ const pool = mariadb.createPool({
 });
 
 async function main() {
-  const migrationsPath = fs.existsSync(
-    path.join(__dirname, "migrations", "202603252047.js"),
-  )
+  const isProd =
+    process.env.NODE_ENV === "production" ||
+    fs.existsSync(path.join(__dirname, "migrations", "202603252047.js"));
+  const migrationsPath = isProd
     ? path.join(__dirname, "migrations", "*.js")
     : path.join(__dirname, "migrations", "*.ts");
 
