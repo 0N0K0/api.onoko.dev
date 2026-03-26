@@ -1,18 +1,22 @@
-// Extension du type Request pour inclure req.user
-import { Router, Request, Response } from "express";
+
+import { Router, Request, Response, NextFunction } from "express";
 import { SettingsRepository } from "../repositories/SettingsRepository";
 import { verifyToken } from "./jwtUtils";
-import {
-  verifyPassword,
-  hashPassword,
-  isStrongPassword,
-} from "./passwordUtils";
+import { verifyPassword, hashPassword, isStrongPassword } from "./passwordUtils";
 
-export function createAccountRoutes(settingsRepo: SettingsRepository) {
-  const router = Router();
+// Extension du type Request pour inclure req.user
+import type { JwtPayload } from "jsonwebtoken";
+declare global {
+  namespace Express {
+    interface Request {
+      user?: string | JwtPayload;
+    }
+  }
+}
 
-  // Middleware d'authentification JWT
-  router.use(async (req: Request, res: Response, next) => {
+
+function jwtAuthMiddleware(req: Request, res: Response, next: NextFunction) {
+  (async () => {
     const auth = req.headers.authorization;
     if (!auth || !auth.startsWith("Bearer ")) {
       return res.status(401).json({ error: "Missing or invalid token" });
@@ -24,7 +28,12 @@ export function createAccountRoutes(settingsRepo: SettingsRepository) {
     } catch {
       return res.status(401).json({ error: "Invalid token" });
     }
-  });
+  })().catch(next);
+}
+
+export function createAccountRoutes(settingsRepo: SettingsRepository) {
+  const router = Router();
+  router.use("/account", jwtAuthMiddleware);
 
   // GET /account : infos actuelles (login, email)
   router.get("/account", async (req: Request, res: Response) => {

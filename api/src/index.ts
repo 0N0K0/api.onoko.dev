@@ -1,15 +1,16 @@
+import path from "path";
+import fs from "fs";
 import "dotenv/config";
-import { initAdmin } from "./auth/initAdmin";
-import { createAuthRoutes } from "./auth/authRoutes";
-import { createAccountRoutes } from "./auth/accountRoutes";
 import express from "express";
 import { graphqlHTTP } from "express-graphql";
 import { buildSchema } from "graphql";
 import mariadb from "mariadb";
-import { SettingsRepository } from "./repositories/SettingsRepository";
 import { Umzug } from "umzug";
-import path from "path";
-import fs from "fs";
+import { initAdmin } from "./auth/initAdmin";
+import { createAuthRoutes } from "./auth/authRoutes";
+import { createAccountRoutes } from "./auth/accountRoutes";
+import { createPasswordResetRoutes } from "./auth/passwordResetRoutes";
+import { SettingsRepository } from "./repositories/SettingsRepository";
 
 const pool = mariadb.createPool({
   host: process.env.DB_HOST || "localhost",
@@ -68,6 +69,8 @@ async function main() {
 
   // Auth routes (non documenté, non indexé)
   app.use(createAuthRoutes(settingsRepo));
+  // Password reset routes
+  app.use(createPasswordResetRoutes(settingsRepo));
   // Account routes (JWT sécurisé)
   app.use(createAccountRoutes(settingsRepo));
 

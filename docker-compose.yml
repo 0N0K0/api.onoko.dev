@@ -9,11 +9,12 @@ services:
       - DB_USER=root
       - DB_PASSWORD=root
     volumes:
-      - db_data:/var/lib/mysql
+      - ./api:/usr/src/app
     ports:
       - "4000:4000"
     depends_on:
       - db
+    command: npm run dev
   db:
     image: mariadb:11
     container_name: db
@@ -36,5 +37,12 @@ services:
       - "8080:80"
     volumes:
       - ./apache/httpd.conf:/usr/local/apache2/conf/httpd.conf:ro
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mailpit
+    restart: always
+    ports:
+      - "8025:8025" # Interface web
+      - "1025:1025" # SMTP
 volumes:
   db_data:
