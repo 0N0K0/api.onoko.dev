@@ -1,35 +1,11 @@
-
 import { Router, Request, Response, NextFunction } from "express";
-import { SettingsRepository } from "../repositories/SettingsRepository";
-import { verifyToken } from "./jwtUtils";
-import { verifyPassword, hashPassword, isStrongPassword } from "./passwordUtils";
-
-// Extension du type Request pour inclure req.user
-import type { JwtPayload } from "jsonwebtoken";
-declare global {
-  namespace Express {
-    interface Request {
-      user?: string | JwtPayload;
-    }
-  }
-}
-
-
-function jwtAuthMiddleware(req: Request, res: Response, next: NextFunction) {
-  (async () => {
-    const auth = req.headers.authorization;
-    if (!auth || !auth.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "Missing or invalid token" });
-    }
-    try {
-      const token = auth.slice(7);
-      req.user = verifyToken(token);
-      next();
-    } catch {
-      return res.status(401).json({ error: "Invalid token" });
-    }
-  })().catch(next);
-}
+import { SettingsRepository } from "../../repositories/SettingsRepository";
+import { jwtAuthMiddleware } from "../../middlewares/jwtAuthMiddleware";
+import {
+  verifyPassword,
+  hashPassword,
+  isStrongPassword,
+} from "../../utils/passwordUtils";
 
 export function createAccountRoutes(settingsRepo: SettingsRepository) {
   const router = Router();

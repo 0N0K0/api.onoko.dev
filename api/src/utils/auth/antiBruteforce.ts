@@ -1,4 +1,3 @@
-// Simple anti-bruteforce in-memory (per process)
 const ATTEMPT_WINDOW_MS = 15 * 60 * 1000; // 15 min
 const MAX_ATTEMPTS = 5;
 

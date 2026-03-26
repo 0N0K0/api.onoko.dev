@@ -1,8 +1,12 @@
 import { Router, Request, Response } from "express";
-import { SettingsRepository } from "../repositories/SettingsRepository";
-import { verifyPassword } from "./passwordUtils";
-import { generateToken } from "./jwtUtils";
-import { isBlocked, registerAttempt, resetAttempts } from "./antiBruteforce";
+import { SettingsRepository } from "../../repositories/SettingsRepository";
+import { verifyPassword } from "../../utils/passwordUtils";
+import { generateToken } from "../../utils/auth/jwtUtils";
+import {
+  isBlocked,
+  registerAttempt,
+  resetAttempts,
+} from "../../utils/auth/antiBruteforce";
 
 export function createAuthRoutes(settingsRepo: SettingsRepository): Router {
   const router = Router();

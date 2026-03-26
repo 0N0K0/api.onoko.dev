@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
-import { SettingsRepository } from "../repositories/SettingsRepository";
-import { hashPassword, isStrongPassword } from "./passwordUtils";
+import { SettingsRepository } from "../../repositories/SettingsRepository";
+import { hashPassword, isStrongPassword } from "../../utils/passwordUtils";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
 
@@ -30,7 +30,7 @@ export function createPasswordResetRoutes(settingsRepo: SettingsRepository) {
       secure: false,
       auth: {
         user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
+        pass: process.env.SMTP_PASSWORD,
       },
     });
     await transporter.sendMail({
@@ -52,11 +52,9 @@ export function createPasswordResetRoutes(settingsRepo: SettingsRepository) {
       return res.status(400).json({ error: "Invalid or expired token" });
     }
     if (!isStrongPassword(newPassword)) {
-      return res
-        .status(400)
-        .json({
-          error: "Password too weak (min 20 chars, maj, min, chiffre, spécial)",
-        });
+      return res.status(400).json({
+        error: "Password too weak (min 20 chars, maj, min, chiffre, spécial)",
+      });
     }
     const hash = await hashPassword(newPassword);
     await settingsRepo.set("password_hash", hash);

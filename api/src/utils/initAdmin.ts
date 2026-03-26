@@ -15,7 +15,9 @@ export async function initAdmin(settingsRepo: SettingsRepository) {
   const INIT_EMAIL = process.env.INIT_EMAIL;
 
   if (!INIT_LOGIN || !INIT_PASSWORD || !INIT_EMAIL) {
-    throw new Error("Initial admin credentials missing (INIT_LOGIN, INIT_PASSWORD, INIT_EMAIL)");
+    throw new Error(
+      "Initial admin credentials missing (INIT_LOGIN, INIT_PASSWORD, INIT_EMAIL)",
+    );
   }
   if (!isStrongPassword(INIT_PASSWORD)) {
     throw new Error("INIT_PASSWORD does not meet strength requirements");

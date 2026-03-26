@@ -6,10 +6,10 @@ import { graphqlHTTP } from "express-graphql";
 import { buildSchema } from "graphql";
 import mariadb from "mariadb";
 import { Umzug } from "umzug";
-import { initAdmin } from "./auth/initAdmin";
-import { createAuthRoutes } from "./auth/authRoutes";
-import { createAccountRoutes } from "./auth/accountRoutes";
-import { createPasswordResetRoutes } from "./auth/passwordResetRoutes";
+import { initAdmin } from "./utils/initAdmin";
+import { createAuthRoutes } from "./routes/auth/authRoutes";
+import { createAccountRoutes } from "./routes/account/accountRoutes";
+import { createPasswordResetRoutes } from "./routes/account/passwordResetRoutes";
 import { SettingsRepository } from "./repositories/SettingsRepository";
 
 const pool = mariadb.createPool({
