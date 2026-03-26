@@ -21,7 +21,6 @@ const pool = mariadb.createPool({
 });
 
 async function main() {
-  // Détecte si on est en dev (ts) ou en prod (js)
   const migrationsPath = fs.existsSync(
     path.join(__dirname, "migrations", "202603252047.js"),
   )
@@ -38,7 +37,6 @@ async function main() {
 
   const settingsRepo = new SettingsRepository(pool);
 
-  // Initialisation de l'admin à la première exécution
   await initAdmin(settingsRepo).catch((err) => {
     console.error("Admin init error:", err.message);
     process.exit(1);
@@ -67,11 +65,8 @@ async function main() {
     }),
   );
 
-  // Auth routes (non documenté, non indexé)
   app.use(createAuthRoutes(settingsRepo));
-  // Password reset routes
   app.use(createPasswordResetRoutes(settingsRepo));
-  // Account routes (JWT sécurisé)
   app.use(createAccountRoutes(settingsRepo));
 
   app.listen(port, () => {

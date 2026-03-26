@@ -11,14 +11,12 @@ export function createAccountRoutes(settingsRepo: SettingsRepository) {
   const router = Router();
   router.use("/account", jwtAuthMiddleware);
 
-  // GET /account : infos actuelles (login, email)
   router.get("/account", async (req: Request, res: Response) => {
     const login = await settingsRepo.get("login");
     const email = await settingsRepo.get("email");
     res.json({ login, email });
   });
 
-  // PUT /account : modif login/email/mdp (ancien mdp requis)
   router.put("/account", async (req: Request, res: Response) => {
     const { login, email, oldPassword, newPassword } = req.body;
     if (!oldPassword) {

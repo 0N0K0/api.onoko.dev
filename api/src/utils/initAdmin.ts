@@ -7,7 +7,7 @@ export async function initAdmin(settingsRepo: SettingsRepository) {
   const email = await settingsRepo.get("email");
 
   if (login && passwordHash && email) {
-    return; // Déjà initialisé
+    return;
   }
 
   const INIT_LOGIN = process.env.INIT_LOGIN;
@@ -26,6 +26,6 @@ export async function initAdmin(settingsRepo: SettingsRepository) {
   await settingsRepo.set("login", INIT_LOGIN);
   await settingsRepo.set("password_hash", hash);
   await settingsRepo.set("email", INIT_EMAIL);
-  // Optionnel: log
+
   console.log("Initial admin credentials set.");
 }

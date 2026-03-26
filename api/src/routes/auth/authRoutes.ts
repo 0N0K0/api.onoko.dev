@@ -11,8 +11,7 @@ import {
 export function createAuthRoutes(settingsRepo: SettingsRepository): Router {
   const router = Router();
 
-  // Endpoint POST /auth (non documenté)
-  router.post("/auth", async (req: Request, res: Response) => {
+  router.post("/4ntjnra6", async (req: Request, res: Response) => {
     const ip = req.ip;
     if (!ip) return res.status(400).json({ error: "Cannot determine IP." });
     if (isBlocked(ip)) {
@@ -39,6 +38,10 @@ export function createAuthRoutes(settingsRepo: SettingsRepository): Router {
     resetAttempts(ip);
     const token = generateToken({ login });
     res.json({ token });
+  });
+
+  router.post("/logout", (req: Request, res: Response) => {
+    res.json({ success: true });
   });
 
   return router;
