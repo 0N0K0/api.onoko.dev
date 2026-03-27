@@ -44,5 +44,20 @@ export function createAuthRoutes(settingsRepo: SettingsRepository): Router {
     res.json({ success: true });
   });
 
+  // Vérification de la validité d'un token JWT
+  router.get("/verify-token", (req: Request, res: Response) => {
+    const auth = req.headers.authorization;
+    if (!auth || !auth.startsWith("Bearer ")) {
+      return res.status(400).json({ valid: false, error: "Missing or invalid token" });
+    }
+    const token = auth.slice(7);
+    try {
+      const payload = require("../../utils/auth/jwtUtils").verifyToken(token);
+      res.json({ valid: true, payload });
+    } catch (e) {
+      res.status(401).json({ valid: false, error: "Invalid token" });
+    }
+  });
+
   return router;
 }
