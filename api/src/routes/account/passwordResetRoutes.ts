@@ -28,7 +28,7 @@ export function createPasswordResetRoutes(settingsRepo: SettingsRepository) {
     } finally {
       if (conn) conn.release();
     }
-    const resetUrl = `${process.env.RESET_URL || "http://localhost:4000"}/auth/reset/confirm?token=${token}`;
+    const resetUrl = `${process.env.RESET_URL || "http://localhost:4000"}?token=${token}`;
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: Number(process.env.SMTP_PORT),
