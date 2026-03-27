@@ -11,6 +11,7 @@ import { createAuthRoutes } from "./routes/auth/authRoutes";
 import { createAccountRoutes } from "./routes/account/accountRoutes";
 import { createPasswordResetRoutes } from "./routes/account/passwordResetRoutes";
 import { SettingsRepository } from "./repositories/SettingsRepository";
+import { corsDynamicOrigin } from "./middlewares/corsDynamicOrigin";
 
 const pool = mariadb.createPool({
   host: process.env.DB_HOST || "localhost",
@@ -46,6 +47,8 @@ async function main() {
   const app = express();
   const port = 4000;
   app.use(express.json());
+
+  app.use(corsDynamicOrigin);
 
   const schema = buildSchema(`
     type Query {
