@@ -7,11 +7,17 @@ import { buildSchema } from "graphql";
 import mariadb from "mariadb";
 import { Umzug } from "umzug";
 import { initAdmin } from "./utils/initAdmin";
-import { createAuthRoutes } from "./routes/auth/authRoutes";
-import { createAccountRoutes } from "./routes/account/accountRoutes";
-import { createPasswordResetRoutes } from "./routes/account/passwordResetRoutes";
 import { SettingsRepository } from "./repositories/SettingsRepository";
 import { corsDynamicOrigin } from "./middlewares/corsDynamicOrigin";
+import { authMutations, authTypes } from "./graphql/schemas/authSchema";
+import {
+  accountMutations,
+  accountQueries,
+  accountTypes,
+} from "./graphql/schemas/accountSchema";
+import authResolver from "./graphql/resolvers/authResolver";
+import accountResolver from "./graphql/resolvers/accountResolver";
+import { verifyToken } from "./utils/auth/jwtUtils";
 
 const pool = mariadb.createPool({
   host: process.env.DB_HOST || "localhost",
@@ -20,6 +26,8 @@ const pool = mariadb.createPool({
   database: process.env.DB_NAME || "onokodb",
   connectionLimit: 5,
 });
+
+export const settingsRepo = new SettingsRepository(pool);
 
 async function main() {
   const isProd =
@@ -37,8 +45,6 @@ async function main() {
 
   await umzug.up();
 
-  const settingsRepo = new SettingsRepository(pool);
-
   await initAdmin(settingsRepo).catch((err) => {
     console.error("Admin init error:", err.message);
     process.exit(1);
@@ -51,27 +57,44 @@ async function main() {
   app.use(corsDynamicOrigin);
 
   const schema = buildSchema(`
+    ${authTypes}
+    ${accountTypes}
     type Query {
-      hello: String
+      ${accountQueries}
+    }
+    type Mutation {
+      ${authMutations}
+      ${accountMutations}
     }
   `);
 
   const root = {
-    hello: () => "Hello world!",
+    ...authResolver,
+    ...accountResolver,
   };
 
   app.use(
     "/graphql",
-    graphqlHTTP({
-      schema,
-      rootValue: root,
-      graphiql: true,
+    graphqlHTTP((req) => {
+      let user = null;
+      const auth = req.headers.authorization;
+      if (auth && auth.startsWith("Bearer ")) {
+        try {
+          user = verifyToken(auth.slice(7));
+        } catch {}
+      }
+      return {
+        schema,
+        rootValue: root,
+        graphiql: true,
+        context: { user },
+        customFormatErrorFn: (err) => {
+          console.error("GraphQL Error:", err);
+          return { message: err.message, stack: err.stack };
+        },
+      };
     }),
   );
-
-  app.use(createAuthRoutes(settingsRepo));
-  app.use(createPasswordResetRoutes(settingsRepo));
-  app.use(createAccountRoutes(settingsRepo));
 
   app.listen(port, () => {
     console.log(`API server running at http://localhost:${port}/graphql`);
