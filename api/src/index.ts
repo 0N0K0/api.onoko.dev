@@ -18,6 +18,11 @@ import {
 import authResolver from "./graphql/resolvers/authResolver";
 import accountResolver from "./graphql/resolvers/accountResolver";
 import { verifyToken } from "./utils/auth/jwtUtils";
+import {
+  stackMutations,
+  stackQueries,
+  stackTypes,
+} from "./graphql/schemas/stackSchema";
 
 const pool = mariadb.createPool({
   host: process.env.DB_HOST || "localhost",
@@ -59,18 +64,22 @@ async function main() {
   const schema = buildSchema(`
     ${authTypes}
     ${accountTypes}
+    ${stackTypes}
     type Query {
       ${accountQueries}
+      ${stackQueries}
     }
     type Mutation {
       ${authMutations}
       ${accountMutations}
+      ${stackMutations}
     }
   `);
 
   const root = {
     ...authResolver,
     ...accountResolver,
+    ...stackResolver,
   };
 
   app.use(
