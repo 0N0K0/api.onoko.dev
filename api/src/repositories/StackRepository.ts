@@ -1,5 +1,8 @@
 import mariadb from "mariadb";
 import crypto from "crypto";
+import path from "path";
+import { promises as fsPromises } from "fs";
+import sharp from "sharp";
 
 export class StackRepository {
   private pool: mariadb.Pool;
@@ -39,25 +42,72 @@ export class StackRepository {
     }
   }
 
+  private async saveIconFile(
+    id: string,
+    iconFile: { buffer: Buffer; mimetype: string; originalname: string }
+  ): Promise<string> {
+    const { mkdir, writeFile, unlink } = fsPromises;
+    const publicDir = path.join(process.cwd(), "public", "stack");
+    await mkdir(publicDir, { recursive: true });
+
+    let iconExt = "webp";
+    let iconPath = path.join(publicDir, `${id}.webp`);
+    let iconType = iconFile.mimetype;
+
+    // Supprimer les fichiers existants (webp/svg)
+    for (const ext of ["webp", "svg"]) {
+      const filePath = path.join(publicDir, `${id}.${ext}`);
+      try { await unlink(filePath); } catch {}
+    }
+
+    if (
+      iconType === "image/svg+xml" ||
+      iconFile.originalname.endsWith(".svg")
+    ) {
+      iconExt = "svg";
+      iconPath = path.join(publicDir, `${id}.svg`);
+      await writeFile(iconPath, iconFile.buffer);
+    } else {
+      const image = sharp(iconFile.buffer);
+      const metadata = await image.metadata();
+      let width = metadata.width || 100;
+      let height = metadata.height || 100;
+      const maxDim = 100;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) {
+          height = Math.round((height / width) * maxDim);
+          width = maxDim;
+        } else {
+          width = Math.round((width / height) * maxDim);
+          height = maxDim;
+        }
+      }
+      await image.resize(width, height).webp().toFile(iconPath);
+    }
+    return `${id}.${iconExt}`;
+  }
+
   async create(stack: {
     label: string;
-    icon: string;
+    iconFile: { buffer: Buffer; mimetype: string; originalname: string };
     description?: string;
     versions?: string[];
   }): Promise<void> {
     const id = crypto.randomBytes(16).toString("hex");
+    const iconFileName = await this.saveIconFile(id, stack.iconFile);
+
     let conn;
     try {
       conn = await this.pool.getConnection();
       await conn.query(
         `
         INSERT INTO stack (id, label, icon, description) VALUES (?, ?, ?, ?);
-        INSERT INTO stack_version (stack_id, version) VALUES ${stack.versions?.map(() => "(?, ?)").join(", ")};
+        ${stack.versions && stack.versions.length > 0 ? `INSERT INTO stack_version (stack_id, version) VALUES ${stack.versions.map(() => "(?, ?)").join(", ")};` : ""}
         `,
         [
           id,
           stack.label,
-          stack.icon,
+          iconFileName,
           stack.description || null,
           ...(stack.versions?.flatMap((version) => [id, version]) || []),
         ],
@@ -71,7 +121,7 @@ export class StackRepository {
     id: string,
     stack: {
       label?: string;
-      icon?: string;
+      iconFile?: { buffer: Buffer; mimetype: string; originalname: string };
       description?: string;
       versions?: string[];
     },
@@ -85,9 +135,10 @@ export class StackRepository {
         fields.push("label = ?");
         values.push(stack.label);
       }
-      if (stack.icon) {
+      if (stack.iconFile) {
+        const iconFileName = await this.saveIconFile(id, stack.iconFile);
         fields.push("icon = ?");
-        values.push(stack.icon);
+        values.push(iconFileName);
       }
       if (stack.description !== undefined) {
         fields.push("description = ?");
@@ -95,7 +146,7 @@ export class StackRepository {
       }
       if (stack.versions)
         for (const version of stack.versions) {
-          this.addVersion(id, version);
+          await this.addVersion(id, version);
         }
       if (fields.length === 0) return; // Nothing to update
       values.push(id);

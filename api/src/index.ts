@@ -59,6 +59,11 @@ async function main() {
   const port = 4000;
   app.use(express.json());
 
+  app.use(
+    "/public/stack",
+    express.static(path.join(process.cwd(), "public", "stack")),
+  );
+
   app.use(corsDynamicOrigin);
 
   const schema = buildSchema(`

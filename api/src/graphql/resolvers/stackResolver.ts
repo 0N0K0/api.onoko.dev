@@ -1,4 +1,9 @@
 const stackResolver = {
+  Stack: {
+    imageUrl: (stack: any) => {
+      return `/public/stack/${stack.icon}`;
+    },
+  },
   stacks: async (_args: any, { stackRepo }: { stackRepo: any }) => {
     return await stackRepo.getAll();
   },

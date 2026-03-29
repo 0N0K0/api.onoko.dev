@@ -4,6 +4,7 @@ export const stackTypes = `
     label: String!
     icon: String!
     description: String
+    imageUrl: String!
   }
   type StackVersion {
     version: String!
@@ -17,9 +18,8 @@ export const stackQueries = `
 `;
 
 export const stackMutations = `
-  createStack(label: String!, icon: String!, description: String): Stack!
-  updateStack(id: ID!, label: String, icon: String, description: String): Stack!
-  deleteStack(id: ID!): Boolean!
+  createStack(label: String!, iconFile: Upload!, description: String): Stack!
+  updateStack(id: ID!, label: String, iconFile: Upload, description: String): Stack!  deleteStack(id: ID!): Boolean!
   addStackVersion(stackId: ID!, version: String!): StackVersion!
   removeStackVersion(stackId: ID!, version: String!): Boolean!
 `;
