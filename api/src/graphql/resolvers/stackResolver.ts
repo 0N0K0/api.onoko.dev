@@ -1,16 +1,8 @@
 const stackResolver = {
-  stacks: async (
-    _args: any,
-    context: { user: any },
-    { stackRepo }: { stackRepo: any },
-  ) => {
+  stacks: async (_args: any, { stackRepo }: { stackRepo: any }) => {
     return await stackRepo.getAll();
   },
-  stack: async (
-    _args: { id: string },
-    context: { user: any },
-    { stackRepo }: { stackRepo: any },
-  ) => {
+  stack: async (_args: { id: string }, { stackRepo }: { stackRepo: any }) => {
     return await stackRepo.get("id", _args.id);
   },
   createStack: async (
@@ -49,6 +41,32 @@ const stackResolver = {
   ) => {
     if (!context.user) throw new Error("Unauthorized");
     await stackRepo.delete(_args.id);
+    return true;
+  },
+  stackVersions: async (
+    _args: { stackId: string },
+    context: { user: any },
+    { stackRepo }: { stackRepo: any },
+  ) => {
+    if (!context.user) throw new Error("Unauthorized");
+    return await stackRepo.getVersions(_args.stackId);
+  },
+  addStackVersion: async (
+    _args: { stackId: string; version: string },
+    context: { user: any },
+    { stackRepo }: { stackRepo: any },
+  ) => {
+    if (!context.user) throw new Error("Unauthorized");
+    await stackRepo.addVersion(_args.stackId, _args.version);
+    return { version: _args.version };
+  },
+  removeStackVersion: async (
+    _args: { stackId: string; version: string },
+    context: { user: any },
+    { stackRepo }: { stackRepo: any },
+  ) => {
+    if (!context.user) throw new Error("Unauthorized");
+    await stackRepo.removeVersion(_args.stackId, _args.version);
     return true;
   },
 };
