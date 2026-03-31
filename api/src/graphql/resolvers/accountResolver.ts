@@ -1,4 +1,3 @@
-import { settingsRepo } from "../..";
 import {
   hashPassword,
   isStrongPassword,
@@ -8,7 +7,11 @@ import crypto from "crypto";
 import nodemailer from "nodemailer";
 
 const accountResolver = {
-  account: async (_args: any, context: { user: any }) => {
+  account: async (
+    _args: any,
+    context: { user: any },
+    { settingsRepo }: { settingsRepo: any },
+  ) => {
     console.log("Account query context:", context);
     if (!context.user) throw new Error("Unauthorized");
 
@@ -26,6 +29,7 @@ const accountResolver = {
       newPassword?: string;
     },
     context: { user: any },
+    { settingsRepo }: { settingsRepo: any },
   ) => {
     if (!context.user) throw new Error("Unauthorized");
 
@@ -51,9 +55,12 @@ const accountResolver = {
   },
 
   // Demande de reset password
-  requestResetPassword: async ({ email }: { email: string }) => {
+  requestResetPassword: async (
+    _args: { email: string },
+    { settingsRepo }: { settingsRepo: any },
+  ) => {
     const storedEmail = await settingsRepo.get("email");
-    if (!storedEmail || storedEmail !== email) return true; // Ne pas révéler l'existence
+    if (!storedEmail || storedEmail !== _args.email) return true; // Ne pas révéler l'existence
     const token = crypto.randomBytes(32).toString("hex");
     const expires = new Date(Date.now() + 1000 * 60 * 15); // 15 min
     const pool = settingsRepo["pool"];
@@ -62,7 +69,7 @@ const accountResolver = {
       conn = await pool.getConnection();
       await conn.query(
         "INSERT INTO password_reset_tokens (token, email, expires) VALUES (?, ?, ?)",
-        [token, email, expires],
+        [token, _args.email, expires],
       );
     } finally {
       if (conn) conn.release();
@@ -79,7 +86,7 @@ const accountResolver = {
     });
     await transporter.sendMail({
       from: process.env.SMTP_FROM || "noreply@example.com",
-      to: email,
+      to: _args.email,
       subject: "Réinitialisation de mot de passe",
       text: `Pour réinitialiser votre mot de passe, cliquez ici : ${resetUrl}`,
     });
@@ -87,13 +94,14 @@ const accountResolver = {
   },
 
   // Confirmation du reset password
-  resetPassword: async ({
-    token,
-    newPassword,
-  }: {
-    token: string;
-    newPassword: string;
-  }) => {
+  resetPassword: async (
+    _args: {
+      token: string;
+      newPassword: string;
+    },
+    { settingsRepo }: { settingsRepo: any },
+  ) => {
+    const { token, newPassword } = _args;
     if (!token || !newPassword)
       throw new Error("Token and newPassword required");
     const pool = settingsRepo["pool"];
