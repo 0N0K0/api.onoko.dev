@@ -23,6 +23,9 @@ import {
   stackQueries,
   stackTypes,
 } from "./graphql/schemas/stackSchema";
+import stackResolver from "./graphql/resolvers/stackResolver";
+import { StackRepository } from "./repositories/StackRepository";
+import CategoryRepository from "./repositories/CategoryRepository";
 
 const pool = mariadb.createPool({
   host: process.env.DB_HOST || "localhost",
@@ -32,7 +35,7 @@ const pool = mariadb.createPool({
   connectionLimit: 5,
 });
 
-export const settingsRepo = new SettingsRepository(pool);
+const settingsRepo = new SettingsRepository(pool);
 
 async function main() {
   const isProd =
@@ -85,7 +88,12 @@ async function main() {
     ...authResolver,
     ...accountResolver,
     ...stackResolver,
+    settingsRepo,
+    stackRepo: new StackRepository(pool),
+    categoryRepo: new CategoryRepository(pool),
   };
+
+  const stackRepo = new StackRepository(pool);
 
   app.use(
     "/graphql",

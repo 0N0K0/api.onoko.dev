@@ -2,24 +2,21 @@ export const stackTypes = `
   type Stack {
     id: ID!
     label: String!
-    icon: String!
+    iconeUrl: String
     description: String
-    imageUrl: String!
-  }
-  type StackVersion {
-    version: String!
+    versions: [String!]!
+    category: Category
   }
 `;
 
 export const stackQueries = `
   stacks: [Stack!]!
-  stack(id: ID!): Stack
-  stackVersions(stackId: ID!): [StackVersion!]!
+  stacksByCategory(key: String!, value: String!): [Stack!]!
+  stack(key: String!, value: String!): Stack
 `;
 
 export const stackMutations = `
-  createStack(label: String!, iconFile: Upload!, description: String): Stack!
-  updateStack(id: ID!, label: String, iconFile: Upload, description: String): Stack!  deleteStack(id: ID!): Boolean!
-  addStackVersion(stackId: ID!, version: String!): StackVersion!
-  removeStackVersion(stackId: ID!, version: String!): Boolean!
+  createStack(label: String!, iconFile: Upload!, description: String, versions: [String!], category: ID): Stack!
+  updateStack(id: ID!, label: String, iconFile: Upload, description: String, versions: [String!], category: ID): Stack!
+  deleteStack(id: ID!): Boolean!
 `;

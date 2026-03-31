@@ -1,107 +1,177 @@
 import mariadb from "mariadb";
 import crypto from "crypto";
-import path from "path";
-import { promises as fsPromises } from "fs";
-import sharp from "sharp";
+import { Stack } from "../types/stackTypes";
+import { ImageFile } from "../types/imageTypes";
+import { Category } from "../types/categoryTypes";
+import { saveImageFile } from "../utils/imageUtils";
 
 export class StackRepository {
-  private pool: mariadb.Pool;
+  private iconBasePath = "/public/stack/";
 
-  constructor(pool: mariadb.Pool) {
-    this.pool = pool;
-  }
+  constructor(private pool: mariadb.Pool) {}
 
-  async getAll(): Promise<any[]> {
+  async getAll(): Promise<Stack[]> {
     let conn;
     try {
       conn = await this.pool.getConnection();
-      const rows = await conn.query("SELECT * FROM stack");
-      return rows;
+      const rows = await conn.query(`
+        SELECT s.*, v.version, c.id as category_id, c.label as category_label, c.icon as category_icon, c.description as category_description
+        FROM stack s
+        LEFT JOIN stack_version v ON v.stack_id = s.id
+        LEFT JOIN category c ON s.category_id = c.id
+      `);
+      // Map SQL rows to Stack[]
+      const stacks: Stack[] = rows.map((row: any) => ({
+        id: row.id,
+        label: row.label,
+        iconeUrl: row.icon ? `${this.iconBasePath}${row.icon}` : undefined,
+        description: row.description,
+        versions: row.version ? [row.version] : [],
+        category: row.category_id
+          ? {
+              id: row.category_id,
+              label: row.category_label,
+              description: row.category_description,
+            }
+          : undefined,
+      }));
+      return stacks;
     } finally {
       if (conn) conn.release();
     }
   }
 
-  async get(key: string, value: any): Promise<any | null> {
+  async getAllByCategory(
+    key: "id" | "label",
+    value: any,
+  ): Promise<Category | null> {
+    let conn;
+    try {
+      conn = await this.pool.getConnection();
+      // Récupérer toutes les catégories de la sous-arborescence
+      const categories = await conn.query(
+        `WITH RECURSIVE subcategories AS (
+          SELECT * FROM category WHERE ${key} = ?
+          UNION ALL
+          SELECT c.* FROM category c
+          INNER JOIN subcategories sc ON c.parent_id = sc.id
+        )
+        SELECT * FROM subcategories`,
+        [value],
+      );
+      // Récupérer toutes les stacks liées à ces catégories
+      const categoryIds = categories.map((cat: any) => cat.id);
+      let stacks: any[] = [];
+      if (categoryIds.length > 0) {
+        const placeholders = categoryIds.map(() => "?").join(",");
+        stacks = await conn.query(
+          `SELECT s.*, v.version, c.id as category_id
+           FROM stack s
+           LEFT JOIN stack_version v ON v.stack_id = s.id
+           LEFT JOIN category c ON s.category_id = c.id
+           WHERE s.category_id IN (${placeholders})`,
+          categoryIds,
+        );
+      }
+      // Regrouper les versions par stack
+      const stackMap = new Map();
+      for (const row of stacks) {
+        if (!stackMap.has(row.id)) {
+          stackMap.set(row.id, {
+            id: row.id,
+            label: row.label,
+            iconeUrl: row.icon ? `${this.iconBasePath}${row.icon}` : undefined,
+            description: row.description,
+            versions: [],
+            category_id: row.category_id,
+          });
+        }
+        if (row.version) {
+          stackMap.get(row.id).versions.push(row.version);
+        }
+      }
+      // Construction de l'arbre récursif
+      function buildTree(parentId: string | null): any[] {
+        return categories
+          .filter((cat: any) => cat.parent_id === parentId)
+          .map((cat: any) => {
+            const catStacks = Array.from(stackMap.values()).filter(
+              (s: any) => s.category_id === cat.id,
+            );
+            return {
+              id: cat.id,
+              label: cat.label,
+              description: cat.description,
+              entities: catStacks,
+              children: buildTree(cat.id),
+            };
+          });
+      }
+      // Trouver la racine (catégorie demandée)
+      const root = categories.find((cat: any) => cat[key] === value);
+      if (!root) return null;
+      const result = buildTree(root.parent_id).find(
+        (c: any) => c.id === root.id,
+      );
+      return result;
+    } finally {
+      if (conn) conn.release();
+    }
+  }
+
+  async get(key: "id" | "label", value: any): Promise<Stack | null> {
     let conn;
     try {
       conn = await this.pool.getConnection();
       const rows = await conn.query(
         `
-        SELECT * FROM stack WHERE ${key} = ?;
-        SELECT * FROM stack_version WHERE stack_id = (SELECT id FROM stack WHERE ${key} = ?);
+        SELECT s.*, v.version, c.id as category_id, c.label as category_label, c.icon as category_icon, c.description as category_description
+        FROM stack s
+        LEFT JOIN stack_version v ON v.stack_id = s.id
+        LEFT JOIN category c ON s.category_id = c.id
+        WHERE s.${key} = ?
         `,
-        [value, value],
+        [value],
       );
-      if (rows.length > 0) {
-        return rows[0];
-      }
-      return null;
+      if (!rows || rows.length === 0) return null;
+      const first = rows[0];
+      const stack: Stack = {
+        id: first.id,
+        label: first.label,
+        iconeUrl: first.icon ? `${this.iconBasePath}${first.icon}` : undefined,
+        description: first.description,
+        versions: rows
+          .filter((r: any) => r.version != null)
+          .map((r: any) => r.version),
+        category: first.category_id
+          ? {
+              id: first.category_id,
+              label: first.category_label,
+              description: first.category_description,
+            }
+          : undefined,
+      };
+      return stack;
     } finally {
       if (conn) conn.release();
     }
   }
 
-  private async saveIconFile(
-    id: string,
-    iconFile: { buffer: Buffer; mimetype: string; originalname: string }
+  async create(
+    stack: Omit<Stack, "id"> & {
+      iconFile: ImageFile;
+    },
   ): Promise<string> {
-    const { mkdir, writeFile, unlink } = fsPromises;
-    const publicDir = path.join(process.cwd(), "public", "stack");
-    await mkdir(publicDir, { recursive: true });
-
-    let iconExt = "webp";
-    let iconPath = path.join(publicDir, `${id}.webp`);
-    let iconType = iconFile.mimetype;
-
-    // Supprimer les fichiers existants (webp/svg)
-    for (const ext of ["webp", "svg"]) {
-      const filePath = path.join(publicDir, `${id}.${ext}`);
-      try { await unlink(filePath); } catch {}
-    }
-
-    if (
-      iconType === "image/svg+xml" ||
-      iconFile.originalname.endsWith(".svg")
-    ) {
-      iconExt = "svg";
-      iconPath = path.join(publicDir, `${id}.svg`);
-      await writeFile(iconPath, iconFile.buffer);
-    } else {
-      const image = sharp(iconFile.buffer);
-      const metadata = await image.metadata();
-      let width = metadata.width || 100;
-      let height = metadata.height || 100;
-      const maxDim = 100;
-      if (width > maxDim || height > maxDim) {
-        if (width > height) {
-          height = Math.round((height / width) * maxDim);
-          width = maxDim;
-        } else {
-          width = Math.round((width / height) * maxDim);
-          height = maxDim;
-        }
-      }
-      await image.resize(width, height).webp().toFile(iconPath);
-    }
-    return `${id}.${iconExt}`;
-  }
-
-  async create(stack: {
-    label: string;
-    iconFile: { buffer: Buffer; mimetype: string; originalname: string };
-    description?: string;
-    versions?: string[];
-  }): Promise<void> {
     const id = crypto.randomBytes(16).toString("hex");
-    const iconFileName = await this.saveIconFile(id, stack.iconFile);
+
+    const iconFileName = await saveImageFile(id, stack.iconFile, "stack", 100);
 
     let conn;
     try {
       conn = await this.pool.getConnection();
       await conn.query(
         `
-        INSERT INTO stack (id, label, icon, description) VALUES (?, ?, ?, ?);
+        INSERT INTO stack (id, label, icon, description, category_id) VALUES (?, ?, ?, ?, ?);
         ${stack.versions && stack.versions.length > 0 ? `INSERT INTO stack_version (stack_id, version) VALUES ${stack.versions.map(() => "(?, ?)").join(", ")};` : ""}
         `,
         [
@@ -109,23 +179,22 @@ export class StackRepository {
           stack.label,
           iconFileName,
           stack.description || null,
+          stack.category || null,
           ...(stack.versions?.flatMap((version) => [id, version]) || []),
         ],
       );
+      return id;
     } finally {
       if (conn) conn.release();
     }
   }
 
   async update(
-    id: string,
-    stack: {
-      label?: string;
-      iconFile?: { buffer: Buffer; mimetype: string; originalname: string };
-      description?: string;
-      versions?: string[];
+    stack: Partial<Stack> & {
+      iconFile?: ImageFile;
     },
   ): Promise<void> {
+    if (!stack.id) throw new Error("ID is required for update");
     let conn;
     try {
       conn = await this.pool.getConnection();
@@ -136,7 +205,12 @@ export class StackRepository {
         values.push(stack.label);
       }
       if (stack.iconFile) {
-        const iconFileName = await this.saveIconFile(id, stack.iconFile);
+        const iconFileName = await saveImageFile(
+          stack.id,
+          stack.iconFile,
+          "stack",
+          100,
+        );
         fields.push("icon = ?");
         values.push(iconFileName);
       }
@@ -144,12 +218,27 @@ export class StackRepository {
         fields.push("description = ?");
         values.push(stack.description);
       }
-      if (stack.versions)
-        for (const version of stack.versions) {
-          await this.addVersion(id, version);
+      if (stack.versions) {
+        const existingVersions = await this.getVersions(stack.id);
+        const versionsToAdd = stack.versions.filter(
+          (v) => !existingVersions.includes(v),
+        );
+        const versionsToRemove = existingVersions.filter(
+          (v) => !stack.versions!.includes(v),
+        );
+        for (const version of versionsToAdd) {
+          await this.addVersion(stack.id, version);
         }
-      if (fields.length === 0) return; // Nothing to update
-      values.push(id);
+        for (const version of versionsToRemove) {
+          await this.removeVersion(stack.id, version);
+        }
+      }
+      if (stack.category) {
+        fields.push("category_id = ?");
+        values.push(stack.category);
+      }
+      if (fields.length === 0) return;
+      values.push(stack.id);
       await conn.query(
         `UPDATE stack SET ${fields.join(", ")} WHERE id = ?`,
         values,
@@ -169,7 +258,7 @@ export class StackRepository {
     }
   }
 
-  async getVersions(stackId: string): Promise<string[]> {
+  private async getVersions(stackId: string): Promise<string[]> {
     let conn;
     try {
       conn = await this.pool.getConnection();
@@ -183,7 +272,7 @@ export class StackRepository {
     }
   }
 
-  async addVersion(stackId: string, version: string): Promise<void> {
+  private async addVersion(stackId: string, version: string): Promise<void> {
     let conn;
     try {
       conn = await this.pool.getConnection();
@@ -196,7 +285,7 @@ export class StackRepository {
     }
   }
 
-  async removeVersion(stackId: string, version: string): Promise<void> {
+  private async removeVersion(stackId: string, version: string): Promise<void> {
     let conn;
     try {
       conn = await this.pool.getConnection();
