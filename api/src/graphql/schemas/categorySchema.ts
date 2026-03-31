@@ -4,7 +4,7 @@ export const categoryTypes = `
     label: String!
     entity: String
     description: String
-    parent: Category | String
+    parent: Category
     children: [Category!]
     entities: [Stack!]
   }

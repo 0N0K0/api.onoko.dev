@@ -26,6 +26,12 @@ import {
 import stackResolver from "./graphql/resolvers/stackResolver";
 import { StackRepository } from "./repositories/StackRepository";
 import CategoryRepository from "./repositories/CategoryRepository";
+import {
+  categoryMutations,
+  categoryQueries,
+  categoryTypes,
+} from "./graphql/schemas/categorySchema";
+import categoryResolver from "./graphql/resolvers/categoryResolver";
 
 const pool = mariadb.createPool({
   host: process.env.DB_HOST || "localhost",
@@ -70,16 +76,20 @@ async function main() {
   app.use(corsDynamicOrigin);
 
   const schema = buildSchema(`
+    scalar Upload
     ${authTypes}
     ${accountTypes}
+    ${categoryTypes}
     ${stackTypes}
     type Query {
       ${accountQueries}
+      ${categoryQueries}
       ${stackQueries}
     }
     type Mutation {
       ${authMutations}
       ${accountMutations}
+      ${categoryMutations}
       ${stackMutations}
     }
   `);
@@ -87,13 +97,12 @@ async function main() {
   const root = {
     ...authResolver,
     ...accountResolver,
+    ...categoryResolver,
     ...stackResolver,
     settingsRepo,
-    stackRepo: new StackRepository(pool),
     categoryRepo: new CategoryRepository(pool),
+    stackRepo: new StackRepository(pool),
   };
-
-  const stackRepo = new StackRepository(pool);
 
   app.use(
     "/graphql",

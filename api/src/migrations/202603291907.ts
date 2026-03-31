@@ -12,8 +12,8 @@ export async function up({ context: pool }: MigrationParams<Pool>) {
         description TEXT,
         parent_id VARCHAR(255),
         FOREIGN KEY (parent_id) REFERENCES category(id) ON DELETE SET NULL
-      );
-
+      );`);
+    await conn.query(`
       CREATE TABLE IF NOT EXISTS stack (
         id VARCHAR(255) PRIMARY KEY,
         label VARCHAR(255) UNIQUE NOT NULL,
@@ -21,8 +21,8 @@ export async function up({ context: pool }: MigrationParams<Pool>) {
         description TEXT,
         category_id VARCHAR(255),
         FOREIGN KEY (category_id) REFERENCES category(id) ON DELETE SET NULL
-      );
-
+      );`);
+    await conn.query(`
       CREATE TABLE IF NOT EXISTS stack_version (
         stack_id VARCHAR(255) NOT NULL,
         version VARCHAR(255) NOT NULL,
