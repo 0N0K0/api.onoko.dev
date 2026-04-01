@@ -4,9 +4,9 @@ export const categoryTypes = `
     label: String!
     entity: String
     description: String
-    parent: Category
-    children: [Category!]
+    parent: String
     entities: [Stack!]
+    depth: Int
   }
 `;
 
