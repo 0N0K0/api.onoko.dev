@@ -12,7 +12,7 @@ export const categoryTypes = `
 
 export const categoryQueries = `
   categories: [Category!]!
-  category(id: ID!): Category
+  category(key: String!, value: String!, entity: String): [Category!]
 `;
 
 export const categoryMutations = `

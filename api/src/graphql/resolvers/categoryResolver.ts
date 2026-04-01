@@ -4,12 +4,6 @@ const categoryResolver = {
   categories: async (_args: any, context: { categoryRepo: any }) => {
     return await context.categoryRepo.getAll();
   },
-  categoriesByEntity: async (
-    _args: { entity: string },
-    context: { categoryRepo: any },
-  ) => {
-    return await context.categoryRepo.getAllByEntity(_args.entity);
-  },
   category: async (
     _args: { key: "id" | "label"; value: any; entity: string },
     context: { categoryRepo: any },
