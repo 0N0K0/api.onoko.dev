@@ -11,17 +11,17 @@ export default class CategoryRepository {
       conn = await this.pool.getConnection();
       return await conn.query(`
         WITH RECURSIVE category_tree AS (
-          SELECT id, label, entity, description, parent_id, 0 AS depth
+          SELECT id, label, entity, description, parent_id AS parent, 0 AS depth, CAST(label AS CHAR(255)) AS path
           FROM category
           WHERE parent_id IS NULL
 
           UNION ALL
 
-          SELECT c.id, c.label, c.entity, c.description, c.parent_id, ct.depth + 1
+          SELECT c.id, c.label, c.entity, c.description, c.parent_id AS parent, ct.depth + 1, CONCAT(ct.path, ' > ', c.label) AS path
           FROM category c
           JOIN category_tree ct ON c.parent_id = ct.id
         )
-        SELECT * FROM category_tree;
+        SELECT id, label, entity, description, parent, depth FROM category_tree ORDER BY path;
         `);
     } finally {
       if (conn) conn.release();
@@ -88,10 +88,16 @@ export default class CategoryRepository {
         fields.push("description = ?");
         values.push(category.description);
       }
+      // Gestion spéciale pour parent: si null, "", ou "null" on force à NULL
       if (category.parent !== undefined) {
         fields.push("parent_id = ?");
-        values.push(category.parent);
+        if (category.parent === "") {
+          values.push(null);
+        } else {
+          values.push(category.parent);
+        }
       }
+      // On exécute la requête même si la seule modif est parent_id = NULL
       if (fields.length === 0) return;
       values.push(category.id);
       await conn.query(

@@ -16,7 +16,9 @@ const categoryResolver = {
   ) => {
     if (!context.user) throw new Error("Unauthorized");
     const id = await context.categoryRepo.create(_args);
-    return await context.categoryRepo.get("id", id);
+    const result = await context.categoryRepo.get("id", id);
+    if (!result || !result[0]) throw new Error("Category not found");
+    return result[0];
   },
   updateCategory: async (
     _args: Partial<Category>,
@@ -24,7 +26,9 @@ const categoryResolver = {
   ) => {
     if (!context.user) throw new Error("Unauthorized");
     await context.categoryRepo.update(_args);
-    return await context.categoryRepo.get("id", _args.id);
+    const result = await context.categoryRepo.get("id", _args.id);
+    if (!result || !result[0]) throw new Error("Category not found");
+    return result[0];
   },
   deleteCategory: async (
     _args: { id: string },
