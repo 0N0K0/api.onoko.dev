@@ -2,55 +2,52 @@ import { ImageFile } from "../../types/imageTypes";
 import { Stack } from "../../types/stackTypes";
 
 const stackResolver = {
-  stacks: async (_args: any, { stackRepo }: { stackRepo: any }) => {
-    return await stackRepo.getAll();
+  stacks: async (_args: any, context: { stackRepo: any }) => {
+    return await context.stackRepo.getAll();
   },
 
   stacksByCategory: async (
     _args: { key: string; value: string },
-    { stackRepo }: { stackRepo: any },
+    context: { stackRepo: any },
   ) => {
-    return await stackRepo.getAllByCategory(_args.key, _args.value);
+    return await context.stackRepo.getAllByCategory(_args.key, _args.value);
   },
 
   stack: async (
     _args: { key: string; value: string },
-    { stackRepo }: { stackRepo: any },
+    context: { stackRepo: any },
   ) => {
-    return await stackRepo.get(_args.key, _args.value);
+    return await context.stackRepo.get(_args.key, _args.value);
   },
 
   createStack: async (
     _args: Omit<Stack, "id"> & {
       iconFile: ImageFile;
     },
-    context: { user: any },
-    { stackRepo }: { stackRepo: any },
+    context: { user: any; stackRepo: any },
   ) => {
     if (!context.user) throw new Error("Unauthorized");
-    const id = await stackRepo.create(_args);
-    return await stackRepo.get("id", id);
+    const id = await context.stackRepo.create(_args);
+    return await context.stackRepo.get("id", id);
   },
 
   updateStack: async (
     _args: Partial<Stack> & {
       iconFile?: ImageFile;
     },
-    context: { user: any },
-    { stackRepo }: { stackRepo: any },
+    context: { user: any; stackRepo: any },
   ) => {
     if (!context.user) throw new Error("Unauthorized");
-    await stackRepo.update(_args);
-    return await stackRepo.get("id", _args.id);
+    await context.stackRepo.update(_args);
+    return await context.stackRepo.get("id", _args.id);
   },
 
   deleteStack: async (
     _args: { id: string },
-    context: { user: any },
-    { stackRepo }: { stackRepo: any },
+    context: { user: any; stackRepo: any },
   ) => {
     if (!context.user) throw new Error("Unauthorized");
-    await stackRepo.delete(_args.id);
+    await context.stackRepo.delete(_args.id);
     return true;
   },
 };

@@ -99,9 +99,6 @@ async function main() {
     ...accountResolver,
     ...categoryResolver,
     ...stackResolver,
-    settingsRepo,
-    categoryRepo: new CategoryRepository(pool),
-    stackRepo: new StackRepository(pool),
   };
 
   app.use(
@@ -118,7 +115,12 @@ async function main() {
         schema,
         rootValue: root,
         graphiql: true,
-        context: { user },
+        context: {
+          user,
+          settingsRepo,
+          categoryRepo: new CategoryRepository(pool),
+          stackRepo: new StackRepository(pool),
+        },
         customFormatErrorFn: (err) => {
           console.error("GraphQL Error:", err);
           return { message: err.message, stack: err.stack };
