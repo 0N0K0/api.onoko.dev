@@ -30,12 +30,15 @@ const authResolver = {
     }
   },
 
-  verifyToken: async (_args: { token: string }) => {
+  verifyToken: async (
+    _args: { token: string },
+    context: { settingsRepo: any },
+  ) => {
     try {
       verifyJwtToken(_args.token);
-      return true;
+      return { login: await context.settingsRepo.get("login") };
     } catch {
-      return false;
+      throw new Error("Invalid token");
     }
   },
 };

@@ -8,7 +8,6 @@ import nodemailer from "nodemailer";
 
 const accountResolver = {
   account: async (_args: any, context: { user: any; settingsRepo: any }) => {
-    console.log("Account query context:", context);
     if (!context.user) throw new Error("Unauthorized");
 
     const login = await context.settingsRepo.get("login");
