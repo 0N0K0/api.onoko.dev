@@ -9,43 +9,20 @@ export default class CategoryRepository {
     let conn;
     try {
       conn = await this.pool.getConnection();
-      const rows = await conn.query(`SELECT * FROM category`);
-      function buildTree(parentId: string | null): any[] {
-        return rows
-          .filter((cat: any) => cat.parent_id === parentId)
-          .map((cat: any) => ({
-            id: cat.id,
-            label: cat.label,
-            description: cat.description,
-            entity: cat.entity,
-            children: buildTree(cat.id),
-          }));
-      }
-      return buildTree(null);
-    } finally {
-      if (conn) conn.release();
-    }
-  }
+      return await conn.query(`
+        WITH RECURSIVE category_tree AS (
+          SELECT id, label, entity, description, parent_id, 0 AS depth
+          FROM category
+          WHERE parent_id IS NULL
 
-  async getAllByEntity(entity: string): Promise<Category[]> {
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
-      const rows = await conn.query(`SELECT * FROM category WHERE entity = ?`, [
-        entity,
-      ]);
-      function buildTree(parentId: string | null): any[] {
-        return rows
-          .filter((cat: any) => cat.parent_id === parentId)
-          .map((cat: any) => ({
-            id: cat.id,
-            label: cat.label,
-            description: cat.description,
-            entity: cat.entity,
-            children: buildTree(cat.id),
-          }));
-      }
-      return buildTree(null);
+          UNION ALL
+
+          SELECT c.id, c.label, c.entity, c.description, c.parent_id, ct.depth + 1
+          FROM category c
+          JOIN category_tree ct ON c.parent_id = ct.id
+        )
+        SELECT * FROM category_tree;
+        `);
     } finally {
       if (conn) conn.release();
     }
@@ -55,46 +32,18 @@ export default class CategoryRepository {
     key: "id" | "label",
     value: any,
     entity?: string,
-  ): Promise<Category | null> {
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
-      const rows = await conn.query(
-        `WITH RECURSIVE subcategories AS (
-          SELECT * FROM category WHERE ${key} = ? ${entity ? "AND entity = ?" : ""}
-          UNION ALL
-          SELECT c.* FROM category c
-          INNER JOIN subcategories sc ON c.parent_id = sc.id
-        )
-        SELECT * FROM subcategories`,
-        entity ? [value, entity] : [value],
-      );
-      if (!rows || rows.length === 0) return null;
-      // Trouver la catégorie racine (celle qui correspond à la recherche)
-      const root = rows.find((cat: any) => cat[key] === value);
-      if (!root) return null;
-      function buildTree(parentId: string | null): any[] {
-        return rows
-          .filter((cat: any) => cat.parent_id === parentId)
-          .map((cat: any) => ({
-            id: cat.id,
-            label: cat.label,
-            description: cat.description,
-            entity: cat.entity,
-            children: buildTree(cat.id),
-          }));
-      }
-      // On construit l'arbre à partir de la racine trouvée
-      return {
-        id: root.id,
-        label: root.label,
-        description: root.description,
-        entity: root.entity,
-        children: buildTree(root.id),
-      };
-    } finally {
-      if (conn) conn.release();
-    }
+  ): Promise<Category[] | null> {
+    const categories = await this.getAll();
+    const category = categories.find(
+      (c) => c[key] === value && (!entity || c.entity === entity),
+    );
+    if (!category) return null;
+    const findDescendants = (parentId: string): Category[] => {
+      const children = categories.filter((c) => c.parent === parentId);
+      return children.flatMap((child) => [child, ...findDescendants(child.id)]);
+    };
+    const descendants = findDescendants(category.id);
+    return [category, ...descendants];
   }
 
   async create(category: Omit<Category, "id">): Promise<string> {

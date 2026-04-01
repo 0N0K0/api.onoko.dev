@@ -4,15 +4,15 @@ export const categoryTypes = `
     label: String!
     entity: String
     description: String
-    parent: Category
-    children: [Category!]
+    parent: String
+    depth: Int
     entities: [Stack!]
   }
 `;
 
 export const categoryQueries = `
   categories: [Category!]!
-  category(id: ID!): Category
+  category(key: String!, value: String!, entity: String): [Category!]
 `;
 
 export const categoryMutations = `

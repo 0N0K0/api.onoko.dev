@@ -5,7 +5,7 @@ export interface Category {
   label: string;
   entity?: string;
   description?: string;
-  parent?: Category | string | null;
-  children?: Category[];
+  parent?: string;
+  depth?: number;
   entities?: Stack[];
 }
