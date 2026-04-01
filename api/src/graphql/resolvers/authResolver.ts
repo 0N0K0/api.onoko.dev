@@ -7,10 +7,10 @@ import { verifyPassword } from "../../utils/passwordUtils";
 const authResolver = {
   login: async (
     _args: { login: string; password: string },
-    { settingsRepo }: { settingsRepo: any },
+    context: { settingsRepo: any },
   ) => {
-    const storedLogin = await settingsRepo.get("login");
-    const storedHash = await settingsRepo.get("password_hash");
+    const storedLogin = await context.settingsRepo.get("login");
+    const storedHash = await context.settingsRepo.get("password_hash");
     if (!storedLogin || !storedHash || _args.login !== storedLogin) {
       throw new Error("Invalid credentials");
     }
