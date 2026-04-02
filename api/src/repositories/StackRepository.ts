@@ -15,7 +15,7 @@ export class StackRepository {
     try {
       conn = await this.pool.getConnection();
       const rows = await conn.query(`
-        SELECT s.*, v.version, c.id as c_id, c.label as c_label
+        SELECT s.*, v.version, ss.skill, c.id as c_id, c.label as c_label
         FROM stack s
         LEFT JOIN stack_version v ON v.stack_id = s.id
         LEFT JOIN stack_skill ss ON ss.stack_id = s.id
@@ -42,6 +42,11 @@ export class StackRepository {
         }
         if (row.version) stackMap.get(row.id).versions.push(row.version);
         if (row.skill) stackMap.get(row.id).skills.push(row.skill);
+      }
+      // Dédupliquer les versions et skills
+      for (const stack of stackMap.values()) {
+        stack.versions = Array.from(new Set(stack.versions));
+        stack.skills = Array.from(new Set(stack.skills));
       }
       return Array.from(stackMap.values());
     } finally {
@@ -73,7 +78,7 @@ export class StackRepository {
       if (categoryIds.length > 0) {
         const placeholders = categoryIds.map(() => "?").join(",");
         stacks = await conn.query(
-          `SELECT s.*, v.version, ss.skill, c.id as c_id
+          `SELECT s.*, v.version, ss.skill, c.id as c_id, c.label as c_label
            FROM stack s
            LEFT JOIN stack_version v ON v.stack_id = s.id
            LEFT JOIN stack_skill ss ON ss.stack_id = s.id
@@ -93,11 +98,21 @@ export class StackRepository {
             description: row.description,
             versions: [],
             skills: [],
-            category: row.c_id,
+            category: row.c_id
+              ? {
+                  id: row.c_id,
+                  label: row.c_label,
+                }
+              : undefined,
           });
         }
         if (row.version) stackMap.get(row.id).versions.push(row.version);
         if (row.skill) stackMap.get(row.id).skills.push(row.skill);
+        // Dédupliquer les versions et skills
+        for (const stack of stackMap.values()) {
+          stack.versions = Array.from(new Set(stack.versions));
+          stack.skills = Array.from(new Set(stack.skills));
+        }
       }
       // Construction de l'arbre récursif
       function buildTree(parentId: string | null): any[] {
@@ -150,18 +165,24 @@ export class StackRepository {
         label: first.label,
         iconUrl: first.icon ? `${this.iconBasePath}${first.icon}` : undefined,
         description: first.description,
-        versions: rows
-          .filter((r: any) => r.version != null)
-          .map((r: any) => r.version),
+        versions: Array.from(
+          new Set(
+            rows
+              .filter((r: any) => r.version != null)
+              .map((r: any) => r.version),
+          ),
+        ),
         category: first.c_id
           ? {
               id: first.c_id,
               label: first.c_label,
             }
           : undefined,
-        skills: rows
-          .filter((r: any) => r.skill != null)
-          .map((r: any) => r.skill),
+        skills: Array.from(
+          new Set(
+            rows.filter((r: any) => r.skill != null).map((r: any) => r.skill),
+          ),
+        ),
       };
       return stack;
     } finally {
@@ -253,9 +274,9 @@ export class StackRepository {
           await this.removeVersion(stack.id, version);
         }
       }
-      if (stack.category) {
+      if (stack.category !== undefined) {
         fields.push("category_id = ?");
-        values.push(stack.category);
+        values.push(stack.category ? stack.category : null);
       }
       if (stack.skills) {
         const existingSkills = await this.getSkills(stack.id);
@@ -348,12 +369,13 @@ export class StackRepository {
   }
 
   private async addSkill(stackId: string, skill: string): Promise<void> {
+    const id = crypto.randomBytes(16).toString("hex");
     let conn;
     try {
       conn = await this.pool.getConnection();
       await conn.query(
-        "INSERT INTO stack_skill (stack_id, skill) VALUES (?, ?)",
-        [stackId, skill],
+        "INSERT INTO stack_skill (id, stack_id, skill) VALUES (?, ?, ?)",
+        [id, stackId, skill],
       );
     } finally {
       if (conn) conn.release();

@@ -6,9 +6,9 @@ export async function up({ context: pool }: MigrationParams<Pool>) {
   try {
     await conn.query(`
       CREATE TABLE IF NOT EXISTS stack_skill (
+        id VARCHAR(255) PRIMARY KEY,
         stack_id VARCHAR(255) NOT NULL,
         skill TEXT NOT NULL,
-        PRIMARY KEY (stack_id, skill),
         FOREIGN KEY (stack_id) REFERENCES stack(id) ON DELETE CASCADE
       );
     `);

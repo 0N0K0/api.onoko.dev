@@ -4,8 +4,8 @@ export const stackTypes = `
     label: String!
     iconUrl: String
     description: String
-    versions: [String!]!
-    skills: [String!]!
+    versions: [String!]
+    skills: [String!]
     category: Category
   }
 `;
