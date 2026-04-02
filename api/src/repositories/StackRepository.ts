@@ -15,7 +15,7 @@ export class StackRepository {
     try {
       conn = await this.pool.getConnection();
       const rows = await conn.query(`
-        SELECT s.*, v.version, c.id as category_id, c.label as category_label, c.icon as category_icon, c.description as category_description
+        SELECT s.*, v.version, c.id as c_id, c.label as c_label
         FROM stack s
         LEFT JOIN stack_version v ON v.stack_id = s.id
         LEFT JOIN category c ON s.category_id = c.id
@@ -27,11 +27,10 @@ export class StackRepository {
         iconUrl: row.icon ? `${this.iconBasePath}${row.icon}` : undefined,
         description: row.description,
         versions: row.version ? [row.version] : [],
-        category: row.category_id
+        category: row.c_id
           ? {
-              id: row.category_id,
-              label: row.category_label,
-              description: row.category_description,
+              id: row.c_id,
+              label: row.c_label,
             }
           : undefined,
       }));
@@ -65,7 +64,7 @@ export class StackRepository {
       if (categoryIds.length > 0) {
         const placeholders = categoryIds.map(() => "?").join(",");
         stacks = await conn.query(
-          `SELECT s.*, v.version, c.id as category_id
+          `SELECT s.*, v.version, c.id as c_id
            FROM stack s
            LEFT JOIN stack_version v ON v.stack_id = s.id
            LEFT JOIN category c ON s.category_id = c.id
@@ -83,7 +82,7 @@ export class StackRepository {
             iconUrl: row.icon ? `${this.iconBasePath}${row.icon}` : undefined,
             description: row.description,
             versions: [],
-            category_id: row.category_id,
+            category: row.c_id,
           });
         }
         if (row.version) {
@@ -125,7 +124,7 @@ export class StackRepository {
       conn = await this.pool.getConnection();
       const rows = await conn.query(
         `
-        SELECT s.*, v.version, c.id as category_id, c.label as category_label, c.icon as category_icon, c.description as category_description
+        SELECT s.*, v.version, c.id as c_id, c.label as c_label
         FROM stack s
         LEFT JOIN stack_version v ON v.stack_id = s.id
         LEFT JOIN category c ON s.category_id = c.id
@@ -143,11 +142,10 @@ export class StackRepository {
         versions: rows
           .filter((r: any) => r.version != null)
           .map((r: any) => r.version),
-        category: first.category_id
+        category: first.c_id
           ? {
-              id: first.category_id,
-              label: first.category_label,
-              description: first.category_description,
+              id: first.c_id,
+              label: first.c_label,
             }
           : undefined,
       };
@@ -170,19 +168,21 @@ export class StackRepository {
     try {
       conn = await this.pool.getConnection();
       await conn.query(
-        `
-        INSERT INTO stack (id, label, icon, description, category_id) VALUES (?, ?, ?, ?, ?);
-        ${stack.versions && stack.versions.length > 0 ? `INSERT INTO stack_version (stack_id, version) VALUES ${stack.versions.map(() => "(?, ?)").join(", ")};` : ""}
-        `,
+        `INSERT INTO stack (id, label, icon, description, category_id) VALUES (?, ?, ?, ?, ?);`,
         [
           id,
           stack.label,
           iconFileName,
           stack.description || null,
           stack.category || null,
-          ...(stack.versions?.flatMap((version) => [id, version]) || []),
         ],
       );
+      if (stack.versions && stack.versions.length > 0) {
+        await conn.query(
+          `INSERT INTO stack_version (stack_id, version) VALUES ${stack.versions.map(() => "(?, ?)").join(", ")};`,
+          stack.versions.flatMap((version) => [id, version]),
+        );
+      }
       return id;
     } finally {
       if (conn) conn.release();

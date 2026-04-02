@@ -8,6 +8,7 @@ export async function saveImageFile(
   directory: string,
   maxDim: number,
 ): Promise<string> {
+  const buffer = Buffer.from(iconFile.buffer);
   const { mkdir, writeFile, unlink } = fsPromises;
   const publicDir = path.join(process.cwd(), "public", directory);
   await mkdir(publicDir, { recursive: true });
@@ -27,9 +28,9 @@ export async function saveImageFile(
   if (iconType === "image/svg+xml" || iconFile.originalname.endsWith(".svg")) {
     iconExt = "svg";
     iconPath = path.join(publicDir, `${fileName}.svg`);
-    await writeFile(iconPath, iconFile.buffer);
+    await writeFile(iconPath, buffer);
   } else {
-    const image = sharp(iconFile.buffer);
+    const image = sharp(buffer);
     const metadata = await image.metadata();
     let width = metadata.width || maxDim;
     let height = metadata.height || maxDim;
