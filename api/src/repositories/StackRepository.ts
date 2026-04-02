@@ -18,23 +18,32 @@ export class StackRepository {
         SELECT s.*, v.version, c.id as c_id, c.label as c_label
         FROM stack s
         LEFT JOIN stack_version v ON v.stack_id = s.id
+        LEFT JOIN stack_skill ss ON ss.stack_id = s.id
         LEFT JOIN category c ON s.category_id = c.id
+        ORDER BY c.label, s.label
       `);
-      // Map SQL rows to Stack[]
-      const stacks: Stack[] = rows.map((row: any) => ({
-        id: row.id,
-        label: row.label,
-        iconUrl: row.icon ? `${this.iconBasePath}${row.icon}` : undefined,
-        description: row.description,
-        versions: row.version ? [row.version] : [],
-        category: row.c_id
-          ? {
-              id: row.c_id,
-              label: row.c_label,
-            }
-          : undefined,
-      }));
-      return stacks;
+      const stackMap = new Map();
+      for (const row of rows) {
+        if (!stackMap.has(row.id)) {
+          stackMap.set(row.id, {
+            id: row.id,
+            label: row.label,
+            iconUrl: row.icon ? `${this.iconBasePath}${row.icon}` : undefined,
+            description: row.description,
+            versions: [],
+            skills: [],
+            category: row.c_id
+              ? {
+                  id: row.c_id,
+                  label: row.c_label,
+                }
+              : undefined,
+          });
+        }
+        if (row.version) stackMap.get(row.id).versions.push(row.version);
+        if (row.skill) stackMap.get(row.id).skills.push(row.skill);
+      }
+      return Array.from(stackMap.values());
     } finally {
       if (conn) conn.release();
     }
@@ -64,9 +73,10 @@ export class StackRepository {
       if (categoryIds.length > 0) {
         const placeholders = categoryIds.map(() => "?").join(",");
         stacks = await conn.query(
-          `SELECT s.*, v.version, c.id as c_id
+          `SELECT s.*, v.version, ss.skill, c.id as c_id
            FROM stack s
            LEFT JOIN stack_version v ON v.stack_id = s.id
+           LEFT JOIN stack_skill ss ON ss.stack_id = s.id
            LEFT JOIN category c ON s.category_id = c.id
            WHERE s.category_id IN (${placeholders})`,
           categoryIds,
@@ -82,12 +92,12 @@ export class StackRepository {
             iconUrl: row.icon ? `${this.iconBasePath}${row.icon}` : undefined,
             description: row.description,
             versions: [],
+            skills: [],
             category: row.c_id,
           });
         }
-        if (row.version) {
-          stackMap.get(row.id).versions.push(row.version);
-        }
+        if (row.version) stackMap.get(row.id).versions.push(row.version);
+        if (row.skill) stackMap.get(row.id).skills.push(row.skill);
       }
       // Construction de l'arbre récursif
       function buildTree(parentId: string | null): any[] {
@@ -124,9 +134,10 @@ export class StackRepository {
       conn = await this.pool.getConnection();
       const rows = await conn.query(
         `
-        SELECT s.*, v.version, c.id as c_id, c.label as c_label
+        SELECT s.*, v.version, ss.skill, c.id as c_id, c.label as c_label
         FROM stack s
         LEFT JOIN stack_version v ON v.stack_id = s.id
+        LEFT JOIN stack_skill ss ON ss.stack_id = s.id
         LEFT JOIN category c ON s.category_id = c.id
         WHERE s.${key} = ?
         `,
@@ -148,6 +159,9 @@ export class StackRepository {
               label: first.c_label,
             }
           : undefined,
+        skills: rows
+          .filter((r: any) => r.skill != null)
+          .map((r: any) => r.skill),
       };
       return stack;
     } finally {
@@ -181,6 +195,12 @@ export class StackRepository {
         await conn.query(
           `INSERT INTO stack_version (stack_id, version) VALUES ${stack.versions.map(() => "(?, ?)").join(", ")};`,
           stack.versions.flatMap((version) => [id, version]),
+        );
+      }
+      if (stack.skills && stack.skills.length > 0) {
+        await conn.query(
+          `INSERT INTO stack_skill (stack_id, skill) VALUES ${stack.skills.map(() => "(?, ?)").join(", ")};`,
+          stack.skills.flatMap((skill) => [id, skill]),
         );
       }
       return id;
@@ -237,6 +257,21 @@ export class StackRepository {
         fields.push("category_id = ?");
         values.push(stack.category);
       }
+      if (stack.skills) {
+        const existingSkills = await this.getSkills(stack.id);
+        const skillsToAdd = stack.skills.filter(
+          (s) => !existingSkills.includes(s),
+        );
+        const skillsToRemove = existingSkills.filter(
+          (s) => !stack.skills!.includes(s),
+        );
+        for (const skill of skillsToAdd) {
+          await this.addSkill(stack.id, skill);
+        }
+        for (const skill of skillsToRemove) {
+          await this.removeSkill(stack.id, skill);
+        }
+      }
       if (fields.length === 0) return;
       values.push(stack.id);
       await conn.query(
@@ -292,6 +327,46 @@ export class StackRepository {
       await conn.query(
         "DELETE FROM stack_version WHERE stack_id = ? AND version = ?",
         [stackId, version],
+      );
+    } finally {
+      if (conn) conn.release();
+    }
+  }
+
+  private async getSkills(stackId: string): Promise<string[]> {
+    let conn;
+    try {
+      conn = await this.pool.getConnection();
+      const rows = await conn.query(
+        "SELECT skill FROM stack_skill WHERE stack_id = ?",
+        [stackId],
+      );
+      return rows.map((row: { skill: string }) => row.skill);
+    } finally {
+      if (conn) conn.release();
+    }
+  }
+
+  private async addSkill(stackId: string, skill: string): Promise<void> {
+    let conn;
+    try {
+      conn = await this.pool.getConnection();
+      await conn.query(
+        "INSERT INTO stack_skill (stack_id, skill) VALUES (?, ?)",
+        [stackId, skill],
+      );
+    } finally {
+      if (conn) conn.release();
+    }
+  }
+
+  private async removeSkill(stackId: string, skill: string): Promise<void> {
+    let conn;
+    try {
+      conn = await this.pool.getConnection();
+      await conn.query(
+        "DELETE FROM stack_skill WHERE stack_id = ? AND skill = ?",
+        [stackId, skill],
       );
     } finally {
       if (conn) conn.release();

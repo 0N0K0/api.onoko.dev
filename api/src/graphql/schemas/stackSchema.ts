@@ -5,6 +5,7 @@ export const stackTypes = `
     iconUrl: String
     description: String
     versions: [String!]!
+    skills: [String!]!
     category: Category
   }
 `;
@@ -16,7 +17,7 @@ export const stackQueries = `
 `;
 
 export const stackMutations = `
-  createStack(label: String!, iconFile: Upload!, description: String, versions: [String!], category: ID): Stack!
-  updateStack(id: ID!, label: String, iconFile: Upload, description: String, versions: [String!], category: ID): Stack!
+  createStack(label: String!, iconFile: Upload!, description: String, versions: [String!], skills: [String!], category: ID): Stack!
+  updateStack(id: ID!, label: String, iconFile: Upload, description: String, versions: [String!], skills: [String!], category: ID): Stack!
   deleteStack(id: ID!): Boolean!
 `;

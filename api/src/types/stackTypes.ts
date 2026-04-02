@@ -7,5 +7,6 @@ export interface Stack {
   description?: string;
   iconUrl?: string;
   versions: string[];
+  skills: string[];
   category?: Category | string | null;
 }
