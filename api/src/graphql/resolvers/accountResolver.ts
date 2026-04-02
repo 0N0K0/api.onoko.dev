@@ -1,4 +1,3 @@
-import { settingsRepo } from "../..";
 import {
   hashPassword,
   isStrongPassword,
@@ -8,12 +7,11 @@ import crypto from "crypto";
 import nodemailer from "nodemailer";
 
 const accountResolver = {
-  account: async (_args: any, context: { user: any }) => {
-    console.log("Account query context:", context);
+  account: async (_args: any, context: { user: any; settingsRepo: any }) => {
     if (!context.user) throw new Error("Unauthorized");
 
-    const login = await settingsRepo.get("login");
-    const email = await settingsRepo.get("email");
+    const login = await context.settingsRepo.get("login");
+    const email = await context.settingsRepo.get("email");
 
     return { login, email };
   },
@@ -25,16 +23,16 @@ const accountResolver = {
       oldPassword: string;
       newPassword?: string;
     },
-    context: { user: any },
+    context: { user: any; settingsRepo: any },
   ) => {
     if (!context.user) throw new Error("Unauthorized");
 
-    const storedHash = await settingsRepo.get("password_hash");
+    const storedHash = await context.settingsRepo.get("password_hash");
     if (!storedHash || !(await verifyPassword(_args.oldPassword, storedHash))) {
       throw new Error("Invalid old password");
     }
-    if (_args.login) await settingsRepo.set("login", _args.login);
-    if (_args.email) await settingsRepo.set("email", _args.email);
+    if (_args.login) await context.settingsRepo.set("login", _args.login);
+    if (_args.email) await context.settingsRepo.set("email", _args.email);
     if (_args.newPassword) {
       if (!isStrongPassword(_args.newPassword)) {
         throw new Error(
@@ -42,27 +40,30 @@ const accountResolver = {
         );
       }
       const hash = await hashPassword(_args.newPassword);
-      await settingsRepo.set("password_hash", hash);
+      await context.settingsRepo.set("password_hash", hash);
     }
-    const newLogin = await settingsRepo.get("login");
-    const newEmail = await settingsRepo.get("email");
+    const newLogin = await context.settingsRepo.get("login");
+    const newEmail = await context.settingsRepo.get("email");
 
     return { login: newLogin, email: newEmail };
   },
 
   // Demande de reset password
-  requestResetPassword: async ({ email }: { email: string }) => {
-    const storedEmail = await settingsRepo.get("email");
-    if (!storedEmail || storedEmail !== email) return true; // Ne pas révéler l'existence
+  requestResetPassword: async (
+    _args: { email: string },
+    context: { settingsRepo: any },
+  ) => {
+    const storedEmail = await context.settingsRepo.get("email");
+    if (!storedEmail || storedEmail !== _args.email) return true; // Ne pas révéler l'existence
     const token = crypto.randomBytes(32).toString("hex");
     const expires = new Date(Date.now() + 1000 * 60 * 15); // 15 min
-    const pool = settingsRepo["pool"];
+    const pool = context.settingsRepo["pool"];
     let conn;
     try {
       conn = await pool.getConnection();
       await conn.query(
         "INSERT INTO password_reset_tokens (token, email, expires) VALUES (?, ?, ?)",
-        [token, email, expires],
+        [token, _args.email, expires],
       );
     } finally {
       if (conn) conn.release();
@@ -79,7 +80,7 @@ const accountResolver = {
     });
     await transporter.sendMail({
       from: process.env.SMTP_FROM || "noreply@example.com",
-      to: email,
+      to: _args.email,
       subject: "Réinitialisation de mot de passe",
       text: `Pour réinitialiser votre mot de passe, cliquez ici : ${resetUrl}`,
     });
@@ -87,16 +88,17 @@ const accountResolver = {
   },
 
   // Confirmation du reset password
-  resetPassword: async ({
-    token,
-    newPassword,
-  }: {
-    token: string;
-    newPassword: string;
-  }) => {
+  resetPassword: async (
+    _args: {
+      token: string;
+      newPassword: string;
+    },
+    context: { settingsRepo: any },
+  ) => {
+    const { token, newPassword } = _args;
     if (!token || !newPassword)
       throw new Error("Token and newPassword required");
-    const pool = settingsRepo["pool"];
+    const pool = context.settingsRepo["pool"];
     let conn;
     let entry;
     try {
@@ -119,7 +121,7 @@ const accountResolver = {
       );
     }
     const hash = await hashPassword(newPassword);
-    await settingsRepo.set("password_hash", hash);
+    await context.settingsRepo.set("password_hash", hash);
     // Supprime le token en base
     try {
       conn = await pool.getConnection();

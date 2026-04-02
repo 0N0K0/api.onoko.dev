@@ -18,6 +18,20 @@ import {
 import authResolver from "./graphql/resolvers/authResolver";
 import accountResolver from "./graphql/resolvers/accountResolver";
 import { verifyToken } from "./utils/auth/jwtUtils";
+import {
+  stackMutations,
+  stackQueries,
+  stackTypes,
+} from "./graphql/schemas/stackSchema";
+import stackResolver from "./graphql/resolvers/stackResolver";
+import { StackRepository } from "./repositories/StackRepository";
+import CategoryRepository from "./repositories/CategoryRepository";
+import {
+  categoryMutations,
+  categoryQueries,
+  categoryTypes,
+} from "./graphql/schemas/categorySchema";
+import categoryResolver from "./graphql/resolvers/categoryResolver";
 
 const pool = mariadb.createPool({
   host: process.env.DB_HOST || "localhost",
@@ -27,7 +41,7 @@ const pool = mariadb.createPool({
   connectionLimit: 5,
 });
 
-export const settingsRepo = new SettingsRepository(pool);
+const settingsRepo = new SettingsRepository(pool);
 
 async function main() {
   const isProd =
@@ -54,23 +68,37 @@ async function main() {
   const port = 4000;
   app.use(express.json());
 
+  app.use(
+    "/public/stack",
+    express.static(path.join(process.cwd(), "public", "stack")),
+  );
+
   app.use(corsDynamicOrigin);
 
   const schema = buildSchema(`
+    scalar Upload
     ${authTypes}
     ${accountTypes}
+    ${categoryTypes}
+    ${stackTypes}
     type Query {
       ${accountQueries}
+      ${categoryQueries}
+      ${stackQueries}
     }
     type Mutation {
       ${authMutations}
       ${accountMutations}
+      ${categoryMutations}
+      ${stackMutations}
     }
   `);
 
   const root = {
     ...authResolver,
     ...accountResolver,
+    ...categoryResolver,
+    ...stackResolver,
   };
 
   app.use(
@@ -87,7 +115,12 @@ async function main() {
         schema,
         rootValue: root,
         graphiql: true,
-        context: { user },
+        context: {
+          user,
+          settingsRepo,
+          categoryRepo: new CategoryRepository(pool),
+          stackRepo: new StackRepository(pool),
+        },
         customFormatErrorFn: (err) => {
           console.error("GraphQL Error:", err);
           return { message: err.message, stack: err.stack };

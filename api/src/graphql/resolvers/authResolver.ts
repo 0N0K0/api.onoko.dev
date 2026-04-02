@@ -1,4 +1,3 @@
-import { settingsRepo } from "../..";
 import {
   generateToken,
   verifyToken as verifyJwtToken,
@@ -6,21 +5,24 @@ import {
 import { verifyPassword } from "../../utils/passwordUtils";
 
 const authResolver = {
-  login: async ({ login, password }: { login: string; password: string }) => {
-    const storedLogin = await settingsRepo.get("login");
-    const storedHash = await settingsRepo.get("password_hash");
-    if (!storedLogin || !storedHash || login !== storedLogin) {
+  login: async (
+    _args: { login: string; password: string },
+    context: { settingsRepo: any },
+  ) => {
+    const storedLogin = await context.settingsRepo.get("login");
+    const storedHash = await context.settingsRepo.get("password_hash");
+    if (!storedLogin || !storedHash || _args.login !== storedLogin) {
       throw new Error("Invalid credentials");
     }
-    const valid = await verifyPassword(password, storedHash);
+    const valid = await verifyPassword(_args.password, storedHash);
     if (!valid) throw new Error("Invalid credentials");
-    const token = generateToken({ login });
+    const token = generateToken({ login: _args.login });
     return { token };
   },
 
-  refreshToken: async ({ token }: { token: string }) => {
+  refreshToken: async (_args: { token: string }) => {
     try {
-      const payload = verifyJwtToken(token);
+      const payload = verifyJwtToken(_args.token);
       const newToken = generateToken({ login: payload.login });
       return { token: newToken };
     } catch {
@@ -28,12 +30,15 @@ const authResolver = {
     }
   },
 
-  verifyToken: async ({ token }: { token: string }) => {
+  verifyToken: async (
+    _args: { token: string },
+    context: { settingsRepo: any },
+  ) => {
     try {
-      verifyJwtToken(token);
-      return true;
+      verifyJwtToken(_args.token);
+      return { login: await context.settingsRepo.get("login") };
     } catch {
-      return false;
+      throw new Error("Invalid token");
     }
   },
 };
