@@ -4,6 +4,8 @@ import { Stack } from "../types/stackTypes";
 import { ImageFile } from "../types/imageTypes";
 import { Category } from "../types/categoryTypes";
 import { saveImageFile } from "../utils/imageUtils";
+import path from "path";
+import { promises as fs } from "fs";
 
 export class StackRepository {
   private iconBasePath = "/public/stack/";
@@ -308,6 +310,18 @@ export class StackRepository {
     let conn;
     try {
       conn = await this.pool.getConnection();
+      // Récupérer le nom de l'icône
+      const rows = await conn.query("SELECT icon FROM stack WHERE id = ?", [
+        id,
+      ]);
+      const icon = rows && rows[0] && rows[0].icon;
+      // Supprimer le fichier icône si présent
+      if (icon) {
+        const iconPath = path.join(process.cwd(), "public", "stack", icon);
+        try {
+          await fs.unlink(iconPath);
+        } catch (e) {}
+      }
       await conn.query("DELETE FROM stack WHERE id = ?", [id]);
     } finally {
       if (conn) conn.release();
