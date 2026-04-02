@@ -32,6 +32,20 @@ import {
   categoryTypes,
 } from "./graphql/schemas/categorySchema";
 import categoryResolver from "./graphql/resolvers/categoryResolver";
+import {
+  roleMutations,
+  roleQueries,
+  roleTypes,
+} from "./graphql/schemas/roleSchema";
+import {
+  coworkerMutations,
+  coworkerQueries,
+  coworkerTypes,
+} from "./graphql/schemas/coworkerSchema";
+import roleResolver from "./graphql/resolvers/roleResolver";
+import coworkerResolver from "./graphql/resolvers/coworkerResolver";
+import RoleRepository from "./repositories/RoleRepository";
+import CoworkerRepository from "./repositories/CoworkerRepository";
 
 const pool = mariadb.createPool({
   host: process.env.DB_HOST || "localhost",
@@ -81,16 +95,22 @@ async function main() {
     ${accountTypes}
     ${categoryTypes}
     ${stackTypes}
+    ${roleTypes}
+    ${coworkerTypes}
     type Query {
       ${accountQueries}
       ${categoryQueries}
       ${stackQueries}
+      ${roleQueries}
+      ${coworkerQueries}
     }
     type Mutation {
       ${authMutations}
       ${accountMutations}
       ${categoryMutations}
       ${stackMutations}
+      ${roleMutations}
+      ${coworkerMutations}
     }
   `);
 
@@ -99,6 +119,8 @@ async function main() {
     ...accountResolver,
     ...categoryResolver,
     ...stackResolver,
+    ...roleResolver,
+    ...coworkerResolver,
   };
 
   app.use(
@@ -120,6 +142,8 @@ async function main() {
           settingsRepo,
           categoryRepo: new CategoryRepository(pool),
           stackRepo: new StackRepository(pool),
+          roleRepo: new RoleRepository(pool),
+          coworkerRepo: new CoworkerRepository(pool),
         },
         customFormatErrorFn: (err) => {
           console.error("GraphQL Error:", err);
