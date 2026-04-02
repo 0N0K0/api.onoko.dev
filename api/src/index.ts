@@ -66,7 +66,7 @@ async function main() {
 
   const app = express();
   const port = 4000;
-  app.use(express.json());
+  app.use(express.json({ limit: "256mb" }));
 
   app.use(
     "/public/stack",
