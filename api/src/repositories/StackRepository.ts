@@ -24,7 +24,7 @@ export class StackRepository {
       const stacks: Stack[] = rows.map((row: any) => ({
         id: row.id,
         label: row.label,
-        iconeUrl: row.icon ? `${this.iconBasePath}${row.icon}` : undefined,
+        iconUrl: row.icon ? `${this.iconBasePath}${row.icon}` : undefined,
         description: row.description,
         versions: row.version ? [row.version] : [],
         category: row.category_id
@@ -80,7 +80,7 @@ export class StackRepository {
           stackMap.set(row.id, {
             id: row.id,
             label: row.label,
-            iconeUrl: row.icon ? `${this.iconBasePath}${row.icon}` : undefined,
+            iconUrl: row.icon ? `${this.iconBasePath}${row.icon}` : undefined,
             description: row.description,
             versions: [],
             category_id: row.category_id,
@@ -138,7 +138,7 @@ export class StackRepository {
       const stack: Stack = {
         id: first.id,
         label: first.label,
-        iconeUrl: first.icon ? `${this.iconBasePath}${first.icon}` : undefined,
+        iconUrl: first.icon ? `${this.iconBasePath}${first.icon}` : undefined,
         description: first.description,
         versions: rows
           .filter((r: any) => r.version != null)

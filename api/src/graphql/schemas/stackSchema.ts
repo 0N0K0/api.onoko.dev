@@ -2,7 +2,7 @@ export const stackTypes = `
   type Stack {
     id: ID!
     label: String!
-    iconeUrl: String
+    iconUrl: String
     description: String
     versions: [String!]!
     category: Category
