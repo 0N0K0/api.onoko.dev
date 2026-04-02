@@ -12,7 +12,7 @@ export const coworkerQueries = `
 `;
 
 export const coworkerMutations = `
-  createCoworker(name: String!, roleIds: [ID!]): Coworker!
-  updateCoworker(id: ID!, name: String, roleIds: [ID!]): Coworker!
+  createCoworker(name: String!, roles: [ID!]): Coworker!
+  updateCoworker(id: ID!, name: String, roles: [ID!]): Coworker!
   deleteCoworker(id: ID!): Boolean!
 `;

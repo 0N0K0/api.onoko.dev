@@ -15,9 +15,18 @@ export default class RoleRepository {
     }
   }
 
-  async get(id: string): Promise<Role | null> {
-    const roles = await this.getAll();
-    return roles.find((r) => r.id === id) || null;
+  async get(key: "id" | "label", value: string): Promise<Role | null> {
+    let conn;
+    try {
+      conn = await this.pool.getConnection();
+      const results = await conn.query(
+        `SELECT id, label FROM role WHERE ${key} = ?`,
+        [value],
+      );
+      return results[0] || null;
+    } finally {
+      if (conn) conn.release();
+    }
   }
 
   async create(role: Omit<Role, "id">): Promise<string> {

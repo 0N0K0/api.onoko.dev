@@ -86,11 +86,12 @@ export default class CoworkerRepository {
         coworker.name,
       ]);
       if (coworker.roles && coworker.roles.length > 0) {
-        const roleValues = coworker.roles.map((role) => [id, role.id]);
-        await conn.query(
-          `INSERT INTO coworker_role (coworker_id, role_id) VALUES ?`,
-          [roleValues],
-        );
+        for (const role of coworker.roles) {
+          await conn.query(
+            `INSERT INTO coworker_role (coworker_id, role_id) VALUES (?, ?)`,
+            [id, role],
+          );
+        }
       }
       return id;
     } finally {
@@ -121,14 +122,12 @@ export default class CoworkerRepository {
           coworker.id,
         ]);
         if (coworker.roles.length > 0) {
-          const roleValues = coworker.roles.map((role) => [
-            coworker.id!,
-            role.id,
-          ]);
-          await conn.query(
-            `INSERT INTO coworker_role (coworker_id, role_id) VALUES ?`,
-            [roleValues],
-          );
+          for (const role of coworker.roles) {
+            await conn.query(
+              `INSERT INTO coworker_role (coworker_id, role_id) VALUES (?, ?)`,
+              [coworker.id, role],
+            );
+          }
         }
       }
     } finally {
