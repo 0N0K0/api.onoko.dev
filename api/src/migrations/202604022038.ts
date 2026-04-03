@@ -21,7 +21,6 @@ export async function up({ context: pool }: MigrationParams<Pool>) {
         PRIMARY KEY (coworker_id, role_id),
         FOREIGN KEY (coworker_id) REFERENCES coworker(id) ON DELETE CASCADE,
         FOREIGN KEY (role_id) REFERENCES role(id) ON DELETE CASCADE
-
       );`);
   } finally {
     conn.release();

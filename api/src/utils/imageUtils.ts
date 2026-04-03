@@ -2,8 +2,9 @@ import path from "path";
 import { promises as fsPromises } from "fs";
 import sharp from "sharp";
 
+import crypto from "crypto";
+
 export async function saveImageFile(
-  fileName: string,
   iconFile: { buffer: Buffer; mimetype: string; originalname: string },
   directory: string,
   maxDim: number,
@@ -13,23 +14,25 @@ export async function saveImageFile(
   const publicDir = path.join(process.cwd(), "public", directory);
   await mkdir(publicDir, { recursive: true });
 
+  // Hash du contenu de l'image pour le nom de fichier
+  const hash = crypto.createHash("sha256").update(buffer).digest("hex");
   let iconExt = "webp";
-  let iconPath = path.join(publicDir, `${fileName}.webp`);
   let iconType = iconFile.mimetype;
-
-  // Supprimer les fichiers existants (webp/svg)
-  for (const ext of ["webp", "svg"]) {
-    const filePath = path.join(publicDir, `${fileName}.${ext}`);
-    try {
-      await unlink(filePath);
-    } catch {}
-  }
+  let baseName = hash;
+  let iconPath = path.join(publicDir, `${baseName}.webp`);
 
   if (iconType === "image/svg+xml" || iconFile.originalname.endsWith(".svg")) {
     iconExt = "svg";
-    iconPath = path.join(publicDir, `${fileName}.svg`);
+    iconPath = path.join(publicDir, `${baseName}.svg`);
+    try {
+      await unlink(iconPath);
+    } catch {}
     await writeFile(iconPath, buffer);
+    return `${baseName}.svg`;
   } else {
+    try {
+      await unlink(iconPath);
+    } catch {}
     const image = sharp(buffer);
     const metadata = await image.metadata();
     let width = metadata.width || maxDim;
@@ -44,6 +47,6 @@ export async function saveImageFile(
       }
     }
     await image.resize(width, height).webp().toFile(iconPath);
+    return `${baseName}.webp`;
   }
-  return `${fileName}.${iconExt}`;
 }

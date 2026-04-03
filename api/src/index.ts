@@ -46,6 +46,13 @@ import roleResolver from "./graphql/resolvers/roleResolver";
 import coworkerResolver from "./graphql/resolvers/coworkerResolver";
 import RoleRepository from "./repositories/RoleRepository";
 import CoworkerRepository from "./repositories/CoworkerRepository";
+import {
+  projectMutations,
+  projectQueries,
+  projectTypes,
+} from "./graphql/schemas/projectSchema";
+import projectResolver from "./graphql/resolvers/projectResolver";
+import ProjectRepository from "./repositories/ProjectRepository";
 
 const pool = mariadb.createPool({
   host: process.env.DB_HOST || "localhost",
@@ -83,8 +90,12 @@ async function main() {
   app.use(express.json({ limit: "256mb" }));
 
   app.use(
-    "/public/stack",
+    "/assets/stack",
     express.static(path.join(process.cwd(), "public", "stack")),
+  );
+  app.use(
+    "/assets/project",
+    express.static(path.join(process.cwd(), "public", "project")),
   );
 
   app.use(corsDynamicOrigin);
@@ -97,12 +108,14 @@ async function main() {
     ${stackTypes}
     ${roleTypes}
     ${coworkerTypes}
+    ${projectTypes}
     type Query {
       ${accountQueries}
       ${categoryQueries}
       ${stackQueries}
       ${roleQueries}
       ${coworkerQueries}
+      ${projectQueries}
     }
     type Mutation {
       ${authMutations}
@@ -111,6 +124,7 @@ async function main() {
       ${stackMutations}
       ${roleMutations}
       ${coworkerMutations}
+      ${projectMutations}
     }
   `);
 
@@ -121,6 +135,7 @@ async function main() {
     ...stackResolver,
     ...roleResolver,
     ...coworkerResolver,
+    ...projectResolver,
   };
 
   app.use(
@@ -144,6 +159,7 @@ async function main() {
           stackRepo: new StackRepository(pool),
           roleRepo: new RoleRepository(pool),
           coworkerRepo: new CoworkerRepository(pool),
+          projectRepo: new ProjectRepository(pool),
         },
         customFormatErrorFn: (err) => {
           console.error("GraphQL Error:", err);

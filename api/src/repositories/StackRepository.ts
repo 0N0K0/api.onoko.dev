@@ -8,7 +8,7 @@ import path from "path";
 import { promises as fs } from "fs";
 
 export class StackRepository {
-  private iconBasePath = "/public/stack/";
+  private iconBasePath = "/assets/stack/";
 
   constructor(private pool: mariadb.Pool) {}
 
@@ -199,7 +199,7 @@ export class StackRepository {
   ): Promise<string> {
     const id = crypto.randomBytes(16).toString("hex");
 
-    const iconFileName = await saveImageFile(id, stack.iconFile, "stack", 100);
+    const iconFileName = await saveImageFile(stack.iconFile, "stack", 300);
 
     let conn;
     try {
@@ -248,12 +248,7 @@ export class StackRepository {
         values.push(stack.label);
       }
       if (stack.iconFile) {
-        const iconFileName = await saveImageFile(
-          stack.id,
-          stack.iconFile,
-          "stack",
-          100,
-        );
+        const iconFileName = await saveImageFile(stack.iconFile, "stack", 300);
         fields.push("icon = ?");
         values.push(iconFileName);
       }
@@ -310,12 +305,12 @@ export class StackRepository {
     let conn;
     try {
       conn = await this.pool.getConnection();
-      // Récupérer le nom de l'icône
+      // Récupère le nom de l'icône
       const rows = await conn.query("SELECT icon FROM stack WHERE id = ?", [
         id,
       ]);
       const icon = rows && rows[0] && rows[0].icon;
-      // Supprimer le fichier icône si présent
+      // Supprime le fichier icône si présent
       if (icon) {
         const iconPath = path.join(process.cwd(), "public", "stack", icon);
         try {
