@@ -1,7 +1,7 @@
 import { Category } from "./categoryTypes";
-import { Coworker } from "./CoworkerTypes";
+import { Coworker } from "./coworkerTypes";
 import { ImageFile } from "./imageTypes";
-import { Role } from "./RoleTypes";
+import { Role } from "./roleTypes";
 import { Stack } from "./stackTypes";
 
 export interface Project {

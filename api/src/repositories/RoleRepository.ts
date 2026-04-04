@@ -1,6 +1,6 @@
 import mariadb from "mariadb";
 import crypto from "crypto";
-import { Role } from "../types/RoleTypes";
+import { Role } from "../types/roleTypes";
 
 export default class RoleRepository {
   constructor(private pool: mariadb.Pool) {}

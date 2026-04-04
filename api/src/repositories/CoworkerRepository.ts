@@ -1,6 +1,6 @@
 import mariadb from "mariadb";
 import crypto from "crypto";
-import { Coworker } from "../types/CoworkerTypes";
+import { Coworker } from "../types/coworkerTypes";
 
 export default class CoworkerRepository {
   constructor(private pool: mariadb.Pool) {}

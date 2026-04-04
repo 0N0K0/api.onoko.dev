@@ -1,4 +1,4 @@
-import { Role } from "../../types/RoleTypes";
+import { Role } from "../../types/roleTypes";
 
 const roleResolver = {
   roles: async (_args: any, context: { roleRepo: any }): Promise<Role[]> => {

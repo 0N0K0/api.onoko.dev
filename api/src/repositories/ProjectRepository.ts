@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { Project } from "../types/projectTypes";
 import { saveImageFile } from "../utils/imageUtils";
 import path from "path";
-import { Role } from "../types/RoleTypes";
+import { Role } from "../types/roleTypes";
 import { Category } from "../types/categoryTypes";
 
 export default class ProjectRepository {

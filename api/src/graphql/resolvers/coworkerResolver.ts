@@ -1,4 +1,4 @@
-import { Coworker } from "../../types/CoworkerTypes";
+import { Coworker } from "../../types/coworkerTypes";
 
 const coworkerResolver = {
   coworkers: async (
