@@ -1,0 +1,52 @@
+import validator from "validator";
+
+/**
+ * Vérifie si une chaîne est un email valide
+ * @param {string} email L'adresse email à valider
+ * @return {boolean} true si l'email est valide, false sinon
+ */
+export function isValidEmail(email: string): boolean {
+  return validator.isEmail(email);
+}
+
+/**
+ * Vérifie si une chaîne est un mot de passe valide (min 8 caractères, 1 maj, 1 min, 1 chiffre)
+ * @param {string} password Le mot de passe à valider
+ * @return {boolean} true si le mot de passe est valide, false sinon
+ */
+export function isValidPassword(password: string): boolean {
+  return validator.isStrongPassword(password, {
+    minLength: 8,
+    minLowercase: 1,
+    minUppercase: 1,
+    minNumbers: 1,
+    minSymbols: 0,
+  });
+}
+
+/**
+ * Nettoie une chaîne pour éviter les injections XSS
+ * @param {string} str La chaîne à nettoyer
+ * @return {string} La chaîne nettoyée
+ */
+export function sanitizeString(str: string): string {
+  return validator.escape(str.trim());
+}
+
+/**
+ * Vérifie si une chaîne est un UUID valide
+ * @param {string} uuid L'UUID à valider
+ * @return {boolean} true si l'UUID est valide, false sinon
+ */
+export function isValidUUID(uuid: string): boolean {
+  return validator.isUUID(uuid);
+}
+
+/**
+ * Vérifie si une chaîne est vide ou ne contient que des espaces
+ * @param {string} str La chaîne à vérifier
+ * @return {boolean} true si la chaîne est vide ou ne contient que des espaces, false sinon
+ */
+export function isEmpty(str: string): boolean {
+  return validator.isEmpty(str.trim());
+}
