@@ -35,6 +35,10 @@ import roleResolver from "./resolvers/roleResolver";
 import coworkerResolver from "./resolvers/coworkerResolver";
 import projectResolver from "./resolvers/projectResolver";
 
+/**
+ * Construit le schéma GraphQL en combinant les types, requêtes et mutations de tous les modules.
+ * @returns Le schéma GraphQL complet.
+ */
 export function getSchema() {
   return buildSchema(`
     scalar Upload
@@ -66,6 +70,10 @@ export function getSchema() {
   `);
 }
 
+/**
+ * Construit le resolver root en combinant les resolvers de tous les modules.
+ * @returns Le resolver root complet.
+ */
 export function getRoot() {
   return {
     ...authResolver,

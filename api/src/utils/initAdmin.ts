@@ -1,7 +1,15 @@
 import { SettingsRepository } from "../repositories/SettingsRepository";
 import { hashPassword, isStrongPassword } from "./passwordUtils";
 
-export async function initAdmin(settingsRepo: SettingsRepository) {
+/**
+ * Initialise les identifiants de l'administrateur en vérifiant d'abord s'ils existent déjà dans les paramètres. Si les identifiants sont absents, la fonction lit les valeurs initiales pour le login, le mot de passe et l'email à partir des variables d'environnement. Si ces valeurs sont présentes et que le mot de passe répond aux exigences de sécurité, les identifiants sont hachés et stockés dans les paramètres pour une utilisation ultérieure.
+ * @param {SettingsRepository} settingsRepo - Le repository des paramètres utilisé pour accéder et modifier les paramètres de l'application.
+ * @returns {Promise<void>} Une promesse qui se résout lorsque l'initialisation est terminée.
+ * @throws {Error} Une erreur si les identifiants initiaux sont manquants ou si le mot de passe initial ne répond pas aux exigences de sécurité.
+ */
+export async function initAdmin(
+  settingsRepo: SettingsRepository,
+): Promise<void> {
   const login = await settingsRepo.get("login");
   const passwordHash = await settingsRepo.get("password_hash");
   const email = await settingsRepo.get("email");

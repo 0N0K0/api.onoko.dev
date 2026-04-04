@@ -2,9 +2,17 @@ import mariadb from "mariadb";
 import crypto from "crypto";
 import { Category } from "../types/categoryTypes";
 
+// Repository pour les opérations liées aux catégories dans la base de données
 export default class CategoryRepository {
+  // Constructeur qui initialise le repository avec un pool de connexions à la base de données MariaDB
   constructor(private pool: mariadb.Pool) {}
 
+  /**
+   * Récupère toutes les catégories de la base de données, en utilisant une requête récursive pour construire l'arborescence des catégories.
+   * La requête utilise une Common Table Expression (CTE) récursive pour récupérer les catégories et leurs descendants, en calculant la profondeur et le chemin de chaque catégorie.
+   * Les résultats sont triés par chemin pour garantir que les catégories parents apparaissent avant leurs enfants.
+   * @returns {Promise<Category[]>} Un tableau de catégories récupérées de la base de données, avec leurs propriétés et relations hiérarchiques.
+   */
   async getAll(): Promise<Category[]> {
     let conn;
     try {
@@ -28,9 +36,18 @@ export default class CategoryRepository {
     }
   }
 
+  /**
+   * Récupère une catégorie spécifique de la base de données en fonction d'une clé (id ou label), d'une valeur correspondante et d'une entité optionnelle.
+   * La méthode utilise la liste complète des catégories récupérées par getAll() pour trouver la catégorie correspondante, puis utilise une fonction récursive pour trouver tous les descendants de cette catégorie.
+   * Si aucune catégorie correspondante n'est trouvée, la méthode retourne null.
+   * @param {string} key - La clé à utiliser pour la recherche (id ou label).
+   * @param {string} value - La valeur correspondante à rechercher pour la clé spécifiée.
+   * @param {string} [entity] - L'entité optionnelle à prendre en compte lors de la recherche (si fournie).
+   * @returns {Promise<Category[] | null>} Un tableau de catégories correspondant à la requête, ou null si aucune catégorie n'est trouvée.
+   */
   async get(
     key: "id" | "label",
-    value: any,
+    value: string,
     entity?: string,
   ): Promise<Category[] | null> {
     const categories = await this.getAll();
@@ -46,6 +63,13 @@ export default class CategoryRepository {
     return [category, ...descendants];
   }
 
+  /**
+   * Crée une nouvelle catégorie dans la base de données en utilisant les propriétés fournies.
+   * La méthode génère un ID unique pour la nouvelle catégorie, puis insère les données dans la table "category" de la base de données.
+   * Après l'insertion, la méthode retourne l'ID de la catégorie nouvellement créée.
+   * @param {Omit<Category, "id">} category - Les propriétés de la catégorie à créer, à l'exception de l'ID qui est généré automatiquement.
+   * @returns {Promise<string>} L'ID de la catégorie nouvellement créée dans la base de données.
+   */
   async create(category: Omit<Category, "id">): Promise<string> {
     const id = crypto.randomBytes(16).toString("hex");
 
@@ -69,6 +93,15 @@ export default class CategoryRepository {
     return id;
   }
 
+  /**
+   * Met à jour une catégorie existante dans la base de données en fonction des propriétés fournies.
+   * La méthode vérifie que l'ID de la catégorie est fourni, puis construit dynamiquement la requête SQL pour mettre à jour les champs spécifiés.
+   * Si le champ "parent" est défini à une valeur vide ou "null", il est traité comme une valeur NULL dans la base de données.
+   * Après l'exécution de la requête de mise à jour, la méthode ne retourne rien.
+   * @param {Partial<Category>} category - Les propriétés de la catégorie à mettre à jour, qui doivent inclure l'ID de la catégorie à mettre à jour.
+   * @returns {Promise<void>} Une promesse qui se résout lorsque la mise à jour est terminée, ou rejette une erreur si l'ID n'est pas fourni ou si la mise à jour échoue.
+   * @throws {Error} Une erreur si l'ID de la catégorie n'est pas fourni, ou si la mise à jour échoue pour une raison quelconque.
+   */
   async update(category: Partial<Category>): Promise<void> {
     if (!category.id) throw new Error("ID is required for update");
     let conn;
@@ -109,6 +142,14 @@ export default class CategoryRepository {
     }
   }
 
+  /**
+   * Supprime une catégorie de la base de données en fonction de son ID.
+   * La méthode exécute une requête SQL pour supprimer la catégorie correspondante à l'ID spécifié de la table "category" de la base de données.
+   * Après l'exécution de la requête de suppression, la méthode ne retourne rien.
+   * @param {string} id - L'ID de la catégorie à supprimer de la base de données.
+   * @returns {Promise<void>} Une promesse qui se résout lorsque la suppression est terminée, ou rejette une erreur si la suppression échoue pour une raison quelconque.
+   * @throws {Error} Une erreur si la suppression échoue pour une raison quelconque.
+   */
   async delete(id: string): Promise<void> {
     let conn;
     try {

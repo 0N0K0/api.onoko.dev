@@ -1,5 +1,7 @@
 import "dotenv/config";
 import express from "express";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import path from "path";
 import { graphqlHTTP } from "express-graphql";
 import { verifyToken } from "./utils/auth/jwtUtils";
@@ -10,6 +12,7 @@ import { getPool } from "./database/db";
 import { runMigrations } from "./database/migrations";
 import { getGraphqlContext } from "./graphql/graphqlContext";
 import { getRoot, getSchema } from "./graphql/graphqlSchema";
+import jwt from "jsonwebtoken";
 
 async function main() {
   const pool = getPool();
@@ -22,6 +25,18 @@ async function main() {
   });
 
   const app = express();
+
+  // Sécurité HTTP : headers sécurisés
+  app.use(helmet());
+
+  // Limitation du nombre de requêtes (anti-bruteforce)
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limite chaque IP à 100 requêtes par fenêtre
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  app.use(limiter);
   app.use(express.json({ limit: "256mb" }));
 
   app.use(
@@ -38,7 +53,7 @@ async function main() {
   app.use(
     "/graphql",
     graphqlHTTP((req) => {
-      let user = null;
+      let user: jwt.JwtPayload | null = null;
       const auth = req.headers.authorization;
       if (auth && auth.startsWith("Bearer ")) {
         try {

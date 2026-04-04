@@ -1,10 +1,17 @@
 // Middleware CORS pour Express
 import { Request, Response, NextFunction } from "express";
 
+/**
+ * Middleware pour gérer les CORS avec une origine dynamique.
+ * Permet de définir l'origine autorisée à partir d'une variable d'environnement.
+ * @param req - La requête entrante.
+ * @param res - La réponse à envoyer.
+ * @param next - La fonction pour passer au middleware suivant.
+ */
 export function corsDynamicOrigin(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   const origin = process.env.CORS_ORIGIN || "http://localhost:5173";
   res.header("Access-Control-Allow-Origin", origin);

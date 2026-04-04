@@ -1,6 +1,14 @@
 import { Pool } from "mariadb/*";
 import { MigrationParams } from "umzug";
 
+/**
+ * Migration pour créer les tables "coworker", "role" et "coworker_role" dans la base de données.
+ * La table "coworker" est utilisée pour stocker les informations des collaborateurs, avec une colonne "name" pour le nom du collaborateur.
+ * La table "role" est utilisée pour stocker les rôles disponibles, avec une colonne "label" pour le nom du rôle.
+ * La table "coworker_role" est une table de liaison entre les collaborateurs et les rôles, avec des clés étrangères vers les tables "coworker" et "role".
+ * Les fonctions "up" et "down" sont exécutées lors de l'application ou du rollback de la migration, respectivement.
+ */
+
 export async function up({ context: pool }: MigrationParams<Pool>) {
   const conn = await pool.getConnection();
   try {

@@ -1,37 +1,85 @@
+import CoworkerRepository from "../../repositories/CoworkerRepository";
 import { Coworker } from "../../types/coworkerTypes";
+import jwt from "jsonwebtoken";
 
+// Résolveur GraphQL pour les opérations liées aux coworkers
 const coworkerResolver = {
+  /**
+   * Récupère tous les coworkers
+   * Appelle la méthode getAll du repository des coworkers pour récupérer tous les coworkers de la base de données.
+   * @param {Object} _args Les arguments de la requête, qui ne sont pas utilisés dans cette opération.
+   * @param {Object} context Le contexte de la requête, contenant le repository des coworkers.
+   * @returns {Promise<Coworker[]>} Un tableau de coworkers récupérés de la base de données.
+   */
   coworkers: async (
     _args: any,
-    context: { coworkerRepo: any },
+    context: { coworkerRepo: CoworkerRepository },
   ): Promise<Coworker[]> => {
     return await context.coworkerRepo.getAll();
   },
+
+  /**
+   * Récupère un coworker par ID ou nom
+   * Appelle la méthode get du repository des coworkers pour récupérer un coworker spécifique en fonction de l'ID ou du nom.
+   * @param {Object} _args Les arguments de la requête, contenant la clé (id ou name) et la valeur correspondante.
+   * @param {Object} context Le contexte de la requête, contenant le repository des coworkers.
+   * @returns {Promise<Coworker | null>} Le coworker correspondant à la requête, ou null si aucun coworker n'est trouvé.
+   */
   coworker: async (
-    _args: { key: string; value: string },
-    context: { coworkerRepo: any },
+    _args: { key: "id" | "name"; value: string },
+    context: { coworkerRepo: CoworkerRepository },
   ): Promise<Coworker | null> => {
-    return await context.coworkerRepo.get(_args);
+    return await context.coworkerRepo.get(_args.key, _args.value);
   },
+
+  /**
+   * Crée un nouveau coworker
+   * Vérifie que l'utilisateur est authentifié, puis appelle la méthode create du repository des coworkers pour créer un nouveau coworker dans la base de données.
+   * Après la création, récupère et retourne le coworker créé.
+   * @param {Object} _args Les arguments de la mutation, contenant les propriétés du coworker à créer (sauf l'ID).
+   * @param {Object} context Le contexte de la requête, contenant les informations de l'utilisateur et le repository des coworkers.
+   * @returns {Promise<Coworker | null>} Le coworker nouvellement créé, récupéré de la base de données, ou null si le coworker ne peut pas être trouvé après la création.
+   * @throws {Error} Une erreur si l'utilisateur n'est pas authentifié ou si le coworker ne peut pas être trouvé après la création.
+   */
   createCoworker: async (
     _args: Omit<Coworker, "id">,
-    context: { user: any; coworkerRepo: any },
-  ): Promise<Coworker> => {
+    context: { user: jwt.JwtPayload | null; coworkerRepo: CoworkerRepository },
+  ): Promise<Coworker | null> => {
     if (!context.user) throw new Error("Unauthorized");
     const id = await context.coworkerRepo.create(_args);
     return await context.coworkerRepo.get("id", id);
   },
+
+  /**
+   * Met à jour un coworker existant
+   * Vérifie que l'utilisateur est authentifié, puis appelle la méthode update du repository des coworkers pour mettre à jour les propriétés d'un coworker existant dans la base de données.
+   * Après la mise à jour, récupère et retourne le coworker mis à jour.
+   * @param {Object} _args Les arguments de la mutation, contenant les propriétés du coworker à mettre à jour (doit inclure l'ID).
+   * @param {Object} context Le contexte de la requête, contenant les informations de l'utilisateur et le repository des coworkers.
+   * @returns {Promise<Coworker | null>} Le coworker mis à jour, récupéré de la base de données, ou null si le coworker ne peut pas être trouvé après la mise à jour.
+   * @throws {Error} Une erreur si l'utilisateur n'est pas authentifié ou si le coworker ne peut pas être trouvé après la mise à jour.
+   */
   updateCoworker: async (
     _args: Partial<Coworker>,
-    context: { user: any; coworkerRepo: any },
-  ): Promise<Coworker> => {
+    context: { user: jwt.JwtPayload | null; coworkerRepo: CoworkerRepository },
+  ): Promise<Coworker | null> => {
     if (!context.user) throw new Error("Unauthorized");
+    if (!_args.id) throw new Error("ID is required for update");
     await context.coworkerRepo.update(_args);
     return await context.coworkerRepo.get("id", _args.id);
   },
+
+  /**
+   * Supprime un coworker existant
+   * Vérifie que l'utilisateur est authentifié, puis appelle la méthode delete du repository des coworkers pour supprimer un coworker existant de la base de données.
+   * @param {Object} _args Les arguments de la mutation, contenant l'ID du coworker à supprimer.
+   * @param {Object} context Le contexte de la requête, contenant les informations de l'utilisateur et le repository des coworkers.
+   * @returns {Promise<boolean>} Un booléen indiquant que la suppression a réussi.
+   * @throws {Error} Une erreur si l'utilisateur n'est pas authentifié.
+   */
   deleteCoworker: async (
     _args: { id: string },
-    context: { user: any; coworkerRepo: any },
+    context: { user: jwt.JwtPayload | null; coworkerRepo: CoworkerRepository },
   ): Promise<boolean> => {
     if (!context.user) throw new Error("Unauthorized");
     await context.coworkerRepo.delete(_args.id);

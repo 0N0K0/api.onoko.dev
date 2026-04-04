@@ -5,9 +5,25 @@ import {
 } from "../../utils/passwordUtils";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
+import jwt from "jsonwebtoken";
+import { SettingsRepository } from "../../repositories/SettingsRepository";
 
+// Résolveur GraphQL pour les opérations liées au compte utilisateur
 const accountResolver = {
-  account: async (_args: any, context: { user: any; settingsRepo: any }) => {
+  /**
+   * Récupère les informations du compte de l'utilisateur connecté.
+   * Vérifie que l'utilisateur est authentifié, puis récupère le login et l'email stockés dans les paramètres.
+   * @param {Object} context -Le contexte de la requête, contenant les informations de l'utilisateur et le repository des paramètres.
+   * @returns {Promise<{ login: string | null; email: string | null }>} Un objet contenant le login et l'email de l'utilisateur.
+   * @throws {Error} Une erreur si l'utilisateur n'est pas authentifié.
+   */
+  account: async (
+    _args: any,
+    context: {
+      user: jwt.JwtPayload | null;
+      settingsRepo: SettingsRepository;
+    },
+  ): Promise<{ login: string | null; email: string | null }> => {
     if (!context.user) throw new Error("Unauthorized");
 
     const login = await context.settingsRepo.get("login");
@@ -16,6 +32,14 @@ const accountResolver = {
     return { login, email };
   },
 
+  /**
+   * Met à jour les informations du compte de l'utilisateur connecté.
+   * Vérifie que l'utilisateur est authentifié, puis valide l'ancien mot de passe avant de mettre à jour le login, l'email et/ou le mot de passe.
+   * @param {Object} _args Les arguments de la mutation, contenant les nouvelles valeurs pour le login, l'email, l'ancien mot de passe et le nouveau mot de passe.
+   * @param {Object} context Le contexte de la requête, contenant les informations de l'utilisateur et le repository des paramètres.
+   * @returns {Promise<{ login: string | null; email: string | null }>} Un objet contenant le nouveau login et email de l'utilisateur après la mise à jour.
+   * @throws {Error} Une erreur si l'utilisateur n'est pas authentifié, si l'ancien mot de passe est invalide ou si le nouveau mot de passe est trop faible.
+   */
   updateAccount: async (
     _args: {
       login?: string;
@@ -23,8 +47,11 @@ const accountResolver = {
       oldPassword: string;
       newPassword?: string;
     },
-    context: { user: any; settingsRepo: any },
-  ) => {
+    context: {
+      user: jwt.JwtPayload | null;
+      settingsRepo: SettingsRepository;
+    },
+  ): Promise<{ login: string | null; email: string | null }> => {
     if (!context.user) throw new Error("Unauthorized");
 
     const storedHash = await context.settingsRepo.get("password_hash");
@@ -48,11 +75,16 @@ const accountResolver = {
     return { login: newLogin, email: newEmail };
   },
 
-  // Demande de reset password
+  /** Demande de réinitialisation de mot de passe
+   * Vérifie si l'email existe, génère un token de réinitialisation, le stocke en base avec une date d'expiration, puis envoie un email à l'utilisateur avec un lien de réinitialisation.
+   * @param {Object} _args Les arguments de la mutation, contenant l'email de l'utilisateur.
+   * @param {Object} context Le contexte de la requête, contenant le repository des paramètres.
+   * @returns {Promise<boolean>} Un booléen indiquant que la demande a été traitée (toujours true pour éviter de révéler l'existence de l'email).
+   */
   requestResetPassword: async (
     _args: { email: string },
-    context: { settingsRepo: any },
-  ) => {
+    context: { settingsRepo: SettingsRepository },
+  ): Promise<boolean> => {
     const storedEmail = await context.settingsRepo.get("email");
     if (!storedEmail || storedEmail !== _args.email) return true; // Ne pas révéler l'existence
     const token = crypto.randomBytes(32).toString("hex");
@@ -87,14 +119,21 @@ const accountResolver = {
     return true;
   },
 
-  // Confirmation du reset password
+  /**
+   * Réinitialisation du mot de passe
+   * Vérifie la validité du token de réinitialisation, valide la force du nouveau mot de passe, met à jour le mot de passe en base et supprime le token.
+   * @param {Object} _args Les arguments de la mutation, contenant le token de réinitialisation et le nouveau mot de passe.
+   * @param {Object} context Le contexte de la requête, contenant le repository des paramètres.
+   * @returns {Promise<boolean>} Un booléen indiquant que la réinitialisation a réussi.
+   * @throws {Error} Une erreur si le token est invalide ou expiré, ou si le nouveau mot de passe est trop faible.
+   */
   resetPassword: async (
     _args: {
       token: string;
       newPassword: string;
     },
-    context: { settingsRepo: any },
-  ) => {
+    context: { settingsRepo: SettingsRepository },
+  ): Promise<boolean> => {
     const { token, newPassword } = _args;
     if (!token || !newPassword)
       throw new Error("Token and newPassword required");

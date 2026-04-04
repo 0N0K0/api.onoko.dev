@@ -1,5 +1,6 @@
 import { Stack } from "./stackTypes";
 
+// Interface représentant une catégorie
 export interface Category {
   id: string;
   label: string;

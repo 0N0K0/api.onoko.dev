@@ -1,14 +1,19 @@
 import mariadb from "mariadb";
 import crypto from "crypto";
-import { Project } from "../types/projectTypes";
+import { Project, ProjectRow } from "../types/projectTypes";
 import { saveImageFile } from "../utils/imageUtils";
 import path from "path";
 import { Role } from "../types/roleTypes";
 import { Category } from "../types/categoryTypes";
+import { Coworker } from "../types/coworkerTypes";
+import { Stack } from "../types/stackTypes";
+import { ImageFile } from "../types/imageTypes";
 
+// Repository pour les opérations liées aux projets dans la base de données
 export default class ProjectRepository {
-  private imageBasePath = "/assets/project/";
+  private imageBasePath = "/assets/project/"; // Chemin de base pour les images des projets
 
+  // Constructeur qui initialise le repository avec un pool de connexions à la base de données MariaDB
   constructor(private pool: mariadb.Pool) {}
 
   /**
@@ -35,7 +40,7 @@ export default class ProjectRepository {
    * @param value Valeur de l'ID ou du label
    * @return Le projet correspondant ou null s'il n'existe pas
    */
-  async get(key: "id" | "label", value: any): Promise<Project | null> {
+  async get(key: "id" | "label", value: string): Promise<Project | null> {
     let conn;
     try {
       conn = await this.pool.getConnection();
@@ -55,9 +60,22 @@ export default class ProjectRepository {
   /**
    * Hydrate un projet avec ses relations (catégories, rôles, coworkers, stacks)
    * @param conn Connexion à la base de données
-   * @param project Projet à hydrater (doit contenir au moins l'ID)
+   * @param projectRow Projet à hydrater (doit contenir au moins l'ID)
    */
-  private async _hydrateProject(conn: mariadb.PoolConnection, project: any) {
+  private async _hydrateProject(
+    conn: mariadb.PoolConnection,
+    projectRow: ProjectRow,
+  ) {
+    let project: Project = {
+      id: projectRow.id,
+      label: projectRow.label,
+      startDate: projectRow.start_date,
+      endDate: projectRow.end_date,
+      categories: [],
+      roles: [],
+      coworkers: [],
+      stacks: [],
+    };
     // Récupère les catégories liées au projet
     const categories = await conn.query(
       `
@@ -65,7 +83,7 @@ export default class ProjectRepository {
         INNER JOIN project_category pc ON pc.category_id = c.id
         WHERE pc.project_id = ?
     `,
-      [project.id],
+      [projectRow.id],
     );
     project.categories = categories;
 
@@ -76,7 +94,7 @@ export default class ProjectRepository {
         INNER JOIN project_role pr ON pr.role_id = r.id
         WHERE pr.project_id = ?
       `,
-      [project.id],
+      [projectRow.id],
     );
     project.roles = roles;
 
@@ -88,192 +106,166 @@ export default class ProjectRepository {
         INNER JOIN project_coworker pc ON pc.coworker_id = c.id
         WHERE pc.project_id = ?
       `,
-      [project.id],
+      [projectRow.id],
     );
     // Groupe les rôles par coworker
-    const coworkerMap: Record<string, any> = {};
+    const coworkerMap: Record<string, Coworker> = {};
     for (const c of coworkers) {
       if (!coworkerMap[c.id]) {
         coworkerMap[c.id] = { ...c, roles: [] };
       }
-      if (c.roleId) coworkerMap[c.id].roles.push(c.roleId);
+      if (c.roleId) coworkerMap[c.id].roles?.push(c.roleId);
     }
     project.coworkers = Object.values(coworkerMap);
 
     // Récupère les stacks liés au projet
     const stacks = await conn.query(
       `
-        SELECT s.*, ps.version, ps.section
+        SELECT s.id, s.label, s.icon, ps.version, ps.section
         FROM stack s
         INNER JOIN project_stack ps ON ps.stack_id = s.id
         WHERE ps.project_id = ?
       `,
-      [project.id],
+      [projectRow.id],
     );
-    project.stacks = stacks.map((s: any) => ({
-      id: s.id,
-      label: s.label,
-      iconUrl: s.icon ? `/assets/stack/${s.icon}` : undefined,
-      version: s.version,
-      section: s.section,
-    }));
+    project.stacks = stacks.map(
+      (s: Stack & { section?: string; version?: string }) => ({
+        id: s.id,
+        label: s.label,
+        iconUrl: s.icon ? `/assets/stack/${s.icon}` : undefined,
+        version: s.version,
+        section: s.section,
+      }),
+    );
 
     // Construit l'URL de la miniature (thumbnail) si elle existe
-    if (project.thumbnail) {
-      project.thumbnailUrl = `${this.imageBasePath}${project.thumbnail}`;
+    if (projectRow.thumbnail) {
+      project.thumbnailUrl = `${this.imageBasePath}${projectRow.thumbnail}`;
       delete project.thumbnail;
     }
 
     // Construit l'objet website si les champs sont présents
-    if (project.website_url || project.website_label) {
+    if (projectRow.website_url && projectRow.website_label) {
       project.website = {
-        url: project.website_url,
-        label: project.website_label,
+        url: projectRow.website_url,
+        label: projectRow.website_label,
       };
-      delete project.website_url;
-      delete project.website_label;
     }
 
     // Construit l'objet mockup et ajoute les images mockup si elles existent
     let imagesUrls: string[] | undefined = undefined;
     const mockupImages = await conn.query(
       `SELECT mockup FROM project_mockup WHERE project_id = ?`,
-      [project.id],
+      [projectRow.id],
     );
     if (mockupImages.length) {
       imagesUrls = mockupImages.map(
-        (m: any) => `${this.imageBasePath}${m.mockup}`,
+        (m: { mockup: string }) => `${this.imageBasePath}${m.mockup}`,
       );
     }
-    if (project.mockup_url || project.mockup_label || imagesUrls) {
+    if (projectRow.mockup_url && projectRow.mockup_label) {
       project.mockup = {
-        url: project.mockup_url,
-        label: project.mockup_label,
+        url: projectRow.mockup_url,
+        label: projectRow.mockup_label,
         imagesUrls,
       };
-      delete project.mockup_url;
-      delete project.mockup_label;
     }
 
     // Construit l'objet client si les champs sont présents
-    if (project.client_label || project.client_logo) {
+    if (projectRow.client_label && projectRow.client_logo) {
       project.client = {
-        label: project.client_label,
-        logoUrl: project.client_logo
-          ? `${this.imageBasePath}${project.client_logo}`
+        label: projectRow.client_label,
+        logoUrl: projectRow.client_logo
+          ? `${this.imageBasePath}${projectRow.client_logo}`
           : undefined,
       };
-      delete project.client_label;
-      delete project.client_logo;
     }
 
     // Construit l'objet manager si les champs sont présents
-    if (project.manager_name) {
+    if (projectRow.manager_name) {
       project.manager = {
-        name: project.manager_name,
-        email: project.manager_email,
+        name: projectRow.manager_name,
+        email: projectRow.manager_email,
       };
-      delete project.manager_name;
-      delete project.manager_email;
     }
 
     // Construit l'objet intro si les champs sont présents
     if (
-      project.intro_context ||
-      project.intro_objective ||
-      project.intro_client
+      projectRow.intro_context ||
+      projectRow.intro_objective ||
+      projectRow.intro_client
     ) {
       project.intro = {
-        context: project.intro_context,
-        objective: project.intro_objective,
-        client: project.intro_client,
+        context: projectRow.intro_context,
+        objective: projectRow.intro_objective,
+        client: projectRow.intro_client,
       };
-      delete project.intro_context;
-      delete project.intro_objective;
-      delete project.intro_client;
     }
 
     // Construit l'objet presentation si les champs sont présents
     if (
-      project.presentation_description ||
-      project.presentation_issue ||
-      project.presentation_audience
+      projectRow.presentation_description ||
+      projectRow.presentation_issue ||
+      projectRow.presentation_audience
     ) {
       project.presentation = {
-        description: project.presentation_description,
-        issue: project.presentation_issue,
-        audience: project.presentation_audience,
+        description: projectRow.presentation_description,
+        issue: projectRow.presentation_issue,
+        audience: projectRow.presentation_audience,
       };
-      delete project.presentation_description;
-      delete project.presentation_issue;
-      delete project.presentation_audience;
     }
 
     // Construit l'objet need si les champs sont présents
     if (
-      project.need_features ||
-      project.need_functional_constraints ||
-      project.need_technical_constraints
+      projectRow.need_features ||
+      projectRow.need_functional_constraints ||
+      projectRow.need_technical_constraints
     ) {
       project.need = {
-        features: project.need_features,
-        functionalConstraints: project.need_functional_constraints,
-        technicalConstraints: project.need_technical_constraints,
+        features: projectRow.need_features,
+        functionalConstraints: projectRow.need_functional_constraints,
+        technicalConstraints: projectRow.need_technical_constraints,
       };
-      delete project.need_features;
-      delete project.need_functional_constraints;
-      delete project.need_technical_constraints;
     }
 
     // Construit l'objet organization si les champs sont présents
     if (
-      project.organization_workload ||
-      project.organization_anticipation ||
-      project.organization_methodology ||
-      project.organization_evolution ||
-      project.organization_validation
+      projectRow.organization_workload ||
+      projectRow.organization_anticipation ||
+      projectRow.organization_methodology ||
+      projectRow.organization_evolution ||
+      projectRow.organization_validation
     ) {
       project.organization = {
-        workload: project.organization_workload,
-        anticipation: project.organization_anticipation,
-        methodology: project.organization_methodology,
-        evolution: project.organization_evolution,
-        validation: project.organization_validation,
+        workload: projectRow.organization_workload,
+        anticipation: projectRow.organization_anticipation,
+        methodology: projectRow.organization_methodology,
+        evolution: projectRow.organization_evolution,
+        validation: projectRow.organization_validation,
       };
-      delete project.organization_workload;
-      delete project.organization_anticipation;
-      delete project.organization_methodology;
-      delete project.organization_evolution;
-      delete project.organization_validation;
     }
 
     // Construit l'objet kpis si les champs sont présents
     if (
-      project.kpis_issues !== undefined ||
-      project.kpis_points !== undefined ||
-      project.kpis_commits !== undefined ||
-      project.kpis_pull_requests !== undefined
+      projectRow.kpis_issues !== undefined ||
+      projectRow.kpis_points !== undefined ||
+      projectRow.kpis_commits !== undefined ||
+      projectRow.kpis_pull_requests !== undefined
     ) {
       project.kpis = {
-        issues: project.kpis_issues,
-        points: project.kpis_points,
-        commits: project.kpis_commits,
-        pullRequests: project.kpis_pull_requests,
+        issues: projectRow.kpis_issues,
+        points: projectRow.kpis_points,
+        commits: projectRow.kpis_commits,
+        pullRequests: projectRow.kpis_pull_requests,
       };
-      delete project.kpis_issues;
-      delete project.kpis_points;
-      delete project.kpis_commits;
-      delete project.kpis_pull_requests;
     }
 
     // Construit l'objet feedback si les champs sont présents
-    if (project.feedback || project.feedback_client) {
+    if (projectRow.feedback || projectRow.feedback_client) {
       project.feedback = {
-        general: project.feedback,
-        client: project.feedback_client,
+        general: projectRow.feedback,
+        client: projectRow.feedback_client,
       };
-      delete project.feedback;
-      delete project.feedback_client;
     }
   }
 
@@ -353,7 +345,7 @@ export default class ProjectRepository {
             `SELECT category_id FROM project_category WHERE project_id = ?`,
             [id],
           )
-        ).map((r: any) => r.category_id);
+        ).map((r: { category_id: string }) => r.category_id);
         const toAdd = project.categories.filter(
           (c: string | Category) =>
             !existing.includes(typeof c === "string" ? c : c.id),
@@ -386,7 +378,7 @@ export default class ProjectRepository {
             `SELECT role_id FROM project_role WHERE project_id = ?`,
             [id],
           )
-        ).map((r: any) => r.role_id);
+        ).map((r: { role_id: string }) => r.role_id);
         const toAdd = project.roles.filter(
           (r: string | Role) =>
             !existing.includes(typeof r === "string" ? r : r.id),
@@ -419,23 +411,23 @@ export default class ProjectRepository {
           `SELECT coworker_id, role_id FROM project_coworker WHERE project_id = ?`,
           [id],
         );
-        const inputPairs = project.coworkers.flatMap((cw: any) =>
-          (cw.roles || []).map((roleId: string) => ({
+        const inputPairs = project.coworkers.flatMap((cw: Coworker) =>
+          (cw.roles || []).map((role: string | Role) => ({
             coworker_id: cw.id,
-            role_id: roleId,
+            role_id: typeof role === "string" ? role : role.id,
           })),
         );
         const toAdd = inputPairs.filter(
-          (p: any) =>
+          (p: { coworker_id: string; role_id: string }) =>
             !existing.some(
-              (e: any) =>
+              (e: { coworker_id: string; role_id: string }) =>
                 e.coworker_id === p.coworker_id && e.role_id === p.role_id,
             ),
         );
         const toRemove = existing.filter(
-          (e: any) =>
+          (e: { coworker_id: string; role_id: string }) =>
             !inputPairs.some(
-              (p: any) =>
+              (p: { coworker_id: string; role_id: string }) =>
                 p.coworker_id === e.coworker_id && p.role_id === e.role_id,
             ),
         );
@@ -459,24 +451,39 @@ export default class ProjectRepository {
           `SELECT stack_id, version, section FROM project_stack WHERE project_id = ?`,
           [id],
         );
-        const inputStacks = project.stacks.map((s: any) => ({
-          stack_id: s.id,
-          version: s.version || null,
-          section: s.section || null,
-        }));
+        const inputStacks = project.stacks.map(
+          (
+            s: Partial<Stack> & {
+              section?: string | null;
+              version?: string | null;
+            },
+          ) => ({
+            stack_id: s.id,
+            version: s.version ?? null,
+            section: s.section ?? null,
+          }),
+        );
         const toAdd = inputStacks.filter(
-          (s: any) =>
+          (s) =>
             !existing.some(
-              (e: any) =>
+              (e: {
+                stack_id: string | undefined;
+                version: string | null;
+                section: string | null;
+              }) =>
                 e.stack_id === s.stack_id &&
                 e.version === s.version &&
                 e.section === s.section,
             ),
         );
         const toRemove = existing.filter(
-          (e: any) =>
+          (e: {
+            stack_id: string | undefined;
+            version: string | null;
+            section: string | null;
+          }) =>
             !inputStacks.some(
-              (s: any) =>
+              (s) =>
                 e.stack_id === s.stack_id &&
                 e.version === s.version &&
                 e.section === s.section,
@@ -503,9 +510,9 @@ export default class ProjectRepository {
             `SELECT mockup FROM project_mockup WHERE project_id = ?`,
             [id],
           )
-        ).map((r: any) => r.mockup);
+        ).map((r: { mockup: string }) => r.mockup);
         const inputFiles = await Promise.all(
-          project.mockup.imagesFiles.map(async (img: any) =>
+          project.mockup.imagesFiles.map(async (img: string | ImageFile) =>
             typeof img === "string"
               ? img
               : await saveImageFile(img, "project_mockup", 1920),
@@ -627,7 +634,7 @@ export default class ProjectRepository {
             `SELECT category_id FROM project_category WHERE project_id = ?`,
             [id],
           )
-        ).map((r: any) => r.category_id);
+        ).map((r: { category_id: string }) => r.category_id);
         const toAdd = project.categories.filter(
           (c: string | Category) =>
             !existing.includes(typeof c === "string" ? c : c.id),
@@ -660,7 +667,7 @@ export default class ProjectRepository {
             `SELECT role_id FROM project_role WHERE project_id = ?`,
             [id],
           )
-        ).map((r: any) => r.role_id);
+        ).map((r: { role_id: string }) => r.role_id);
         const toAdd = project.roles.filter(
           (r: string | Role) =>
             !existing.includes(typeof r === "string" ? r : r.id),
@@ -692,23 +699,23 @@ export default class ProjectRepository {
           `SELECT coworker_id, role_id FROM project_coworker WHERE project_id = ?`,
           [id],
         );
-        const inputPairs = project.coworkers.flatMap((cw: any) =>
-          (cw.roles || []).map((roleId: string) => ({
+        const inputPairs = project.coworkers.flatMap((cw: Coworker) =>
+          (cw.roles || []).map((role: string | Role) => ({
             coworker_id: cw.id,
-            role_id: roleId,
+            role_id: typeof role === "string" ? role : role.id,
           })),
         );
         const toAdd = inputPairs.filter(
-          (p: any) =>
+          (p: { coworker_id: string; role_id: string }) =>
             !existing.some(
-              (e: any) =>
+              (e: { coworker_id: string; role_id: string }) =>
                 e.coworker_id === p.coworker_id && e.role_id === p.role_id,
             ),
         );
         const toRemove = existing.filter(
-          (e: any) =>
+          (e: { coworker_id: string; role_id: string }) =>
             !inputPairs.some(
-              (p: any) =>
+              (p: { coworker_id: string; role_id: string }) =>
                 p.coworker_id === e.coworker_id && p.role_id === e.role_id,
             ),
         );
@@ -732,24 +739,43 @@ export default class ProjectRepository {
           `SELECT stack_id, version, section FROM project_stack WHERE project_id = ?`,
           [id],
         );
-        const inputStacks = project.stacks.map((s: any) => ({
-          stack_id: s.id,
-          version: s.version || null,
-          section: s.section || null,
-        }));
+        const inputStacks = project.stacks.map(
+          (
+            s: Partial<Stack> & {
+              section?: string | null;
+              version?: string | null;
+            },
+          ) => ({
+            stack_id: s.id,
+            version: s.version ?? null,
+            section: s.section ?? null,
+          }),
+        );
         const toAdd = inputStacks.filter(
-          (s: any) =>
+          (s) =>
             !existing.some(
-              (e: any) =>
+              (e: {
+                stack_id: string | undefined;
+                version: string | null;
+                section: string | null;
+              }) =>
                 e.stack_id === s.stack_id &&
                 e.version === s.version &&
                 e.section === s.section,
             ),
         );
         const toRemove = existing.filter(
-          (e: any) =>
+          (e: {
+            stack_id: string | undefined;
+            version: string | null;
+            section: string | null;
+          }) =>
             !inputStacks.some(
-              (s: any) =>
+              (s: {
+                stack_id: string | undefined;
+                version: string | null;
+                section: string | null;
+              }) =>
                 e.stack_id === s.stack_id &&
                 e.version === s.version &&
                 e.section === s.section,
@@ -778,7 +804,7 @@ export default class ProjectRepository {
           )
         ).map((r: any) => r.mockup);
         const inputFiles = await Promise.all(
-          project.mockup.imagesFiles.map(async (img: any) =>
+          project.mockup.imagesFiles.map(async (img: string | ImageFile) =>
             typeof img === "string"
               ? img
               : await saveImageFile(img, "project_mockup", 1920),

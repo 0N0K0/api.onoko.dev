@@ -1,6 +1,17 @@
 import { Pool } from "mariadb/*";
 import { MigrationParams } from "umzug";
 
+/**
+ * Migration pour créer les tables "project", "project_role", "project_coworker", "project_stack", "project_category" et "project_mockup" dans la base de données.
+ * La table "project" est utilisée pour stocker les informations des projets, avec des colonnes pour le nom, le logo, le client, le manager, les dates et les descriptions.
+ * La table "project_role" est une table de liaison entre les projets et les rôles, avec des clés étrangères vers les tables "project" et "role".
+ * La table "project_coworker" est une table de liaison entre les projets, les collaborateurs et les rôles, avec des clés étrangères vers les tables "project", "coworker" et "role".
+ * La table "project_stack" est une table de liaison entre les projets et les stacks, avec des clés étrangères vers les tables "project" et "stack".
+ * La table "project_category" est une table de liaison entre les projets et les catégories, avec des clés étrangères vers les tables "project" et "category".
+ * La table "project_mockup" est une table de liaison entre les projets et les mockups, avec des clés étrangères vers les tables "project" et "mockup".
+ * Les fonctions "up" et "down" sont exécutées lors de l'application ou du rollback de la migration, respectivement.
+ */
+
 export async function up({ context: pool }: MigrationParams<Pool>) {
   const conn = await pool.getConnection();
   try {
