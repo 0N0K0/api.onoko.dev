@@ -9,6 +9,7 @@ export interface Project {
   label: string;
   thumbnail?: string;
   thumbnailUrl?: string;
+  thumbnailFile?: ImageFile;
   categories?: Category[] | string[];
   website?: {
     url: string;
@@ -19,11 +20,13 @@ export interface Project {
     label: string;
     images?: string[];
     imagesUrls?: string[];
+    imagesFiles?: ImageFile[];
   };
   client?: {
     label: string;
     logo?: string;
     logoUrl?: string;
+    logoFile?: ImageFile;
   };
   manager?: {
     name: string;
@@ -66,44 +69,4 @@ export interface Project {
     general?: string;
     client?: string;
   };
-}
-
-export interface ProjectInput {
-  label: string;
-  thumbnailFile?: ImageFile;
-  categories?: string[];
-  websiteLabel?: string;
-  websiteUrl?: string;
-  mockupUrl?: string;
-  mockupLabel?: string;
-  mockupImagesFiles?: ImageFile[];
-  clientLabel?: string;
-  clientLogoFile?: ImageFile;
-  managerName?: string;
-  managerEmail?: string;
-  startDate?: string;
-  endDate?: string;
-  introContext?: string;
-  introObjective?: string;
-  introClient?: string;
-  presentationDescription?: string;
-  presentationIssue?: string;
-  presentationAudience?: string;
-  needFeatures?: string;
-  needFunctionalConstraints?: string;
-  needTechnicalConstraints?: string;
-  organizationWorkload?: string;
-  organizationAnticipation?: string;
-  organizationMethodology?: string;
-  organizationEvolution?: string;
-  organizationValidation?: string;
-  coworkers?: Array<{ id: string; roles: string[] }>;
-  roles?: string[];
-  stacks?: Array<{ id: string; version?: string; section?: string }>;
-  kpisIssues?: number;
-  kpisPoints?: number;
-  kpisCommits?: number;
-  kpisPullRequests?: number;
-  feedbackGeneral?: string;
-  feedbackClient?: string;
 }

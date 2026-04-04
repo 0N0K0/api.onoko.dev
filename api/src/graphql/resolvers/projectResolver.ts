@@ -1,4 +1,4 @@
-import { Project, ProjectInput } from "../../types/projectTypes";
+import { Project } from "../../types/projectTypes";
 
 const projectResolver = {
   projects: async (
@@ -14,7 +14,7 @@ const projectResolver = {
     return await context.projectRepo.get(_args);
   },
   createProject: async (
-    _args: { input: Omit<ProjectInput, "id"> },
+    _args: { input: Omit<Project, "id"> },
     context: { user: any; projectRepo: any },
   ): Promise<Project> => {
     if (!context.user) throw new Error("Unauthorized");
@@ -22,7 +22,7 @@ const projectResolver = {
     return await context.projectRepo.get("id", id);
   },
   updateProject: async (
-    _args: { id: string; input: Partial<ProjectInput> },
+    _args: { id: string; input: Partial<Omit<Project, "id">> },
     context: { user: any; projectRepo: any },
   ): Promise<Project> => {
     if (!context.user) throw new Error("Unauthorized");

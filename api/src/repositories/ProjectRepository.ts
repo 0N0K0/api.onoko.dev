@@ -1,8 +1,10 @@
 import mariadb from "mariadb";
 import crypto from "crypto";
-import { Project, ProjectInput } from "../types/projectTypes";
+import { Project } from "../types/projectTypes";
 import { saveImageFile } from "../utils/imageUtils";
 import path from "path";
+import { Role } from "../types/RoleTypes";
+import { Category } from "../types/categoryTypes";
 
 export default class ProjectRepository {
   private imageBasePath = "/assets/project/";
@@ -280,7 +282,7 @@ export default class ProjectRepository {
    * @param project Données du projet à créer (sans l'ID)
    * @return ID du projet créé
    */
-  async create(project: Omit<ProjectInput, "id">): Promise<string> {
+  async create(project: Omit<Project, "id">): Promise<string> {
     const id = crypto.randomUUID();
     let conn;
     try {
@@ -295,9 +297,9 @@ export default class ProjectRepository {
         );
       }
       let clientLogoFileName = null;
-      if (project.clientLogoFile) {
+      if (project.client?.logoFile) {
         clientLogoFileName = await saveImageFile(
-          project.clientLogoFile,
+          project.client.logoFile,
           "project",
           300,
         );
@@ -311,36 +313,36 @@ export default class ProjectRepository {
           id,
           project.label,
           thumbnailFileName,
-          project.websiteUrl || null,
-          project.websiteLabel || null,
-          project.mockupUrl || null,
-          project.mockupLabel || null,
-          project.clientLabel || null,
+          project.website?.url || null,
+          project.website?.label || null,
+          project.mockup?.url || null,
+          project.mockup?.label || null,
+          project.client?.label || null,
           clientLogoFileName || null,
-          project.managerName || null,
-          project.managerEmail || null,
+          project.manager?.name || null,
+          project.manager?.email || null,
           project.startDate ? new Date(project.startDate) : null,
           project.endDate ? new Date(project.endDate) : null,
-          project.introContext || null,
-          project.introObjective || null,
-          project.introClient || null,
-          project.presentationDescription || null,
-          project.presentationIssue || null,
-          project.presentationAudience || null,
-          project.needFeatures || null,
-          project.needFunctionalConstraints || null,
-          project.needTechnicalConstraints || null,
-          project.organizationWorkload || null,
-          project.organizationAnticipation || null,
-          project.organizationMethodology || null,
-          project.organizationEvolution || null,
-          project.organizationValidation || null,
-          project.feedbackGeneral || null,
-          project.feedbackClient || null,
-          project.kpisIssues || null,
-          project.kpisPoints || null,
-          project.kpisCommits || null,
-          project.kpisPullRequests || null,
+          project.intro?.context || null,
+          project.intro?.objective || null,
+          project.intro?.client || null,
+          project.presentation?.description || null,
+          project.presentation?.issue || null,
+          project.presentation?.audience || null,
+          project.need?.features || null,
+          project.need?.functionalConstraints || null,
+          project.need?.technicalConstraints || null,
+          project.organization?.workload || null,
+          project.organization?.anticipation || null,
+          project.organization?.methodology || null,
+          project.organization?.evolution || null,
+          project.organization?.validation || null,
+          project.feedback?.general || null,
+          project.feedback?.client || null,
+          project.kpis?.issues || null,
+          project.kpis?.points || null,
+          project.kpis?.commits || null,
+          project.kpis?.pullRequests || null,
         ],
       );
 
@@ -353,10 +355,15 @@ export default class ProjectRepository {
           )
         ).map((r: any) => r.category_id);
         const toAdd = project.categories.filter(
-          (c: string) => !existing.includes(c),
+          (c: string | Category) =>
+            !existing.includes(typeof c === "string" ? c : c.id),
         );
         const toRemove = existing.filter(
-          (c: string) => !project.categories?.includes(c),
+          (c: string) =>
+            !project.categories?.some(
+              (category: string | Category) =>
+                (typeof category === "string" ? category : category.id) === c,
+            ),
         );
         for (const categoryId of toRemove) {
           await conn.query(
@@ -381,10 +388,15 @@ export default class ProjectRepository {
           )
         ).map((r: any) => r.role_id);
         const toAdd = project.roles.filter(
-          (r: string) => !existing.includes(r),
+          (r: string | Role) =>
+            !existing.includes(typeof r === "string" ? r : r.id),
         );
         const toRemove = existing.filter(
-          (r: string) => !project.roles?.includes(r),
+          (r: string) =>
+            !project.roles?.some(
+              (role: string | Role) =>
+                (typeof role === "string" ? role : role.id) === r,
+            ),
         );
         for (const roleId of toRemove) {
           await conn.query(
@@ -485,7 +497,7 @@ export default class ProjectRepository {
       }
 
       // Insère les images mockup (enregistrement physique sur le disque)
-      if (project.mockupImagesFiles && project.mockupImagesFiles.length) {
+      if (project.mockup?.imagesFiles && project.mockup.imagesFiles.length) {
         const existing = (
           await conn.query(
             `SELECT mockup FROM project_mockup WHERE project_id = ?`,
@@ -493,7 +505,7 @@ export default class ProjectRepository {
           )
         ).map((r: any) => r.mockup);
         const inputFiles = await Promise.all(
-          project.mockupImagesFiles.map(async (img: any) =>
+          project.mockup.imagesFiles.map(async (img: any) =>
             typeof img === "string"
               ? img
               : await saveImageFile(img, "project_mockup", 1920),
@@ -530,7 +542,7 @@ export default class ProjectRepository {
    */
   async update(
     id: string,
-    project: Partial<Omit<ProjectInput, "id">>,
+    project: Partial<Omit<Project, "id">>,
   ): Promise<void> {
     let conn;
     try {
@@ -541,36 +553,36 @@ export default class ProjectRepository {
       const map: Record<string, any> = {
         label: project.label,
         thumbnail: project.thumbnailFile,
-        website_url: project.websiteUrl,
-        website_label: project.websiteLabel,
-        mockup_url: project.mockupUrl,
-        mockup_label: project.mockupLabel,
-        client_label: project.clientLabel,
-        client_logo: project.clientLogoFile,
-        manager_name: project.managerName,
-        manager_email: project.managerEmail,
+        website_url: project.website?.url,
+        website_label: project.website?.label,
+        mockup_url: project.mockup?.url,
+        mockup_label: project.mockup?.label,
+        client_label: project.client?.label,
+        client_logo: project.client?.logoFile,
+        manager_name: project.manager?.name,
+        manager_email: project.manager?.email,
         start_date: project.startDate ? new Date(project.startDate) : undefined,
         end_date: project.endDate ? new Date(project.endDate) : undefined,
-        intro_context: project.introContext,
-        intro_objective: project.introObjective,
-        intro_client: project.introClient,
-        presentation_description: project.presentationDescription,
-        presentation_issue: project.presentationIssue,
-        presentation_audience: project.presentationAudience,
-        need_features: project.needFeatures,
-        need_functional_constraints: project.needFunctionalConstraints,
-        need_technical_constraints: project.needTechnicalConstraints,
-        organization_workload: project.organizationWorkload,
-        organization_anticipation: project.organizationAnticipation,
-        organization_methodology: project.organizationMethodology,
-        organization_evolution: project.organizationEvolution,
-        organization_validation: project.organizationValidation,
-        feedback: project.feedbackGeneral,
-        feedback_client: project.feedbackClient,
-        kpis_issues: project.kpisIssues,
-        kpis_points: project.kpisPoints,
-        kpis_commits: project.kpisCommits,
-        kpis_pull_requests: project.kpisPullRequests,
+        intro_context: project.intro?.context,
+        intro_objective: project.intro?.objective,
+        intro_client: project.intro?.client,
+        presentation_description: project.presentation?.description,
+        presentation_issue: project.presentation?.issue,
+        presentation_audience: project.presentation?.audience,
+        need_features: project.need?.features,
+        need_functional_constraints: project.need?.functionalConstraints,
+        need_technical_constraints: project.need?.technicalConstraints,
+        organization_workload: project.organization?.workload,
+        organization_anticipation: project.organization?.anticipation,
+        organization_methodology: project.organization?.methodology,
+        organization_evolution: project.organization?.evolution,
+        organization_validation: project.organization?.validation,
+        feedback: project.feedback?.general,
+        feedback_client: project.feedback?.client,
+        kpis_issues: project.kpis?.issues,
+        kpis_points: project.kpis?.points,
+        kpis_commits: project.kpis?.commits,
+        kpis_pull_requests: project.kpis?.pullRequests,
       };
       for (const [col, val] of Object.entries(map)) {
         if (val !== undefined) {
@@ -595,9 +607,9 @@ export default class ProjectRepository {
         );
 
         // Gère le logo client
-        if (project.clientLogoFile) {
+        if (project.client?.logoFile) {
           const clientLogoFileName = await saveImageFile(
-            project.clientLogoFile,
+            project.client.logoFile,
             "project",
             300,
           );
@@ -617,10 +629,15 @@ export default class ProjectRepository {
           )
         ).map((r: any) => r.category_id);
         const toAdd = project.categories.filter(
-          (c: string) => !existing.includes(c),
+          (c: string | Category) =>
+            !existing.includes(typeof c === "string" ? c : c.id),
         );
         const toRemove = existing.filter(
-          (c: string) => !project.categories?.includes(c),
+          (c: string) =>
+            !project.categories?.some(
+              (category: string | Category) =>
+                (typeof category === "string" ? category : category.id) === c,
+            ),
         );
         for (const categoryId of toRemove) {
           await conn.query(
@@ -645,10 +662,15 @@ export default class ProjectRepository {
           )
         ).map((r: any) => r.role_id);
         const toAdd = project.roles.filter(
-          (r: string) => !existing.includes(r),
+          (r: string | Role) =>
+            !existing.includes(typeof r === "string" ? r : r.id),
         );
         const toRemove = existing.filter(
-          (r: string) => !project.roles?.includes(r),
+          (r: string) =>
+            !project.roles?.some(
+              (role: string | Role) =>
+                (typeof role === "string" ? role : role.id) === r,
+            ),
         );
         for (const roleId of toRemove) {
           await conn.query(
@@ -748,7 +770,7 @@ export default class ProjectRepository {
       }
 
       // Met à jour les images mockup (enregistrement physique sur le disque)
-      if (project.mockupImagesFiles) {
+      if (project.mockup?.imagesFiles) {
         const existing = (
           await conn.query(
             `SELECT mockup FROM project_mockup WHERE project_id = ?`,
@@ -756,7 +778,7 @@ export default class ProjectRepository {
           )
         ).map((r: any) => r.mockup);
         const inputFiles = await Promise.all(
-          project.mockupImagesFiles.map(async (img: any) =>
+          project.mockup.imagesFiles.map(async (img: any) =>
             typeof img === "string"
               ? img
               : await saveImageFile(img, "project_mockup", 1920),

@@ -76,6 +76,55 @@ export const projectTypes = `
         category: Category
         section: String
     }
+`;
+
+export const projectInputs = `
+    input WebsiteInput {
+        url: String!
+        label: String!
+    }
+
+    input MockupInput {
+        url: String!
+        label: String!
+        imagesFiles: [Upload!]
+    }
+    
+    input ClientInput {
+        label: String!
+        logoFile: Upload
+    }
+
+    input ManagerInput {
+        name: String!
+        email: String
+    }
+
+    input IntroInput {
+        context: String
+        objective: String
+        client: String
+    }
+
+    input PresentationInput {
+        description: String
+        issue: String
+        audience: String
+    }
+
+    input NeedInput {
+        features: String
+        functionalConstraints: String
+        technicalConstraints: String
+    }
+
+    input OrganizationInput {
+        workload: String
+        anticipation: String
+        methodology: String
+        evolution: String
+        validation: String
+    }
 
     input CoworkerInput {
         id: ID!
@@ -87,45 +136,38 @@ export const projectTypes = `
         version: String
         section: String
     }
+
+    input KPIsInput {
+        issues: Int
+        points: Int
+        commits: Int
+        pullRequests: Int
+    }
+
+    input FeedbackInput {
+        general: String
+        client: String
+    }
     
     input ProjectInput {
         label: String!
         thumbnailFile: Upload
         categories: [ID!]
-        websiteLabel: String
-        websiteUrl: String
-        mockupUrl: String
-        mockupLabel: String
-        mockupImagesFiles: [Upload!]
-        clientLabel: String
-        clientLogoFile: Upload
-        managerName: String
-        managerEmail: String
+        website: WebsiteInput
+        mockup: MockupInput
+        client: ClientInput
+        manager: ManagerInput
         startDate: String
         endDate: String
-        introContext: String
-        introObjective: String
-        introClient: String
-        presentationDescription: String
-        presentationIssue: String
-        presentationAudience: String
-        needFeatures: String
-        needFunctionalConstraints: String
-        needTechnicalConstraints: String
-        organizationWorkload: String
-        organizationAnticipation: String
-        organizationMethodology: String
-        organizationEvolution: String
-        organizationValidation: String
+        intro: IntroInput
+        presentation: PresentationInput
+        need: NeedInput
+        organization: OrganizationInput
         coworkers: [CoworkerInput!]
         roles: [ID!]
         stacks: [ProjectStackInput!]
-        kpisIssues: Int
-        kpisPoints: Int
-        kpisCommits: Int
-        kpisPullRequests: Int
-        feedbackGeneral: String
-        feedbackClient: String
+        kpis: KPIsInput
+        feedback: FeedbackInput
     }
 `;
 
