@@ -76,6 +76,18 @@ export const projectTypes = `
         category: Category
         section: String
     }
+
+    type KPIs {
+        issues: Int
+        points: Int
+        commits: Int
+        pullRequests: Int
+    }
+
+    type Feedback {
+        general: String
+        client: String
+    }
 `;
 
 export const projectInputs = `

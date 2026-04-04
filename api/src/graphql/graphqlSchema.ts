@@ -22,6 +22,7 @@ import {
   coworkerTypes,
 } from "./schemas/coworkerSchema";
 import {
+  projectInputs,
   projectMutations,
   projectQueries,
   projectTypes,
@@ -44,6 +45,7 @@ export function getSchema() {
     ${roleTypes}
     ${coworkerTypes}
     ${projectTypes}
+    ${projectInputs}
     type Query {
       ${accountQueries}
       ${categoryQueries}
