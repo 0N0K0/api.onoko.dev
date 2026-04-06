@@ -1,5 +1,6 @@
 import { SettingsRepository } from "../repositories/SettingsRepository";
-import { hashPassword, isStrongPassword } from "./passwordUtils";
+import { hashPassword } from "./passwordUtils";
+import { isValidPassword } from "./validationUtils";
 
 /**
  * Initialise les identifiants de l'administrateur en vérifiant d'abord s'ils existent déjà dans les paramètres. Si les identifiants sont absents, la fonction lit les valeurs initiales pour le login, le mot de passe et l'email à partir des variables d'environnement. Si ces valeurs sont présentes et que le mot de passe répond aux exigences de sécurité, les identifiants sont hachés et stockés dans les paramètres pour une utilisation ultérieure.
@@ -27,7 +28,7 @@ export async function initAdmin(
       "Initial admin credentials missing (INIT_LOGIN, INIT_PASSWORD, INIT_EMAIL)",
     );
   }
-  if (!isStrongPassword(INIT_PASSWORD)) {
+  if (!isValidPassword(INIT_PASSWORD)) {
     throw new Error("INIT_PASSWORD does not meet strength requirements");
   }
   const hash = await hashPassword(INIT_PASSWORD);

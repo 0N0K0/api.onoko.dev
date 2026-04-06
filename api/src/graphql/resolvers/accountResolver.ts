@@ -1,8 +1,10 @@
+import { hashPassword, verifyPassword } from "../../utils/passwordUtils";
 import {
-  hashPassword,
-  isStrongPassword,
-  verifyPassword,
-} from "../../utils/passwordUtils";
+  isValidEmail,
+  isValidPassword,
+  sanitizeString,
+  isEmpty,
+} from "../../utils/validationUtils";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
@@ -58,12 +60,20 @@ const accountResolver = {
     if (!storedHash || !(await verifyPassword(_args.oldPassword, storedHash))) {
       throw new Error("Invalid old password");
     }
-    if (_args.login) await context.settingsRepo.set("login", _args.login);
-    if (_args.email) await context.settingsRepo.set("email", _args.email);
+    if (_args.login) {
+      const login = sanitizeString(_args.login);
+      if (isEmpty(login)) throw new Error("Login cannot be empty");
+      await context.settingsRepo.set("login", login);
+    }
+    if (_args.email) {
+      const email = sanitizeString(_args.email);
+      if (!isValidEmail(email)) throw new Error("Invalid email");
+      await context.settingsRepo.set("email", email);
+    }
     if (_args.newPassword) {
-      if (!isStrongPassword(_args.newPassword)) {
+      if (!isValidPassword(_args.newPassword)) {
         throw new Error(
-          "Password too weak (min 20 chars, maj, min, chiffre, spécial)",
+          "Password trop faible (min 8 caractères, maj, min, chiffre)",
         );
       }
       const hash = await hashPassword(_args.newPassword);
@@ -135,7 +145,7 @@ const accountResolver = {
     context: { settingsRepo: SettingsRepository },
   ): Promise<boolean> => {
     const { token, newPassword } = _args;
-    if (!token || !newPassword)
+    if (isEmpty(token) || isEmpty(newPassword))
       throw new Error("Token and newPassword required");
     const pool = context.settingsRepo["pool"];
     let conn;
@@ -154,9 +164,9 @@ const accountResolver = {
     } finally {
       if (conn) conn.release();
     }
-    if (!isStrongPassword(newPassword)) {
+    if (!isValidPassword(newPassword)) {
       throw new Error(
-        "Password too weak (min 20 chars, maj, min, chiffre, spécial)",
+        "Password trop faible (min 20 caractères, maj, min, chiffre, symbole)",
       );
     }
     const hash = await hashPassword(newPassword);

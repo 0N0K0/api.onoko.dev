@@ -1,4 +1,5 @@
 import { SettingsRepository } from "../../repositories/SettingsRepository";
+import { isEmpty, sanitizeString } from "../../utils/validationUtils";
 import {
   generateToken,
   verifyToken as verifyJwtToken,
@@ -19,14 +20,19 @@ const authResolver = {
     _args: { login: string; password: string },
     context: { settingsRepo: SettingsRepository },
   ): Promise<{ token: string }> => {
+    const login = sanitizeString(_args.login);
+    const password = sanitizeString(_args.password);
+    if (isEmpty(login) || isEmpty(password)) {
+      throw new Error("Login et mot de passe requis");
+    }
     const storedLogin = await context.settingsRepo.get("login");
     const storedHash = await context.settingsRepo.get("password_hash");
-    if (!storedLogin || !storedHash || _args.login !== storedLogin) {
+    if (!storedLogin || !storedHash || login !== storedLogin) {
       throw new Error("Invalid credentials");
     }
-    const valid = await verifyPassword(_args.password, storedHash);
+    const valid = await verifyPassword(password, storedHash);
     if (!valid) throw new Error("Invalid credentials");
-    const token = generateToken({ login: _args.login });
+    const token = generateToken({ login });
     return { token };
   },
 
@@ -41,7 +47,9 @@ const authResolver = {
     token: string;
   }): Promise<{ token: string }> => {
     try {
-      const payload = verifyJwtToken(_args.token);
+      const token = sanitizeString(_args.token);
+      if (isEmpty(token)) throw new Error("Token requis");
+      const payload = verifyJwtToken(token);
       const newToken = generateToken({ login: payload.login });
       return { token: newToken };
     } catch {
@@ -62,7 +70,9 @@ const authResolver = {
     context: { settingsRepo: SettingsRepository },
   ): Promise<{ login: string | null }> => {
     try {
-      verifyJwtToken(_args.token);
+      const token = sanitizeString(_args.token);
+      if (isEmpty(token)) throw new Error("Token requis");
+      verifyJwtToken(token);
       return { login: await context.settingsRepo.get("login") };
     } catch {
       throw new Error("Invalid token");

@@ -1,6 +1,11 @@
 import CategoryRepository from "../../repositories/CategoryRepository";
 import { Category } from "../../types/categoryTypes";
 import jwt from "jsonwebtoken";
+import {
+  sanitizeString,
+  isEmpty,
+  isValidUUID,
+} from "../../utils/validationUtils";
 
 // Résolveur GraphQL pour les opérations liées aux catégories
 const categoryResolver = {
@@ -46,7 +51,17 @@ const categoryResolver = {
     context: { user: jwt.JwtPayload | null; categoryRepo: CategoryRepository },
   ): Promise<Category> => {
     if (!context.user) throw new Error("Unauthorized");
-    const id = await context.categoryRepo.create(_args);
+    const input = { ..._args };
+    if (isEmpty(input.label)) throw new Error("Label is required");
+
+    input.label = sanitizeString(input.label);
+    if (input.entity && !isValidUUID(input.entity)) delete input.entity;
+    if (!input.entity || isEmpty(input.entity))
+      throw new Error("Entity is required");
+    if (input.description)
+      input.description = sanitizeString(input.description);
+    if (input.parent && !isValidUUID(input.parent)) delete input.parent;
+    const id = await context.categoryRepo.create(input);
     const result = await context.categoryRepo.get("id", id);
     if (!result || !result[0]) throw new Error("Category not found");
     return result[0];
@@ -67,7 +82,13 @@ const categoryResolver = {
   ): Promise<Category> => {
     if (!context.user) throw new Error("Unauthorized");
     if (!_args.id) throw new Error("ID is required for update");
-    await context.categoryRepo.update(_args);
+    const input = { ..._args };
+    if (input.label) input.label = sanitizeString(input.label);
+    if (input.entity && !isValidUUID(input.entity)) delete input.entity;
+    if (input.description)
+      input.description = sanitizeString(input.description);
+    if (input.parent && !isValidUUID(input.parent)) delete input.parent;
+    await context.categoryRepo.update(input);
     const result = await context.categoryRepo.get("id", _args.id);
     if (!result || !result[0]) throw new Error("Category not found");
     return result[0];

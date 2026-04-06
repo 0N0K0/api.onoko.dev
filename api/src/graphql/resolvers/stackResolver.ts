@@ -3,6 +3,7 @@ import { Category } from "../../types/categoryTypes";
 import { ImageFile } from "../../types/imageTypes";
 import { Stack } from "../../types/stackTypes";
 import jwt from "jsonwebtoken";
+import { sanitizeString, isEmpty } from "../../utils/validationUtils";
 
 const stackResolver = {
   /**
@@ -63,7 +64,22 @@ const stackResolver = {
     context: { user: jwt.JwtPayload | null; stackRepo: StackRepository },
   ): Promise<Stack | null> => {
     if (!context.user) throw new Error("Unauthorized");
-    const id = await context.stackRepo.create(_args);
+    const input = { ..._args };
+    // Sanitize tous les champs string pertinents
+    if (isEmpty(input.label)) throw new Error("Label is required");
+    input.label = sanitizeString(input.label);
+    if (input.description)
+      input.description = sanitizeString(input.description);
+    if (input.versions) input.versions = input.versions.map(sanitizeString);
+    if (input.skills) input.skills = input.skills.map(sanitizeString);
+    if (input.category) {
+      if (typeof input.category === "string") {
+        input.category = sanitizeString(input.category);
+      } else if (typeof input.category === "object" && input.category.label) {
+        input.category.id = sanitizeString(input.category.id);
+      }
+    }
+    const id = await context.stackRepo.create(input);
     return await context.stackRepo.get("id", id);
   },
 
@@ -84,7 +100,21 @@ const stackResolver = {
   ): Promise<Stack | null> => {
     if (!context.user) throw new Error("Unauthorized");
     if (!_args.id) throw new Error("ID is required for update");
-    await context.stackRepo.update(_args);
+    const input = { ..._args };
+    if (input.id) input.id = sanitizeString(input.id);
+    if (input.label) input.label = sanitizeString(input.label);
+    if (input.description)
+      input.description = sanitizeString(input.description);
+    if (input.versions) input.versions = input.versions.map(sanitizeString);
+    if (input.skills) input.skills = input.skills.map(sanitizeString);
+    if (input.category) {
+      if (typeof input.category === "string") {
+        input.category = sanitizeString(input.category);
+      } else if (typeof input.category === "object" && input.category.label) {
+        input.category.id = sanitizeString(input.category.id);
+      }
+    }
+    await context.stackRepo.update(input);
     return await context.stackRepo.get("id", _args.id);
   },
 

@@ -59,7 +59,7 @@ export interface Project {
   };
   roles?: Role[] | string[];
   coworkers?: Coworker[];
-  stacks?: (Partial<Stack> & { section?: string })[];
+  stacks?: (Partial<Stack> & { section?: string; version?: string })[];
   kpis?: {
     issues?: number;
     points?: number;

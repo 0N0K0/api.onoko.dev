@@ -10,17 +10,17 @@ export function isValidEmail(email: string): boolean {
 }
 
 /**
- * Vérifie si une chaîne est un mot de passe valide (min 8 caractères, 1 maj, 1 min, 1 chiffre)
+ * Vérifie si une chaîne est un mot de passe valide (min 20 caractères, 1 maj, 1 min, 1 chiffre, 1 symbole)
  * @param {string} password Le mot de passe à valider
  * @return {boolean} true si le mot de passe est valide, false sinon
  */
 export function isValidPassword(password: string): boolean {
   return validator.isStrongPassword(password, {
-    minLength: 8,
+    minLength: 20,
     minLowercase: 1,
     minUppercase: 1,
     minNumbers: 1,
-    minSymbols: 0,
+    minSymbols: 1,
   });
 }
 

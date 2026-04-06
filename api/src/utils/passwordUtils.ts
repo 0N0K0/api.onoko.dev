@@ -23,19 +23,3 @@ export async function verifyPassword(
 ): Promise<boolean> {
   return bcrypt.compare(password, hash);
 }
-
-/**
- * Vérifie si un mot de passe répond à des critères de sécurité stricts, notamment une longueur minimale de 20 caractères, la présence d'au moins une lettre majuscule, une lettre minuscule, un chiffre et un caractère spécial. Cette fonction retourne true si le mot de passe est considéré comme fort selon ces critères, sinon elle retourne false.
- * @param {string} password - Le mot de passe à évaluer.
- * @returns {boolean} true si le mot de passe est fort, sinon false.
- */
-export function isStrongPassword(password: string): boolean {
-  // Min 20 chars, upper, lower, digit, special
-  return (
-    password.length >= 20 &&
-    /[A-Z]/.test(password) &&
-    /[a-z]/.test(password) &&
-    /[0-9]/.test(password) &&
-    /[^A-Za-z0-9]/.test(password)
-  );
-}
