@@ -12,10 +12,10 @@ import type mariadb from "mariadb";
 export async function runMigrations(pool: mariadb.Pool) {
   const isProd =
     process.env.NODE_ENV === "production" ||
-    fs.existsSync(path.join(__dirname, "migrations", "202603252047.js"));
+    fs.existsSync(path.join(process.cwd(), "migrations", "202603252047.js"));
   const migrationsPath = isProd
-    ? path.join(__dirname, "migrations", "*.js")
-    : path.join(__dirname, "migrations", "*.ts");
+    ? path.join(process.cwd(), "migrations", "*.js")
+    : path.join(process.cwd(), "migrations", "*.ts");
 
   const umzug = new Umzug({
     migrations: { glob: migrationsPath },
