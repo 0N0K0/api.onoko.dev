@@ -5,6 +5,11 @@ import {
   verifyToken as verifyJwtToken,
 } from "../../utils/auth/jwtUtils";
 import { verifyPassword } from "../../utils/passwordUtils";
+import {
+  registerAttempt,
+  isBlocked,
+  resetAttempts,
+} from "../../utils/auth/antiBruteforce.redis";
 
 // Résolveur GraphQL pour les opérations liées à l'authentification
 const authResolver = {
@@ -25,13 +30,27 @@ const authResolver = {
     if (isEmpty(login) || isEmpty(password)) {
       throw new Error("Login et mot de passe requis");
     }
+
+    // Récupère l'IP du client (X-Forwarded-For ou req.ip)
+    // Ici, on suppose que l'IP est passée dans le contexte (à adapter si besoin)
+    const ip = (context as any).ip || "unknown";
+
+    if (await isBlocked(ip)) {
+      throw new Error("Trop de tentatives, réessayez plus tard.");
+    }
+
     const storedLogin = await context.settingsRepo.get("login");
     const storedHash = await context.settingsRepo.get("password_hash");
     if (!storedLogin || !storedHash || login !== storedLogin) {
+      await registerAttempt(ip);
       throw new Error("Invalid credentials");
     }
     const valid = await verifyPassword(password, storedHash);
-    if (!valid) throw new Error("Invalid credentials");
+    if (!valid) {
+      await registerAttempt(ip);
+      throw new Error("Invalid credentials");
+    }
+    await resetAttempts(ip);
     const token = generateToken({ login });
     return { token };
   },
