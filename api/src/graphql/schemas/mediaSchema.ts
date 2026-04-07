@@ -8,7 +8,7 @@ export const mediaTypes = `
 `;
 
 export const mediaQueries = `
-    medias: [Media!]!
+    medias: [Category!]!
     media(id: ID!): Media
 `;
 

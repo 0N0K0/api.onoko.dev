@@ -65,6 +65,7 @@ export function getSchema() {
       ${coworkerQueries}
       ${projectQueries}
       ${mediaQueries}
+    }
     type Mutation {
       ${authMutations}
       ${accountMutations}

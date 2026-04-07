@@ -21,6 +21,8 @@ export async function up({ context: pool }: MigrationParams<Pool>) {
           category VARCHAR(255) NOT NULL,
           FOREIGN KEY (category) REFERENCES category(id) ON DELETE CASCADE
       );`);
+    await conn.query(`ALTER TABLE stack MODIFY COLUMN icon VARCHAR(255) NULL;`);
+    await conn.query(`UPDATE stack SET icon = NULL WHERE icon IS NOT NULL;`);
     await conn.query(`
       ALTER TABLE stack
       CHANGE COLUMN icon icon_id VARCHAR(255),
