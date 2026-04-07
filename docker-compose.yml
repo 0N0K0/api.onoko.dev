@@ -8,13 +8,21 @@ services:
       - DB_HOST=db
       - DB_USER=root
       - DB_PASSWORD=root
+      - REDIS_URL=redis://redis:6379
     volumes:
       - ./api:/usr/src/app
     ports:
       - "4000:4000"
     depends_on:
       - db
+      - redis
     command: npm run dev
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
   db:
     image: mariadb:11
     container_name: db
