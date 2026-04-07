@@ -3,7 +3,7 @@ export const projectTypes = `
     type Project {
         id: ID!
         label: String!
-        thumbnailUrl: String
+        thumbnail: Media
         categories: [Category!]
         website: Website
         mockup: Mockup
@@ -30,12 +30,12 @@ export const projectTypes = `
     type Mockup {
         url: String!
         label: String!
-        imagesUrls: [String!]
+        images: [Media!]
     }
 
     type Client {
         label: String!
-        logoUrl: String
+        logo: Media
     }
 
     type Manager {
@@ -101,12 +101,12 @@ export const projectInputs = `
     input MockupInput {
         url: String!
         label: String!
-        imagesFiles: [Upload!]
+        images: [ID!]
     }
     
     input ClientInput {
         label: String!
-        logoFile: Upload
+        logo: ID
     }
 
     input ManagerInput {
@@ -165,7 +165,7 @@ export const projectInputs = `
     
     input ProjectInput {
         label: String!
-        thumbnailFile: Upload
+        thumbnail: ID
         categories: [ID!]
         website: WebsiteInput
         mockup: MockupInput

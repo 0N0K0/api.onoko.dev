@@ -1,6 +1,7 @@
 import { Category } from "./categoryTypes";
 import { Coworker } from "./coworkerTypes";
 import { ImageFile } from "./imageTypes";
+import { Media } from "./mediaTypes";
 import { Role } from "./roleTypes";
 import { Stack } from "./stackTypes";
 
@@ -8,9 +9,7 @@ import { Stack } from "./stackTypes";
 export interface Project {
   id: string;
   label: string;
-  thumbnail?: string;
-  thumbnailUrl?: string;
-  thumbnailFile?: ImageFile;
+  thumbnail?: string | Media;
   categories?: Category[] | string[];
   website?: {
     url: string;
@@ -19,15 +18,11 @@ export interface Project {
   mockup?: {
     url: string;
     label: string;
-    images?: string[];
-    imagesUrls?: string[];
-    imagesFiles?: ImageFile[];
+    images?: string[] | Media[];
   };
   client?: {
     label: string;
-    logo?: string;
-    logoUrl?: string;
-    logoFile?: ImageFile;
+    logo?: string | Media;
   };
   manager?: {
     name: string;
@@ -76,13 +71,17 @@ export interface Project {
 export interface ProjectRow {
   id: string;
   label: string;
-  thumbnail?: string;
+  thumbnail_id?: string;
+  thumbnail_path?: string;
+  thumbnail_type?: string;
   website_url?: string;
   website_label?: string;
   mockup_url?: string;
   mockup_label?: string;
   client_label?: string;
-  client_logo?: string;
+  client_logo_id?: string;
+  client_logo_path?: string;
+  client_logo_type?: string;
   manager_name?: string;
   manager_email?: string;
   start_date?: Date;

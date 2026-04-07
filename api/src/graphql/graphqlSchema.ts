@@ -34,6 +34,12 @@ import categoryResolver from "./resolvers/categoryResolver";
 import roleResolver from "./resolvers/roleResolver";
 import coworkerResolver from "./resolvers/coworkerResolver";
 import projectResolver from "./resolvers/projectResolver";
+import {
+  mediaMutations,
+  mediaQueries,
+  mediaTypes,
+} from "./schemas/mediaSchema";
+import mediaResolver from "./resolvers/mediaResolver";
 
 /**
  * Construit le schéma GraphQL en combinant les types, requêtes et mutations de tous les modules.
@@ -45,6 +51,7 @@ export function getSchema() {
     ${authTypes}
     ${accountTypes}
     ${categoryTypes}
+    ${mediaTypes}
     ${stackTypes}
     ${roleTypes}
     ${coworkerTypes}
@@ -57,7 +64,7 @@ export function getSchema() {
       ${roleQueries}
       ${coworkerQueries}
       ${projectQueries}
-    }
+      ${mediaQueries}
     type Mutation {
       ${authMutations}
       ${accountMutations}
@@ -66,6 +73,7 @@ export function getSchema() {
       ${roleMutations}
       ${coworkerMutations}
       ${projectMutations}
+      ${mediaMutations}
     }
   `);
 }
@@ -83,5 +91,6 @@ export function getRoot() {
     ...roleResolver,
     ...coworkerResolver,
     ...projectResolver,
+    ...mediaResolver,
   };
 }

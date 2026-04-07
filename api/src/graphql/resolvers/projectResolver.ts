@@ -54,6 +54,8 @@ const projectResolver = {
     const input = { ..._args.input };
     if (isEmpty(input.label)) throw new Error("Label is required");
     input.label = sanitizeString(input.label);
+    if (input.thumbnail && !isValidUUID(input.thumbnail as string))
+      throw new Error("Invalid thumbnail ID");
     if (input.categories) {
       for (const category of input.categories) {
         if (!isValidUUID(category as string))
@@ -70,10 +72,18 @@ const projectResolver = {
       if (input.mockup.url) input.mockup.url = sanitizeString(input.mockup.url);
       if (input.mockup.label)
         input.mockup.label = sanitizeString(input.mockup.label);
+      if (input.mockup.images) {
+        for (const image of input.mockup.images) {
+          if (!isValidUUID(image as string))
+            throw new Error("Invalid mockup image ID");
+        }
+      }
     }
     if (input.client) {
       if (input.client.label)
         input.client.label = sanitizeString(input.client.label);
+      if (input.client.logo && !isValidUUID(input.client.logo as string))
+        throw new Error("Invalid client logo ID");
     }
     if (input.manager) {
       if (input.manager.name)
@@ -186,6 +196,8 @@ const projectResolver = {
     if (!context.user) throw new Error("Unauthorized");
     const input = { ..._args.input };
     if (input.label) input.label = sanitizeString(input.label);
+    if (input.thumbnail && !isValidUUID(input.thumbnail as string))
+      throw new Error("Invalid thumbnail ID");
     if (input.categories) {
       for (const category of input.categories) {
         if (!isValidUUID(category as string))
@@ -202,10 +214,18 @@ const projectResolver = {
       if (input.mockup.url) input.mockup.url = sanitizeString(input.mockup.url);
       if (input.mockup.label)
         input.mockup.label = sanitizeString(input.mockup.label);
+      if (input.mockup.images) {
+        for (const image of input.mockup.images) {
+          if (!isValidUUID(image as string))
+            throw new Error("Invalid mockup image ID");
+        }
+      }
     }
     if (input.client) {
       if (input.client.label)
         input.client.label = sanitizeString(input.client.label);
+      if (input.client.logo && !isValidUUID(input.client.logo as string))
+        throw new Error("Invalid client logo ID");
     }
     if (input.manager) {
       if (input.manager.name)

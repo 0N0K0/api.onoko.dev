@@ -1,3 +1,5 @@
+import { Media } from "./mediaTypes";
+import { Project } from "./projectTypes";
 import { Stack } from "./stackTypes";
 
 // Interface représentant une catégorie
@@ -8,5 +10,5 @@ export interface Category {
   description?: string;
   parent?: string;
   depth?: number;
-  entities?: Stack[];
+  entities?: (Media | Stack | Project)[];
 }

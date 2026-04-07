@@ -3,7 +3,11 @@ import { Category } from "../../types/categoryTypes";
 import { ImageFile } from "../../types/imageTypes";
 import { Stack } from "../../types/stackTypes";
 import jwt from "jsonwebtoken";
-import { sanitizeString, isEmpty } from "../../utils/validationUtils";
+import {
+  sanitizeString,
+  isEmpty,
+  isValidUUID,
+} from "../../utils/validationUtils";
 
 const stackResolver = {
   /**
@@ -68,6 +72,8 @@ const stackResolver = {
     // Sanitize tous les champs string pertinents
     if (isEmpty(input.label)) throw new Error("Label is required");
     input.label = sanitizeString(input.label);
+    if (input.icon && !isValidUUID(input.icon as string))
+      throw new Error("Invalid icon ID");
     if (input.description)
       input.description = sanitizeString(input.description);
     if (input.versions) input.versions = input.versions.map(sanitizeString);
@@ -103,6 +109,8 @@ const stackResolver = {
     const input = { ..._args };
     if (input.id) input.id = sanitizeString(input.id);
     if (input.label) input.label = sanitizeString(input.label);
+    if (input.icon && !isValidUUID(input.icon as string))
+      throw new Error("Invalid icon ID");
     if (input.description)
       input.description = sanitizeString(input.description);
     if (input.versions) input.versions = input.versions.map(sanitizeString);

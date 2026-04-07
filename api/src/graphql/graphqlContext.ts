@@ -6,6 +6,7 @@ import ProjectRepository from "../repositories/ProjectRepository";
 import { SettingsRepository } from "../repositories/SettingsRepository";
 import { Pool } from "mariadb/*";
 import jwt from "jsonwebtoken";
+import { MediaRepository } from "../repositories/MediaRepository";
 
 /**
  * Fonction pour créer le contexte GraphQL, qui sera passé à tous les résolveurs.
@@ -22,7 +23,8 @@ import jwt from "jsonwebtoken";
  *             roleRepo: RoleRepository;
  *             coworkerRepo: CoworkerRepository;
  *             projectRepo: ProjectRepository;
- *           }} Un objet représentant le contexte GraphQL, avec les propriétés user, settingsRepo, categoryRepo, stackRepo, roleRepo, coworkerRepo et projectRepo.
+ *             mediaRepo: MediaRepository;
+ *           }} Un objet représentant le contexte GraphQL, avec les propriétés user, settingsRepo, categoryRepo, stackRepo, roleRepo, coworkerRepo, projectRepo et mediaRepo.
  */
 export function getGraphqlContext({
   user,
@@ -39,5 +41,6 @@ export function getGraphqlContext({
     roleRepo: new RoleRepository(pool),
     coworkerRepo: new CoworkerRepository(pool),
     projectRepo: new ProjectRepository(pool),
+    mediaRepo: new MediaRepository(pool),
   };
 }

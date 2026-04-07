@@ -3,7 +3,7 @@ export const stackTypes = `
   type Stack {
     id: ID!
     label: String!
-    iconUrl: String
+    icon: Media
     description: String
     versions: [String!]
     skills: [String!]
@@ -20,7 +20,7 @@ export const stackQueries = `
 
 // Mutations GraphQL pour les stacks
 export const stackMutations = `
-  createStack(label: String!, iconFile: Upload!, description: String, versions: [String!], skills: [String!], category: ID): Stack!
-  updateStack(id: ID!, label: String, iconFile: Upload, description: String, versions: [String!], skills: [String!], category: ID): Stack!
+  createStack(label: String!, icon_id: ID!, description: String, versions: [String!], skills: [String!], category: ID): Stack!
+  updateStack(id: ID!, label: String, icon_id: ID, description: String, versions: [String!], skills: [String!], category: ID): Stack!
   deleteStack(id: ID!): Boolean!
 `;

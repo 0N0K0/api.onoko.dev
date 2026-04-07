@@ -6,11 +6,11 @@ import { Category } from "../types/categoryTypes";
 import { saveImageFile } from "../utils/imageUtils";
 import path from "path";
 import { promises as fs } from "fs";
+import { Media } from "../types/mediaTypes";
+import { MEDIA_BASE_PATH } from "../constants/mediaConstants";
 
 // Repository pour les opérations liées aux stacks dans la base de données
 export class StackRepository {
-  private iconBasePath = "/assets/stack/"; // Chemin de base pour les icônes des stacks
-
   // Constructeur qui initialise le repository avec un pool de connexions à la base de données MariaDB
   constructor(private pool: mariadb.Pool) {}
 
@@ -38,7 +38,7 @@ export class StackRepository {
           stackMap.set(row.id, {
             id: row.id,
             label: row.label,
-            iconUrl: row.icon ? `${this.iconBasePath}${row.icon}` : undefined,
+            iconUrl: row.icon ? `${MEDIA_BASE_PATH}${row.icon}` : undefined,
             description: row.description,
             versions: [],
             skills: [],
@@ -82,13 +82,15 @@ export class StackRepository {
       conn = await this.pool.getConnection();
       // Récupère toutes les catégories de la sous-arborescence
       const categories = await conn.query(
-        `WITH RECURSIVE subcategories AS (
-          SELECT * FROM category WHERE ${key} = ?
-          UNION ALL
-          SELECT c.* FROM category c
-          INNER JOIN subcategories sc ON c.parent_id = sc.id
-        )
-        SELECT * FROM subcategories`,
+        `
+          WITH RECURSIVE subcategories AS (
+            SELECT * FROM category WHERE ${key} = ?
+            UNION ALL
+            SELECT c.* FROM category c
+            INNER JOIN subcategories sc ON c.parent_id = sc.id
+          )
+          SELECT * FROM subcategories
+        `,
         [value],
       );
       // Récupère toutes les stacks liées à ces catégories
@@ -98,16 +100,22 @@ export class StackRepository {
         skill?: string;
         c_id?: string;
         c_label?: string;
+        m_id?: string;
+        m_path?: string;
+        m_type?: string;
       })[] = [];
       if (categoryIds.length > 0) {
         const placeholders = categoryIds.map(() => "?").join(",");
         stacks = await conn.query(
-          `SELECT s.*, v.version, ss.skill, c.id as c_id, c.label as c_label
-           FROM stack s
-           LEFT JOIN stack_version v ON v.stack_id = s.id
-           LEFT JOIN stack_skill ss ON ss.stack_id = s.id
-           LEFT JOIN category c ON s.category_id = c.id
-           WHERE s.category_id IN (${placeholders})`,
+          `
+            SELECT s.*, v.version, ss.skill, c.id as c_id, c.label as c_label, m.id as m_id, m.path as m_path, m.type as m_type
+            FROM stack s
+            LEFT JOIN stack_version v ON v.stack_id = s.id
+            LEFT JOIN stack_skill ss ON ss.stack_id = s.id
+            LEFT JOIN category c ON s.category_id = c.id
+            LEFT JOIN media m ON s.icon_id = m.id
+            WHERE s.category_id IN (${placeholders})
+          `,
           categoryIds,
         );
       }
@@ -118,7 +126,14 @@ export class StackRepository {
           stackMap.set(row.id, {
             id: row.id,
             label: row.label,
-            iconUrl: row.icon ? `${this.iconBasePath}${row.icon}` : undefined,
+            icon:
+              row.m_id && row.m_type
+                ? {
+                    id: row.m_id,
+                    path: MEDIA_BASE_PATH + row.m_path,
+                    type: row.m_type,
+                  }
+                : undefined,
             description: row.description,
             versions: [],
             skills: [],
@@ -192,11 +207,12 @@ export class StackRepository {
       conn = await this.pool.getConnection();
       const rows = await conn.query(
         `
-        SELECT s.*, v.version, ss.skill, c.id as c_id, c.label as c_label
+        SELECT s.*, v.version, ss.skill, c.id as c_id, c.label as c_label, m.id as m_id, m.path as m_path, m.type as m_type
         FROM stack s
         LEFT JOIN stack_version v ON v.stack_id = s.id
         LEFT JOIN stack_skill ss ON ss.stack_id = s.id
         LEFT JOIN category c ON s.category_id = c.id
+        LEFT JOIN media m ON s.icon_id = m.id
         WHERE s.${key} = ?
         `,
         [value],
@@ -206,7 +222,13 @@ export class StackRepository {
       const stack: Stack = {
         id: first.id,
         label: first.label,
-        iconUrl: first.icon ? `${this.iconBasePath}${first.icon}` : undefined,
+        icon: first.m_id
+          ? {
+              id: first.m_id,
+              path: MEDIA_BASE_PATH + first.m_path,
+              type: first.m_type,
+            }
+          : undefined,
         description: first.description,
         versions: Array.from(
           new Set(
@@ -249,17 +271,15 @@ export class StackRepository {
   ): Promise<string> {
     const id = crypto.randomBytes(16).toString("hex");
 
-    const iconFileName = await saveImageFile(stack.iconFile, "stack", 300);
-
     let conn;
     try {
       conn = await this.pool.getConnection();
       await conn.query(
-        `INSERT INTO stack (id, label, icon, description, category_id) VALUES (?, ?, ?, ?, ?);`,
+        `INSERT INTO stack (id, label, icon_id, description, category_id) VALUES (?, ?, ?, ?, ?);`,
         [
           id,
           stack.label,
-          iconFileName,
+          stack.icon,
           stack.description || null,
           stack.category || null,
         ],
@@ -291,11 +311,7 @@ export class StackRepository {
    * @returns {Promise<void>} Une promesse qui se résout lorsque la mise à jour est terminée, ou rejette une erreur si l'ID n'est pas fourni ou si la mise à jour échoue.
    * @throws {Error} Une erreur si l'ID n'est pas fourni dans les données de la stack, ou si la mise à jour échoue pour une raison quelconque.
    */
-  async update(
-    stack: Partial<Stack> & {
-      iconFile?: ImageFile;
-    },
-  ): Promise<void> {
+  async update(stack: Partial<Stack>): Promise<void> {
     if (!stack.id) throw new Error("ID is required for update");
     let conn;
     try {
@@ -306,10 +322,9 @@ export class StackRepository {
         fields.push("label = ?");
         values.push(stack.label);
       }
-      if (stack.iconFile) {
-        const iconFileName = await saveImageFile(stack.iconFile, "stack", 300);
-        fields.push("icon = ?");
-        values.push(iconFileName);
+      if (stack.icon) {
+        fields.push("icon_id = ?");
+        values.push(stack.icon as string);
       }
       if (stack.description !== undefined) {
         fields.push("description = ?");
@@ -373,18 +388,6 @@ export class StackRepository {
     let conn;
     try {
       conn = await this.pool.getConnection();
-      // Récupère le nom de l'icône
-      const rows = await conn.query("SELECT icon FROM stack WHERE id = ?", [
-        id,
-      ]);
-      const icon = rows && rows[0] && rows[0].icon;
-      // Supprime le fichier icône si présent
-      if (icon) {
-        const iconPath = path.join(process.cwd(), "public", "stack", icon);
-        try {
-          await fs.unlink(iconPath);
-        } catch (e) {}
-      }
       await conn.query("DELETE FROM stack WHERE id = ?", [id]);
     } finally {
       if (conn) conn.release();

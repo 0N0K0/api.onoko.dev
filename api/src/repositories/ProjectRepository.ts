@@ -8,11 +8,11 @@ import { Category } from "../types/categoryTypes";
 import { Coworker } from "../types/coworkerTypes";
 import { Stack } from "../types/stackTypes";
 import { ImageFile } from "../types/imageTypes";
+import { MEDIA_BASE_PATH } from "../constants/mediaConstants";
+import { Media } from "../types/mediaTypes";
 
 // Repository pour les opérations liées aux projets dans la base de données
 export default class ProjectRepository {
-  private imageBasePath = "/assets/project/"; // Chemin de base pour les images des projets
-
   // Constructeur qui initialise le repository avec un pool de connexions à la base de données MariaDB
   constructor(private pool: mariadb.Pool) {}
 
@@ -24,7 +24,14 @@ export default class ProjectRepository {
     let conn;
     try {
       conn = await this.pool.getConnection();
-      const projects = await conn.query(`SELECT * FROM project`);
+      const projects = await conn.query(`
+        SELECT p.*,
+          thumbnail.path as thumbnail_path, thumbnail.type as thumbnail_type
+          client_logo.path as client_logo_path, client_logo.type as client_logo_type,
+        FROM project p
+        LEFT JOIN media thumbnail ON p.thumbnail_id = thumbnail.id
+        LEFT JOIN media client_logo ON p.client_logo_id = client_logo.id
+      `);
       for (const project of projects) {
         await this._hydrateProject(conn, project);
       }
@@ -45,7 +52,15 @@ export default class ProjectRepository {
     try {
       conn = await this.pool.getConnection();
       const projects = await conn.query(
-        `SELECT * FROM project WHERE ${key} = ?`,
+        `
+          SELECT p.*,
+          thumbnail.path as thumbnail_path, thumbnail.type as thumbnail_type,
+          client_logo.path as client_logo_path, client_logo.type as client_logo_type
+          FROM project p
+          LEFT JOIN media thumbnail ON p.thumbnail_id = thumbnail.id
+          LEFT JOIN media client_logo ON p.client_logo_id = client_logo.id
+          WHERE p.${key} = ?
+        `,
         [value],
       );
       if (projects.length === 0) return null;
@@ -82,7 +97,7 @@ export default class ProjectRepository {
         SELECT c.* FROM category c
         INNER JOIN project_category pc ON pc.category_id = c.id
         WHERE pc.project_id = ?
-    `,
+      `,
       [projectRow.id],
     );
     project.categories = categories;
@@ -121,27 +136,51 @@ export default class ProjectRepository {
     // Récupère les stacks liés au projet
     const stacks = await conn.query(
       `
-        SELECT s.id, s.label, s.icon, ps.version, ps.section
+        SELECT s.id, s.label, s.icon,
+          ps.version, ps.section,
+          m.id as m_id, m.path as m_path, m.type as m_type,
         FROM stack s
         INNER JOIN project_stack ps ON ps.stack_id = s.id
+        LEFT JOIN media m ON s.icon = m.id
         WHERE ps.project_id = ?
       `,
       [projectRow.id],
     );
     project.stacks = stacks.map(
-      (s: Stack & { section?: string; version?: string }) => ({
+      (
+        s: Stack & {
+          section?: string;
+          version?: string;
+          m_id?: string;
+          m_path?: string;
+          m_type?: string;
+        },
+      ) => ({
         id: s.id,
         label: s.label,
-        iconUrl: s.icon ? `/assets/stack/${s.icon}` : undefined,
+        icon:
+          s.m_id && s.m_type
+            ? {
+                id: s.m_id,
+                path: MEDIA_BASE_PATH + s.m_path,
+                type: s.m_type,
+              }
+            : undefined,
         version: s.version,
         section: s.section,
       }),
     );
 
-    // Construit l'URL de la miniature (thumbnail) si elle existe
-    if (projectRow.thumbnail) {
-      project.thumbnailUrl = `${this.imageBasePath}${projectRow.thumbnail}`;
-      delete project.thumbnail;
+    if (
+      projectRow.thumbnail_id &&
+      projectRow.thumbnail_path &&
+      projectRow.thumbnail_type
+    ) {
+      project.thumbnail = {
+        id: projectRow.thumbnail_id,
+        path: `${MEDIA_BASE_PATH}${projectRow.thumbnail_path}`,
+        type: projectRow.thumbnail_type,
+      };
     }
 
     // Construit l'objet website si les champs sont présents
@@ -153,31 +192,45 @@ export default class ProjectRepository {
     }
 
     // Construit l'objet mockup et ajoute les images mockup si elles existent
-    let imagesUrls: string[] | undefined = undefined;
-    const mockupImages = await conn.query(
-      `SELECT mockup FROM project_mockup WHERE project_id = ?`,
+    const mockupImagesResult = await conn.query(
+      `
+        SELECT m.*
+        FROM media m
+        INNER JOIN project_mockup pm ON pm.media_id = m.id
+        WHERE pm.project_id = ?
+      `,
       [projectRow.id],
     );
-    if (mockupImages.length) {
-      imagesUrls = mockupImages.map(
-        (m: { mockup: string }) => `${this.imageBasePath}${m.mockup}`,
-      );
+    let mockupImages: Media[] | undefined = undefined;
+    if (mockupImagesResult.length) {
+      mockupImages = mockupImagesResult.map((row: any) => ({
+        id: row.id,
+        path: `${MEDIA_BASE_PATH}${row.path}`,
+        type: row.type,
+      }));
     }
     if (projectRow.mockup_url && projectRow.mockup_label) {
       project.mockup = {
         url: projectRow.mockup_url,
         label: projectRow.mockup_label,
-        imagesUrls,
+        images: mockupImages,
       };
     }
 
     // Construit l'objet client si les champs sont présents
-    if (projectRow.client_label && projectRow.client_logo) {
+    if (projectRow.client_label) {
       project.client = {
         label: projectRow.client_label,
-        logoUrl: projectRow.client_logo
-          ? `${this.imageBasePath}${projectRow.client_logo}`
-          : undefined,
+        logo:
+          projectRow.client_logo_id &&
+          projectRow.client_logo_path &&
+          projectRow.client_logo_type
+            ? {
+                id: projectRow.client_logo_id,
+                path: `${MEDIA_BASE_PATH}${projectRow.client_logo_path}`,
+                type: projectRow.client_logo_type,
+              }
+            : undefined,
       };
     }
 
@@ -279,23 +332,6 @@ export default class ProjectRepository {
     let conn;
     try {
       conn = await this.pool.getConnection();
-      // Gère la miniature (thumbnail)
-      let thumbnailFileName = null;
-      if (project.thumbnailFile) {
-        thumbnailFileName = await saveImageFile(
-          project.thumbnailFile,
-          "project",
-          1920,
-        );
-      }
-      let clientLogoFileName = null;
-      if (project.client?.logoFile) {
-        clientLogoFileName = await saveImageFile(
-          project.client.logoFile,
-          "project",
-          300,
-        );
-      }
       // Insère le projet principal
       await conn.query(
         `INSERT INTO project (
@@ -304,13 +340,13 @@ export default class ProjectRepository {
         [
           id,
           project.label,
-          thumbnailFileName,
+          project.thumbnail || null,
           project.website?.url || null,
           project.website?.label || null,
           project.mockup?.url || null,
           project.mockup?.label || null,
           project.client?.label || null,
-          clientLogoFileName || null,
+          project.client?.logo || null,
           project.manager?.name || null,
           project.manager?.email || null,
           project.startDate ? new Date(project.startDate) : null,
@@ -338,32 +374,19 @@ export default class ProjectRepository {
         ],
       );
 
-      // Insère les catégories liées
-      if (project.categories && project.categories.length) {
-        const existing = (
+      // Insère les images mockups liées
+      if (project.mockup?.images && project.mockup.images.length) {
+        for (const mediaId of project.mockup?.images) {
           await conn.query(
-            `SELECT category_id FROM project_category WHERE project_id = ?`,
-            [id],
-          )
-        ).map((r: { category_id: string }) => r.category_id);
-        const toAdd = project.categories.filter(
-          (c: string | Category) =>
-            !existing.includes(typeof c === "string" ? c : c.id),
-        );
-        const toRemove = existing.filter(
-          (c: string) =>
-            !project.categories?.some(
-              (category: string | Category) =>
-                (typeof category === "string" ? category : category.id) === c,
-            ),
-        );
-        for (const categoryId of toRemove) {
-          await conn.query(
-            `DELETE FROM project_category WHERE project_id = ? AND category_id = ?`,
-            [id, categoryId],
+            `INSERT INTO project_mockup (project_id, media_id) VALUES (?, ?)`,
+            [id, mediaId],
           );
         }
-        for (const categoryId of toAdd) {
+      }
+
+      // Insère les catégories liées
+      if (project.categories && project.categories.length) {
+        for (const categoryId of project.categories) {
           await conn.query(
             `INSERT INTO project_category (project_id, category_id) VALUES (?, ?)`,
             [id, categoryId],
@@ -373,30 +396,7 @@ export default class ProjectRepository {
 
       // Insère les rôles liés
       if (project.roles && project.roles.length) {
-        const existing = (
-          await conn.query(
-            `SELECT role_id FROM project_role WHERE project_id = ?`,
-            [id],
-          )
-        ).map((r: { role_id: string }) => r.role_id);
-        const toAdd = project.roles.filter(
-          (r: string | Role) =>
-            !existing.includes(typeof r === "string" ? r : r.id),
-        );
-        const toRemove = existing.filter(
-          (r: string) =>
-            !project.roles?.some(
-              (role: string | Role) =>
-                (typeof role === "string" ? role : role.id) === r,
-            ),
-        );
-        for (const roleId of toRemove) {
-          await conn.query(
-            `DELETE FROM project_role WHERE project_id = ? AND role_id = ?`,
-            [id, roleId],
-          );
-        }
-        for (const roleId of toAdd) {
+        for (const roleId of project.roles) {
           await conn.query(
             `INSERT INTO project_role (project_id, role_id) VALUES (?, ?)`,
             [id, roleId],
@@ -406,132 +406,24 @@ export default class ProjectRepository {
 
       // Insère les coworkers liés
       if (project.coworkers && project.coworkers.length) {
-        // On considère la clé unique (coworker_id, role_id)
-        const existing = await conn.query(
-          `SELECT coworker_id, role_id FROM project_coworker WHERE project_id = ?`,
-          [id],
-        );
-        const inputPairs = project.coworkers.flatMap((cw: Coworker) =>
-          (cw.roles || []).map((role: string | Role) => ({
-            coworker_id: cw.id,
-            role_id: typeof role === "string" ? role : role.id,
-          })),
-        );
-        const toAdd = inputPairs.filter(
-          (p: { coworker_id: string; role_id: string }) =>
-            !existing.some(
-              (e: { coworker_id: string; role_id: string }) =>
-                e.coworker_id === p.coworker_id && e.role_id === p.role_id,
-            ),
-        );
-        const toRemove = existing.filter(
-          (e: { coworker_id: string; role_id: string }) =>
-            !inputPairs.some(
-              (p: { coworker_id: string; role_id: string }) =>
-                p.coworker_id === e.coworker_id && p.role_id === e.role_id,
-            ),
-        );
-        for (const { coworker_id, role_id } of toRemove) {
-          await conn.query(
-            `DELETE FROM project_coworker WHERE project_id = ? AND coworker_id = ? AND role_id = ?`,
-            [id, coworker_id, role_id],
-          );
-        }
-        for (const { coworker_id, role_id } of toAdd) {
-          await conn.query(
-            `INSERT INTO project_coworker (project_id, coworker_id, role_id) VALUES (?, ?, ?)`,
-            [id, coworker_id, role_id],
-          );
+        for (const { id: coworker_id, roles } of project.coworkers) {
+          if (!roles || roles.length === 0) continue;
+          for (const role of roles) {
+            const role_id = typeof role === "string" ? role : role.id;
+            await conn.query(
+              `INSERT INTO project_coworker (project_id, coworker_id, role_id) VALUES (?, ?, ?)`,
+              [id, coworker_id, role_id],
+            );
+          }
         }
       }
 
       // Insère les stacks liés
       if (project.stacks && project.stacks.length) {
-        const existing = await conn.query(
-          `SELECT stack_id, version, section FROM project_stack WHERE project_id = ?`,
-          [id],
-        );
-        const inputStacks = project.stacks.map(
-          (
-            s: Partial<Stack> & {
-              section?: string | null;
-              version?: string | null;
-            },
-          ) => ({
-            stack_id: s.id,
-            version: s.version ?? null,
-            section: s.section ?? null,
-          }),
-        );
-        const toAdd = inputStacks.filter(
-          (s) =>
-            !existing.some(
-              (e: {
-                stack_id: string | undefined;
-                version: string | null;
-                section: string | null;
-              }) =>
-                e.stack_id === s.stack_id &&
-                e.version === s.version &&
-                e.section === s.section,
-            ),
-        );
-        const toRemove = existing.filter(
-          (e: {
-            stack_id: string | undefined;
-            version: string | null;
-            section: string | null;
-          }) =>
-            !inputStacks.some(
-              (s) =>
-                e.stack_id === s.stack_id &&
-                e.version === s.version &&
-                e.section === s.section,
-            ),
-        );
-        for (const { stack_id, version, section } of toRemove) {
-          await conn.query(
-            `DELETE FROM project_stack WHERE project_id = ? AND stack_id = ? AND version <=> ? AND section <=> ?`,
-            [id, stack_id, version, section],
-          );
-        }
-        for (const { stack_id, version, section } of toAdd) {
+        for (const { id: stack_id, version, section } of project.stacks) {
           await conn.query(
             `INSERT INTO project_stack (project_id, stack_id, version, section) VALUES (?, ?, ?, ?)`,
             [id, stack_id, version, section],
-          );
-        }
-      }
-
-      // Insère les images mockup (enregistrement physique sur le disque)
-      if (project.mockup?.imagesFiles && project.mockup.imagesFiles.length) {
-        const existing = (
-          await conn.query(
-            `SELECT mockup FROM project_mockup WHERE project_id = ?`,
-            [id],
-          )
-        ).map((r: { mockup: string }) => r.mockup);
-        const inputFiles = await Promise.all(
-          project.mockup.imagesFiles.map(async (img: string | ImageFile) =>
-            typeof img === "string"
-              ? img
-              : await saveImageFile(img, "project_mockup", 1920),
-          ),
-        );
-        const toAdd = inputFiles.filter((f: string) => !existing.includes(f));
-        const toRemove = existing.filter(
-          (f: string) => !inputFiles.includes(f),
-        );
-        for (const fileName of toRemove) {
-          await conn.query(
-            `DELETE FROM project_mockup WHERE project_id = ? AND mockup = ?`,
-            [id, fileName],
-          );
-        }
-        for (const fileName of toAdd) {
-          await conn.query(
-            `INSERT INTO project_mockup (project_id, mockup) VALUES (?, ?)`,
-            [id, fileName],
           );
         }
       }
@@ -559,13 +451,13 @@ export default class ProjectRepository {
       const values: any[] = [];
       const map: Record<string, any> = {
         label: project.label,
-        thumbnail: project.thumbnailFile,
+        thumbnail: project.thumbnail,
         website_url: project.website?.url,
         website_label: project.website?.label,
         mockup_url: project.mockup?.url,
         mockup_label: project.mockup?.label,
         client_label: project.client?.label,
-        client_logo: project.client?.logoFile,
+        client_logo: project.client?.logo,
         manager_name: project.manager?.name,
         manager_email: project.manager?.email,
         start_date: project.startDate ? new Date(project.startDate) : undefined,
@@ -597,36 +489,6 @@ export default class ProjectRepository {
           values.push(val);
         }
       }
-      if (fields.length) {
-        // Gère la miniature (thumbnail)
-        if (project.thumbnailFile) {
-          const thumbnailFileName = await saveImageFile(
-            project.thumbnailFile,
-            "project",
-            1920,
-          );
-          const idx = fields.indexOf("thumbnail = ?");
-          if (idx !== -1) values[idx] = thumbnailFileName;
-        }
-        await conn.query(
-          `UPDATE project SET ${fields.join(", ")} WHERE id = ?`,
-          [...values, id],
-        );
-
-        // Gère le logo client
-        if (project.client?.logoFile) {
-          const clientLogoFileName = await saveImageFile(
-            project.client.logoFile,
-            "project",
-            300,
-          );
-          await conn.query(`UPDATE project SET client_logo = ? WHERE id = ?`, [
-            clientLogoFileName,
-            id,
-          ]);
-        }
-      }
-
       // Met à jour les catégories liées
       if (project.categories) {
         const existing = (
@@ -795,35 +657,35 @@ export default class ProjectRepository {
         }
       }
 
-      // Met à jour les images mockup (enregistrement physique sur le disque)
-      if (project.mockup?.imagesFiles) {
+      // Met à jour les images mockup
+      if (project.mockup?.images) {
         const existing = (
           await conn.query(
-            `SELECT mockup FROM project_mockup WHERE project_id = ?`,
+            `SELECT media_id FROM project_mockup WHERE project_id = ?`,
             [id],
           )
-        ).map((r: any) => r.mockup);
-        const inputFiles = await Promise.all(
-          project.mockup.imagesFiles.map(async (img: string | ImageFile) =>
-            typeof img === "string"
-              ? img
-              : await saveImageFile(img, "project_mockup", 1920),
-          ),
+        ).map((r: { media_id: string }) => r.media_id);
+        const toAdd = project.mockup.images.filter(
+          (m: string | Media) =>
+            !existing.includes(typeof m === "string" ? m : m.id),
         );
-        const toAdd = inputFiles.filter((f: string) => !existing.includes(f));
         const toRemove = existing.filter(
-          (f: string) => !inputFiles.includes(f),
+          (m: string) =>
+            !project.mockup?.images?.some(
+              (image: string | Media) =>
+                (typeof image === "string" ? image : image.id) === m,
+            ),
         );
-        for (const fileName of toRemove) {
+        for (const mediaId of toRemove) {
           await conn.query(
-            `DELETE FROM project_mockup WHERE project_id = ? AND mockup = ?`,
-            [id, fileName],
+            `DELETE FROM project_mockup WHERE project_id = ? AND media_id = ?`,
+            [id, mediaId],
           );
         }
-        for (const fileName of toAdd) {
+        for (const mediaId of toAdd) {
           await conn.query(
-            `INSERT INTO project_mockup (project_id, mockup) VALUES (?, ?)`,
-            [id, fileName],
+            `INSERT INTO project_mockup (project_id, media_id) VALUES (?, ?)`,
+            [id, mediaId],
           );
         }
       }
@@ -840,42 +702,6 @@ export default class ProjectRepository {
     let conn;
     try {
       conn = await this.pool.getConnection();
-      // Supprime la miniature (thumbnail) si elle existe
-      const projectRows = await conn.query(
-        `SELECT thumbnail FROM project WHERE id = ?`,
-        [id],
-      );
-      if (projectRows.length && projectRows[0].thumbnail) {
-        const thumbnailPath = path.join(
-          process.cwd(),
-          "public",
-          "assets",
-          "project",
-          projectRows[0].thumbnail,
-        );
-        try {
-          await (await import("fs")).promises.unlink(thumbnailPath);
-        } catch (e) {}
-      }
-
-      // Supprime les images mockup liées
-      const mockupRows = await conn.query(
-        `SELECT mockup FROM project_mockup WHERE project_id = ?`,
-        [id],
-      );
-      for (const row of mockupRows) {
-        const mockupPath = path.join(
-          process.cwd(),
-          "public",
-          "assets",
-          "project_mockup",
-          row.mockup,
-        );
-        try {
-          await (await import("fs")).promises.unlink(mockupPath);
-        } catch (e) {}
-      }
-
       await conn.query(`DELETE FROM project WHERE id = ?`, [id]);
     } finally {
       if (conn) conn.release();
