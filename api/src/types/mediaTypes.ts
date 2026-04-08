@@ -8,6 +8,7 @@ export type ImageFile = {
 
 export interface Media {
   id: string;
+  label?: string;
   path: string;
   type: string;
   file?: ImageFile;

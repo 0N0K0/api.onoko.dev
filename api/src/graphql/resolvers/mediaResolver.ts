@@ -14,7 +14,7 @@ const mediaResolver = {
   medias: async (
     _args: any,
     context: { mediaRepo: MediaRepository },
-  ): Promise<Category[] | null | undefined> => {
+  ): Promise<Media[] | null | undefined> => {
     return await context.mediaRepo.getAll();
   },
 
@@ -34,22 +34,20 @@ const mediaResolver = {
 
   /**
    * Ajoute un nouveau média
-   * Vérifie que le fichier et la catégorie sont fournis et valides, puis appelle la méthode add du repository des médias pour ajouter un nouveau média à la base de données.
+   * Vérifie que le fichier est fourni et valide, puis appelle la méthode add du repository des médias pour ajouter un nouveau média à la base de données.
    * Après l'ajout, récupère et retourne le média ajouté.
-   * @param {Object} _args Les arguments de la mutation, contenant le fichier à ajouter et l'ID de la catégorie associée.
+   * @param {Object} _args Les arguments de la mutation, contenant le fichier à ajouter.
    * @param {Object} context Le contexte de la requête, contenant le repository des médias.
    * @returns {Promise<Media | null>} Le média ajouté, ou null si le média ne peut pas être trouvé après l'ajout.
-   * @throws {Error} Une erreur si le fichier ou la catégorie est manquante ou invalide.
+   * @throws {Error} Une erreur si le fichier est manquant ou invalide.
    */
   addMedia: async (
     _args: { file: any; category: string },
     context: { mediaRepo: MediaRepository },
   ): Promise<Media | null> => {
-    const { file, category } = _args;
+    const { file } = _args;
     if (!file) throw new Error("File is required");
-    if (!category) throw new Error("Category is required");
-    if (!isValidUUID(category)) throw new Error("Invalid category ID");
-    const id = await context.mediaRepo.add({ file, category });
+    const id = await context.mediaRepo.add({ file });
     return await context.mediaRepo.get(id);
   },
 

@@ -1,6 +1,7 @@
 export const mediaTypes = `
     type Media {
         id: ID!
+        label: String
         path: String!
         type: String!
         category: Category
@@ -8,12 +9,12 @@ export const mediaTypes = `
 `;
 
 export const mediaQueries = `
-    medias: [Category!]!
+    medias: [Media!]!
     media(id: ID!): Media
 `;
 
 export const mediaMutations = `
-    addMedia(file: Upload!, category: ID!): Media!
-    updateMedia(id: ID!, category: ID!): Media!
+    addMedia(file: Upload!): Media!
+    updateMedia(id: ID!, label: String, category: ID): Media!
     removeMedia(id: ID!): Boolean!
 `;

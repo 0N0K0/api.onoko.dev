@@ -26,30 +26,35 @@ async function main() {
 
   const app = express();
 
-  // Sécurité HTTP : headers sécurisés
-  app.use(helmet());
+  // Sécurité HTTP : headers sécurisés (dev friendly)
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: false, // Permet le chargement des médias depuis le front
+      contentSecurityPolicy: false, // Désactive CSP strict pour le dev front
+    }),
+  );
 
-  // Limitation du nombre de requêtes (anti-bruteforce)
+  // Limitation du nombre de requêtes (anti-bruteforce) : large fenêtre pour le dev
   const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limite chaque IP à 100 requêtes par fenêtre
+    windowMs: 2 * 60 * 60 * 1000, // 2 heures
+    max: 1000, // Large tolérance pour le dev
     standardHeaders: true,
     legacyHeaders: false,
   });
   app.use(limiter);
   app.use(express.json({ limit: "256mb" }));
 
-  app.use(
-    "/assets/stack",
-    express.static(path.join(process.cwd(), "public", "stack")),
-  );
-  app.use(
-    "/assets/project",
-    express.static(path.join(process.cwd(), "public", "project")),
-  );
-
+  // Toujours placer CORS AVANT les routes qui en ont besoin
   app.use(corsDynamicOrigin);
+  app.options("/graphql", corsDynamicOrigin);
 
+  // Route statique médias
+  app.use(
+    "/medias",
+    express.static(path.join(process.cwd(), "public", "medias")),
+  );
+
+  // Route GraphQL
   app.use(
     "/graphql",
     graphqlHTTP((req) => {

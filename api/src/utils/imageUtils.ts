@@ -49,11 +49,11 @@ export async function saveImageFile(iconFile: {
     };
     for (const width in widths) {
       const resizedPath = path.join(publicDir, `${baseName}_${width}.webp`);
+      console.log(metadata);
       if (metadata.width && metadata.width > widths[width]) {
         await image.resize(widths[width]).webp().toFile(resizedPath);
       } else {
         await image.webp().toFile(resizedPath);
-        break;
       }
     }
   }
