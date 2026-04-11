@@ -25,11 +25,12 @@ export class StackRepository {
     try {
       conn = await this.pool.getConnection();
       const rows = await conn.query(`
-        SELECT s.*, v.version, ss.skill, c.id as c_id, c.label as c_label
+        SELECT s.*, v.version, ss.skill, c.id as c_id, c.label as c_label, m.id as m_id, m.label as m_label, m.path as m_path, m.type as m_type
         FROM stack s
         LEFT JOIN stack_version v ON v.stack_id = s.id
         LEFT JOIN stack_skill ss ON ss.stack_id = s.id
         LEFT JOIN category c ON s.category_id = c.id
+        LEFT JOIN medias m ON s.icon_id = m.id
         ORDER BY c.label, s.label
       `);
       const stackMap = new Map();
@@ -38,7 +39,14 @@ export class StackRepository {
           stackMap.set(row.id, {
             id: row.id,
             label: row.label,
-            iconUrl: row.icon ? `${MEDIA_BASE_PATH}${row.icon}` : undefined,
+            icon: row.m_id
+              ? {
+                  id: row.m_id,
+                  label: row.m_label,
+                  path: row.m_path,
+                  type: row.m_type,
+                }
+              : undefined,
             description: row.description,
             versions: [],
             skills: [],
@@ -101,6 +109,7 @@ export class StackRepository {
         c_id?: string;
         c_label?: string;
         m_id?: string;
+        m_label?: string;
         m_path?: string;
         m_type?: string;
       })[] = [];
@@ -113,7 +122,7 @@ export class StackRepository {
             LEFT JOIN stack_version v ON v.stack_id = s.id
             LEFT JOIN stack_skill ss ON ss.stack_id = s.id
             LEFT JOIN category c ON s.category_id = c.id
-            LEFT JOIN media m ON s.icon_id = m.id
+            LEFT JOIN medias m ON s.icon_id = m.id
             WHERE s.category_id IN (${placeholders})
           `,
           categoryIds,
@@ -130,6 +139,7 @@ export class StackRepository {
               row.m_id && row.m_type
                 ? {
                     id: row.m_id,
+                    label: row.m_label,
                     path: MEDIA_BASE_PATH + row.m_path,
                     type: row.m_type,
                   }

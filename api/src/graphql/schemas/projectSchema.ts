@@ -72,7 +72,7 @@ export const projectTypes = `
     type ProjectStack {
         id: ID!
         label: String!
-        iconUrl: String
+        icon: Media
         version: String
         category: Category
         section: String

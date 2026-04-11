@@ -106,9 +106,9 @@ export class MediaRepository {
         fields.push("label = ?");
         values.push(media.label);
       }
-      if (media.category) {
+      if (media.category !== undefined) {
         fields.push("category = ?");
-        values.push(media.category as string);
+        values.push(media.category ? media.category : null);
       }
       if (fields.length > 0) {
         values.push(media.id);
