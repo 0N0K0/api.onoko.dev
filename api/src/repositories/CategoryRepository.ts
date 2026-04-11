@@ -71,7 +71,7 @@ export default class CategoryRepository {
    * @returns {Promise<string>} L'ID de la catégorie nouvellement créée dans la base de données.
    */
   async create(category: Omit<Category, "id">): Promise<string> {
-    const id = crypto.randomBytes(16).toString("hex");
+    const id = crypto.randomUUID();
 
     let conn;
 

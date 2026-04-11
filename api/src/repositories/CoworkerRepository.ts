@@ -115,7 +115,7 @@ export default class CoworkerRepository {
    * @returns {Promise<string>} L'ID du collaborateur nouvellement créé dans la base de données.
    */
   async create(coworker: Omit<Coworker, "id">): Promise<string> {
-    const id = crypto.randomBytes(16).toString("hex");
+    const id = crypto.randomUUID();
     let conn;
     try {
       conn = await this.pool.getConnection();

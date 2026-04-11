@@ -53,14 +53,17 @@ const categoryResolver = {
     if (!context.user) throw new Error("Unauthorized");
     const input = { ..._args };
     if (isEmpty(input.label)) throw new Error("Label is required");
-
     input.label = sanitizeString(input.label);
-    if (input.entity && !isValidUUID(input.entity)) delete input.entity;
+
     if (!input.entity || isEmpty(input.entity))
       throw new Error("Entity is required");
+    input.entity = sanitizeString(input.entity);
+
     if (input.description)
       input.description = sanitizeString(input.description);
+
     if (input.parent && !isValidUUID(input.parent)) delete input.parent;
+
     const id = await context.categoryRepo.create(input);
     const result = await context.categoryRepo.get("id", id);
     if (!result || !result[0]) throw new Error("Category not found");
@@ -81,10 +84,11 @@ const categoryResolver = {
     context: { user: jwt.JwtPayload | null; categoryRepo: CategoryRepository },
   ): Promise<Category> => {
     if (!context.user) throw new Error("Unauthorized");
-    if (!_args.id) throw new Error("ID is required for update");
+    if (!_args.id) throw new Error("ID is required");
+    if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
     const input = { ..._args };
     if (input.label) input.label = sanitizeString(input.label);
-    if (input.entity && !isValidUUID(input.entity)) delete input.entity;
+    if (input.entity) input.entity = sanitizeString(input.entity);
     if (input.description)
       input.description = sanitizeString(input.description);
     if (input.parent && !isValidUUID(input.parent)) delete input.parent;
@@ -107,6 +111,8 @@ const categoryResolver = {
     context: { user: jwt.JwtPayload | null; categoryRepo: CategoryRepository },
   ): Promise<boolean> => {
     if (!context.user) throw new Error("Unauthorized");
+    if (!_args.id) throw new Error("ID is required");
+    if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
     await context.categoryRepo.delete(_args.id);
     return true;
   },

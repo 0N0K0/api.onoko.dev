@@ -53,7 +53,7 @@ export default class RoleRepository {
    * @returns {Promise<string>} L'ID du rôle nouvellement créé dans la base de données.
    */
   async create(role: Omit<Role, "id">): Promise<string> {
-    const id = crypto.randomBytes(16).toString("hex");
+    const id = crypto.randomUUID();
 
     let conn;
 

@@ -106,6 +106,7 @@ const stackResolver = {
   ): Promise<Stack | null> => {
     if (!context.user) throw new Error("Unauthorized");
     if (!_args.id) throw new Error("ID is required for update");
+    if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
     const input = { ..._args };
     if (input.id) input.id = sanitizeString(input.id);
     if (input.label) input.label = sanitizeString(input.label);
@@ -139,6 +140,8 @@ const stackResolver = {
     context: { user: jwt.JwtPayload | null; stackRepo: StackRepository },
   ): Promise<boolean> => {
     if (!context.user) throw new Error("Unauthorized");
+    if (!_args.id) throw new Error("ID is required");
+    if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
     await context.stackRepo.delete(_args.id);
     return true;
   },

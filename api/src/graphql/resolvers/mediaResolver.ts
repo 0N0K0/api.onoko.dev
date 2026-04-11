@@ -1,7 +1,7 @@
 import { MediaRepository } from "../../repositories/MediaRepository";
 import { Category } from "../../types/categoryTypes";
 import { Media } from "../../types/mediaTypes";
-import { isValidUUID } from "../../utils/validationUtils";
+import { isValidUUID, sanitizeString } from "../../utils/validationUtils";
 
 const mediaResolver = {
   /**
@@ -61,15 +61,17 @@ const mediaResolver = {
    * @throws {Error} Une erreur si l'ID du média ou la nouvelle catégorie est manquante ou invalide.
    */
   updateMedia: async (
-    _args: { id: string; category: string },
+    _args: { id: string; label?: string; category?: string },
     context: { mediaRepo: MediaRepository },
   ): Promise<Media | null> => {
-    const { id, category } = _args;
+    const { id, label, category } = _args;
     if (!id) throw new Error("ID is required");
-    if (!category) throw new Error("Category is required");
-    if (!isValidUUID(id)) throw new Error("Invalid media ID");
-    if (!isValidUUID(category)) throw new Error("Invalid category ID");
-    await context.mediaRepo.update({ id, category });
+    if (!isValidUUID(id)) throw new Error("Invalid ID");
+    let sanitizedLabel: string | undefined;
+    if (label) sanitizedLabel = sanitizeString(label);
+    if (category && !isValidUUID(category))
+      throw new Error("Invalid category ID");
+    await context.mediaRepo.update({ id, label: sanitizedLabel, category });
     return await context.mediaRepo.get(id);
   },
 
@@ -87,7 +89,7 @@ const mediaResolver = {
   ): Promise<boolean> => {
     const { id } = _args;
     if (!id) throw new Error("ID is required");
-    if (!isValidUUID(id)) throw new Error("Invalid media ID");
+    if (!isValidUUID(id)) throw new Error("Invalid ID");
     await context.mediaRepo.remove(id);
     return true;
   },

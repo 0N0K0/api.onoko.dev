@@ -194,6 +194,9 @@ const projectResolver = {
     context: { user: jwt.JwtPayload | null; projectRepo: ProjectRepository },
   ): Promise<Project | null> => {
     if (!context.user) throw new Error("Unauthorized");
+    if (!_args.id) throw new Error("ID is required");
+    if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
+
     const input = { ..._args.input };
     if (input.label) input.label = sanitizeString(input.label);
     if (input.thumbnail && !isValidUUID(input.thumbnail as string))
@@ -335,6 +338,8 @@ const projectResolver = {
     context: { user: jwt.JwtPayload | null; projectRepo: ProjectRepository },
   ): Promise<boolean> => {
     if (!context.user) throw new Error("Unauthorized");
+    if (!_args.id) throw new Error("ID is required");
+    if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
     await context.projectRepo.delete(_args.id);
     return true;
   },

@@ -1,7 +1,11 @@
 import RoleRepository from "../../repositories/RoleRepository";
 import { Role } from "../../types/roleTypes";
 import jwt from "jsonwebtoken";
-import { sanitizeString, isEmpty } from "../../utils/validationUtils";
+import {
+  sanitizeString,
+  isEmpty,
+  isValidUUID,
+} from "../../utils/validationUtils";
 
 // Résolveur GraphQL pour les opérations liées aux rôles
 const roleResolver = {
@@ -68,7 +72,8 @@ const roleResolver = {
     context: { user: jwt.JwtPayload | null; roleRepo: RoleRepository },
   ): Promise<Role | null> => {
     if (!context.user) throw new Error("Unauthorized");
-    if (!_args.id) throw new Error("ID is required for update");
+    if (!_args.id) throw new Error("ID is required");
+    if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
     const input = { ..._args };
     if (input.label) input.label = sanitizeString(input.label);
     await context.roleRepo.update(input);
@@ -88,6 +93,8 @@ const roleResolver = {
     context: { user: jwt.JwtPayload | null; roleRepo: RoleRepository },
   ): Promise<boolean> => {
     if (!context.user) throw new Error("Unauthorized");
+    if (!_args.id) throw new Error("ID is required");
+    if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
     await context.roleRepo.delete(_args.id);
     return true;
   },

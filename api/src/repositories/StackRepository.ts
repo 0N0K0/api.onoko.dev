@@ -269,7 +269,7 @@ export class StackRepository {
       iconFile: ImageFile;
     },
   ): Promise<string> {
-    const id = crypto.randomBytes(16).toString("hex");
+    const id = crypto.randomUUID();
 
     let conn;
     try {
@@ -492,7 +492,7 @@ export class StackRepository {
    * @throws {Error} Une erreur si l'opération échoue pour une raison quelconque.
    */
   private async addSkill(stackId: string, skill: string): Promise<void> {
-    const id = crypto.randomBytes(16).toString("hex");
+    const id = crypto.randomUUID();
     let conn;
     try {
       conn = await this.pool.getConnection();

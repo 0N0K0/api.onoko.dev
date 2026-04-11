@@ -4,7 +4,7 @@ import { Category } from "../types/categoryTypes";
 import { saveImageFile } from "../utils/imageUtils";
 import crypto from "crypto";
 import { promises as fs } from "fs";
-import path from "path/win32";
+import path from "path";
 import { MEDIA_BASE_PATH } from "../constants/mediaConstants";
 
 export class MediaRepository {
@@ -18,12 +18,14 @@ export class MediaRepository {
             SELECT m.*, c.id AS category_id, c.label AS category_label
             FROM medias m
             LEFT JOIN category c ON m.category = c.id
+            ORDER BY m.label ASC
         `,
       );
       if (rows.length === 0) return [];
       return rows.map(
         (row: Media & { category_id?: string; category_label?: string }) => ({
           id: row.id,
+          label: row.label,
           path: MEDIA_BASE_PATH + row.path,
           type: row.type,
           category: row.category_id
@@ -54,6 +56,7 @@ export class MediaRepository {
       if (row.length === 0) return null;
       return {
         id: row[0].id,
+        label: row[0].label,
         path: MEDIA_BASE_PATH + row[0].path,
         type: row[0].type,
         category: row[0].category_id
@@ -74,7 +77,7 @@ export class MediaRepository {
     const conn = await this.pool.getConnection();
     try {
       if (!media.file) throw new Error("File is required to add media");
-      const id = crypto.randomBytes(16).toString("hex");
+      const id = crypto.randomUUID();
       const label = media.file.originalname;
       const path = await saveImageFile(media.file);
       await conn.query(
@@ -93,6 +96,7 @@ export class MediaRepository {
   }
 
   async update(media: Partial<Media>): Promise<void> {
+    console.log(media);
     if (!media.id) throw new Error("ID is required to update media");
     const conn = await this.pool.getConnection();
     try {
@@ -104,14 +108,17 @@ export class MediaRepository {
       }
       if (media.category) {
         fields.push("category = ?");
-        values.push((media.category as Category).id);
+        values.push(media.category as string);
       }
       if (fields.length > 0) {
         values.push(media.id);
+        console.log(fields, values);
         await conn.query(
           `UPDATE medias SET ${fields.join(", ")} WHERE id = ?`,
           values,
         );
+      } else {
+        throw new Error("No fields to update");
       }
     } finally {
       conn.release();
@@ -126,7 +133,7 @@ export class MediaRepository {
       ]);
       if (result.length > 0) {
         const baseName = result[0].path.replace(/\.[^/.]+$/, "");
-        const publicDir = path.join(process.cwd(), "public");
+        const publicDir = path.join(process.cwd(), "public", "medias");
         const files = await fs.readdir(publicDir);
         const toDelete = files.filter((f) => f.includes(baseName));
         for (const file of toDelete) {

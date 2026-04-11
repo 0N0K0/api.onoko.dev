@@ -1,7 +1,11 @@
 import CoworkerRepository from "../../repositories/CoworkerRepository";
 import { Coworker } from "../../types/coworkerTypes";
 import jwt from "jsonwebtoken";
-import { sanitizeString, isEmpty } from "../../utils/validationUtils";
+import {
+  sanitizeString,
+  isEmpty,
+  isValidUUID,
+} from "../../utils/validationUtils";
 
 // Résolveur GraphQL pour les opérations liées aux coworkers
 const coworkerResolver = {
@@ -68,7 +72,8 @@ const coworkerResolver = {
     context: { user: jwt.JwtPayload | null; coworkerRepo: CoworkerRepository },
   ): Promise<Coworker | null> => {
     if (!context.user) throw new Error("Unauthorized");
-    if (!_args.id) throw new Error("ID is required for update");
+    if (!_args.id) throw new Error("ID is required");
+    if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
     const input = { ..._args };
     if (input.name) input.name = sanitizeString(input.name);
     await context.coworkerRepo.update(input);
@@ -88,6 +93,8 @@ const coworkerResolver = {
     context: { user: jwt.JwtPayload | null; coworkerRepo: CoworkerRepository },
   ): Promise<boolean> => {
     if (!context.user) throw new Error("Unauthorized");
+    if (!_args.id) throw new Error("ID is required");
+    if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
     await context.coworkerRepo.delete(_args.id);
     return true;
   },
