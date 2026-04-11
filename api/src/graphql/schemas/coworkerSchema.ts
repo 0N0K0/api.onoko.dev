@@ -3,7 +3,7 @@ export const coworkerTypes = `
   type Coworker {
     id: ID!
     name: String!
-    roles: [Role!]
+    roles: [ID!]
   }
 `;
 

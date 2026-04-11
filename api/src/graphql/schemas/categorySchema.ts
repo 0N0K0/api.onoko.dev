@@ -1,14 +1,11 @@
 // Types GraphQL pour les catégories
 export const categoryTypes = `
-  union CategoryEntity = Stack | Media | Project
-
   type Category {
     id: ID!
     label: String!
     entity: String
     description: String
     parent: String
-    entities: [CategoryEntity!]
     depth: Int
   }
 `;

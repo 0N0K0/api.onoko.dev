@@ -3,8 +3,8 @@ export const projectTypes = `
     type Project {
         id: ID!
         label: String!
-        thumbnail: Media
-        categories: [Category!]
+        thumbnail: ID
+        categories: [ID!]
         website: Website
         mockup: Mockup
         client: Client
@@ -15,8 +15,8 @@ export const projectTypes = `
         presentation: Presentation
         need: Need
         organization: Organization
-        roles: [Role!]
-        coworkers: [Coworker!]
+        roles: [ID!]
+        coworkers: [ID!]
         stacks: [ProjectStack!]
         kpis: KPIs
         feedback: Feedback
@@ -30,12 +30,12 @@ export const projectTypes = `
     type Mockup {
         url: String!
         label: String!
-        images: [Media!]
+        images: [ID!]
     }
 
     type Client {
         label: String!
-        logo: Media
+        logo: ID
     }
 
     type Manager {
@@ -71,10 +71,7 @@ export const projectTypes = `
 
     type ProjectStack {
         id: ID!
-        label: String!
-        icon: Media
         version: String
-        category: Category
         section: String
     }
 

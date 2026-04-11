@@ -24,20 +24,6 @@ const coworkerResolver = {
   },
 
   /**
-   * Récupère un coworker par ID ou nom
-   * Appelle la méthode get du repository des coworkers pour récupérer un coworker spécifique en fonction de l'ID ou du nom.
-   * @param {Object} _args Les arguments de la requête, contenant la clé (id ou name) et la valeur correspondante.
-   * @param {Object} context Le contexte de la requête, contenant le repository des coworkers.
-   * @returns {Promise<Coworker | null>} Le coworker correspondant à la requête, ou null si aucun coworker n'est trouvé.
-   */
-  coworker: async (
-    _args: { key: "id" | "name"; value: string },
-    context: { coworkerRepo: CoworkerRepository },
-  ): Promise<Coworker | null> => {
-    return await context.coworkerRepo.get(_args.key, _args.value);
-  },
-
-  /**
    * Crée un nouveau coworker
    * Vérifie que l'utilisateur est authentifié, puis appelle la méthode create du repository des coworkers pour créer un nouveau coworker dans la base de données.
    * Après la création, récupère et retourne le coworker créé.
@@ -55,7 +41,7 @@ const coworkerResolver = {
     if (isEmpty(input.name)) throw new Error("Name is required");
     input.name = sanitizeString(input.name);
     const id = await context.coworkerRepo.create(input);
-    return await context.coworkerRepo.get("id", id);
+    return await context.coworkerRepo.get(id);
   },
 
   /**
@@ -77,7 +63,7 @@ const coworkerResolver = {
     const input = { ..._args };
     if (input.name) input.name = sanitizeString(input.name);
     await context.coworkerRepo.update(input);
-    return await context.coworkerRepo.get("id", _args.id);
+    return await context.coworkerRepo.get(_args.id);
   },
 
   /**

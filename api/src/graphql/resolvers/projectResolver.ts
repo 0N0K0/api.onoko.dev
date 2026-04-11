@@ -24,20 +24,6 @@ const projectResolver = {
   },
 
   /**
-   * Récupère un projet par ID ou label
-   * Appelle la méthode get du repository des projets pour récupérer un projet spécifique en fonction de l'ID ou du label.
-   * @param {Object} _args Les arguments de la requête, contenant la clé (id ou label) et la valeur correspondante.
-   * @param {Object} context Le contexte de la requête, contenant le repository des projets.
-   * @returns {Promise<Project | null>} Le projet correspondant à la requête, ou null si aucun projet n'est trouvé.
-   */
-  project: async (
-    _args: { key: "id" | "label"; value: string },
-    context: { projectRepo: ProjectRepository },
-  ): Promise<Project | null> => {
-    return await context.projectRepo.get(_args.key, _args.value);
-  },
-
-  /**
    * Crée un nouveau projet
    * Vérifie que l'utilisateur est authentifié, puis appelle la méthode create du repository des projets pour créer un nouveau projet dans la base de données.
    * Après la création, récupère et retourne le projet créé.
@@ -152,7 +138,7 @@ const projectResolver = {
         if (!isValidUUID(coworker.id)) throw new Error("Invalid coworker ID");
         if (coworker.roles) {
           for (const role of coworker.roles) {
-            if (!isValidUUID(role.id)) throw new Error("Invalid role ID");
+            if (!isValidUUID(role)) throw new Error("Invalid role ID");
           }
         }
       }
@@ -177,7 +163,7 @@ const projectResolver = {
         input.feedback.client = sanitizeString(input.feedback.client);
     }
     const id = await context.projectRepo.create(input);
-    return await context.projectRepo.get("id", id);
+    return await context.projectRepo.get(id);
   },
 
   /**
@@ -297,7 +283,7 @@ const projectResolver = {
         if (!isValidUUID(coworker.id)) throw new Error("Invalid coworker ID");
         if (coworker.roles) {
           for (const role of coworker.roles) {
-            if (!isValidUUID(role.id)) throw new Error("Invalid role ID");
+            if (!isValidUUID(role)) throw new Error("Invalid role ID");
           }
         }
       }
@@ -322,7 +308,7 @@ const projectResolver = {
         input.feedback.client = sanitizeString(input.feedback.client);
     }
     await context.projectRepo.update(_args.id, input);
-    return await context.projectRepo.get("id", _args.id);
+    return await context.projectRepo.get(_args.id);
   },
 
   /**

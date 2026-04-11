@@ -4,7 +4,7 @@ export const mediaTypes = `
         label: String
         path: String!
         type: String!
-        category: Category
+        category: ID
     }
 `;
 

@@ -19,20 +19,6 @@ const mediaResolver = {
   },
 
   /**
-   * Récupère un média par ID
-   * Appelle la méthode get du repository des médias pour récupérer un média spécifique en fonction de son ID.
-   * @param {Object} _args Les arguments de la requête, contenant l'ID du média à récupérer.
-   * @param {Object} context Le contexte de la requête, contenant le repository des médias.
-   * @returns {Promise<Media | null>} Le média correspondant à la requête, ou null si aucun média n'est trouvé.
-   */
-  media: async (
-    _args: { id: string },
-    context: { mediaRepo: MediaRepository },
-  ): Promise<Media | null> => {
-    return await context.mediaRepo.get(_args.id);
-  },
-
-  /**
    * Ajoute un nouveau média
    * Vérifie que le fichier est fourni et valide, puis appelle la méthode add du repository des médias pour ajouter un nouveau média à la base de données.
    * Après l'ajout, récupère et retourne le média ajouté.

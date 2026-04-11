@@ -15,27 +15,19 @@ export class MediaRepository {
     try {
       const rows = await conn.query(
         `
-            SELECT m.*, c.id AS category_id, c.label AS category_label
+            SELECT m.*
             FROM medias m
-            LEFT JOIN category c ON m.category = c.id
             ORDER BY m.label ASC
         `,
       );
       if (rows.length === 0) return [];
-      return rows.map(
-        (row: Media & { category_id?: string; category_label?: string }) => ({
-          id: row.id,
-          label: row.label,
-          path: MEDIA_BASE_PATH + row.path,
-          type: row.type,
-          category: row.category_id
-            ? {
-                id: row.category_id,
-                label: row.category_label,
-              }
-            : undefined,
-        }),
-      );
+      return rows.map((row: Media) => ({
+        id: row.id,
+        label: row.label,
+        path: MEDIA_BASE_PATH + row.path,
+        type: row.type,
+        category: row.category,
+      }));
     } finally {
       conn.release();
     }
@@ -46,9 +38,8 @@ export class MediaRepository {
     try {
       const row = await conn.query(
         `
-            SELECT m.*, c.id AS category_id, c.label AS category_label
+            SELECT m.*
             FROM medias m
-            LEFT JOIN category c ON m.category = c.id
             WHERE m.id = ?
         `,
         [id],
@@ -59,12 +50,7 @@ export class MediaRepository {
         label: row[0].label,
         path: MEDIA_BASE_PATH + row[0].path,
         type: row[0].type,
-        category: row[0].category_id
-          ? {
-              id: row[0].category_id,
-              label: row[0].category_label,
-            }
-          : undefined,
+        category: row[0].category,
       };
     } finally {
       conn.release();

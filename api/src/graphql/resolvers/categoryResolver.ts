@@ -24,20 +24,6 @@ const categoryResolver = {
   },
 
   /**
-   * Récupère une catégorie par ID ou label
-   * Appelle la méthode get du repository des catégories pour récupérer une catégorie spécifique en fonction de l'ID ou du label et de l'entité.
-   * @param {Object} _args Les arguments de la requête, contenant la clé (id ou label), la valeur correspondante et l'entité.
-   * @param {Object} context Le contexte de la requête, contenant le repository des catégories.
-   * @returns {Promise<Category[] | null>} Un tableau de catégories correspondant à la requête, ou null si aucune catégorie n'est trouvée.
-   */
-  category: async (
-    _args: { key: "id" | "label"; value: string; entity: string },
-    context: { categoryRepo: CategoryRepository },
-  ): Promise<Category[] | null> => {
-    return await context.categoryRepo.get(_args.key, _args.value, _args.entity);
-  },
-
-  /**
    * Crée une nouvelle catégorie
    * Vérifie que l'utilisateur est authentifié, puis appelle la méthode create du repository des catégories pour créer une nouvelle catégorie dans la base de données.
    * Après la création, récupère et retourne la catégorie créée.
@@ -65,7 +51,7 @@ const categoryResolver = {
     if (input.parent && !isValidUUID(input.parent)) delete input.parent;
 
     const id = await context.categoryRepo.create(input);
-    const result = await context.categoryRepo.get("id", id);
+    const result = await context.categoryRepo.get(id);
     if (!result || !result[0]) throw new Error("Category not found");
     return result[0];
   },
@@ -93,7 +79,7 @@ const categoryResolver = {
       input.description = sanitizeString(input.description);
     if (input.parent && !isValidUUID(input.parent)) delete input.parent;
     await context.categoryRepo.update(input);
-    const result = await context.categoryRepo.get("id", _args.id);
+    const result = await context.categoryRepo.get(_args.id);
     if (!result || !result[0]) throw new Error("Category not found");
     return result[0];
   },

@@ -18,20 +18,14 @@ export default class CoworkerRepository {
     try {
       conn = await this.pool.getConnection();
       const coworkers = await conn.query(`
-        SELECT c.*, r.id AS role_id, r.label AS role_label
+        SELECT c.*, cr.id AS role_id
         FROM coworker c
         LEFT JOIN coworker_role cr ON c.id = cr.coworker_id
-        LEFT JOIN role r ON cr.role_id = r.id
         ORDER BY c.name
       `);
       const coworkerMap: Record<string, Coworker> = {};
       coworkers.forEach(
-        (row: {
-          id: string;
-          name: string;
-          role_id: string;
-          role_label: string;
-        }) => {
+        (row: { id: string; name: string; role_id: string }) => {
           if (!coworkerMap[row.id]) {
             coworkerMap[row.id] = {
               id: row.id,
@@ -40,10 +34,7 @@ export default class CoworkerRepository {
             };
           }
           if (row.role_id) {
-            coworkerMap[row.id].roles!.push({
-              id: row.role_id,
-              label: row.role_label,
-            });
+            coworkerMap[row.id].roles!.push(row.role_id);
           }
         },
       );
@@ -54,37 +45,30 @@ export default class CoworkerRepository {
   }
 
   /**
-   * Récupère un collaborateur spécifique de la base de données en fonction d'une clé (id ou name) et d'une valeur correspondante.
-   * La méthode utilise une requête SQL pour joindre les tables "coworker", "coworker_role" et "role" afin d'obtenir les informations complètes sur le collaborateur correspondant à la clé et à la valeur spécifiées, ainsi que ses rôles associés.
+   * Récupère un collaborateur spécifique de la base de données en fonction de son ID.
+   * La méthode utilise une requête SQL pour joindre les tables "coworker" et "coworker_role" afin d'obtenir les informations complètes sur le collaborateur correspondant à l'ID spécifié, ainsi que ses rôles associés.
    * Les résultats sont ensuite transformés en un format structuré où le collaborateur est représenté avec ses propriétés et une liste de ses rôles.
    * Si aucun collaborateur correspondant n'est trouvé, la méthode retourne null.
-   * @param {string} key - La clé à utiliser pour la recherche (id ou name).
-   * @param {string} value - La valeur correspondante à rechercher pour la clé spécifiée.
+   * @param {string} id - L'ID du collaborateur à rechercher.
    * @returns {Promise<Coworker | null>} Le collaborateur correspondant à la requête, avec ses propriétés et ses rôles associés, ou null si aucun collaborateur n'est trouvé.
    */
-  async get(key: "id" | "name", value: string): Promise<Coworker | null> {
+  async get(id: string): Promise<Coworker | null> {
     let conn;
     try {
       conn = await this.pool.getConnection();
       const coworkers = await conn.query(
         `
-        SELECT c.*, r.id AS role_id, r.label AS role_label
+        SELECT c.*, cr.id AS role_id
         FROM coworker c
         LEFT JOIN coworker_role cr ON c.id = cr.coworker_id
-        LEFT JOIN role r ON cr.role_id = r.id
-        WHERE c.${key} = ?
+        WHERE c.id = ?
        `,
-        [value],
+        [id],
       );
       if (!coworkers || coworkers.length === 0) return null;
       const coworkerMap: Record<string, Coworker> = {};
       coworkers.forEach(
-        (row: {
-          id: string;
-          name: string;
-          role_id: string;
-          role_label: string;
-        }) => {
+        (row: { id: string; name: string; role_id: string }) => {
           if (!coworkerMap[row.id]) {
             coworkerMap[row.id] = {
               id: row.id,
@@ -93,10 +77,7 @@ export default class CoworkerRepository {
             };
           }
           if (row.role_id) {
-            coworkerMap[row.id].roles!.push({
-              id: row.role_id,
-              label: row.role_label,
-            });
+            coworkerMap[row.id].roles!.push(row.role_id);
           }
         },
       );

@@ -24,20 +24,6 @@ const roleResolver = {
   },
 
   /**
-   * Récupère un rôle par ID ou label
-   * Appelle la méthode get du repository des rôles pour récupérer un rôle spécifique en fonction de l'ID ou du label.
-   * @param {Object} _args Les arguments de la requête, contenant la clé (id ou label) et la valeur correspondante.
-   * @param {Object} context Le contexte de la requête, contenant le repository des rôles.
-   * @returns {Promise<Role | null>} Le rôle correspondant à la requête, ou null si aucun rôle n'est trouvé.
-   */
-  role: async (
-    _args: { key: "id" | "label"; value: string },
-    context: { roleRepo: RoleRepository },
-  ): Promise<Role | null> => {
-    return await context.roleRepo.get(_args.key, _args.value);
-  },
-
-  /**
    * Crée un nouveau rôle
    * Vérifie que l'utilisateur est authentifié, puis appelle la méthode create du repository des rôles pour créer un nouveau rôle dans la base de données.
    * Après la création, récupère et retourne le rôle créé.
@@ -55,7 +41,7 @@ const roleResolver = {
     if (isEmpty(input.label)) throw new Error("Label is required");
     input.label = sanitizeString(input.label);
     const id = await context.roleRepo.create(input);
-    return await context.roleRepo.get("id", id);
+    return await context.roleRepo.get(id);
   },
 
   /**
@@ -77,7 +63,7 @@ const roleResolver = {
     const input = { ..._args };
     if (input.label) input.label = sanitizeString(input.label);
     await context.roleRepo.update(input);
-    return await context.roleRepo.get("id", _args.id);
+    return await context.roleRepo.get(_args.id);
   },
 
   /**

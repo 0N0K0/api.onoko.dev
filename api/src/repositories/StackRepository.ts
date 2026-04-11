@@ -1,13 +1,6 @@
 import mariadb from "mariadb";
 import crypto from "crypto";
 import { Stack } from "../types/stackTypes";
-import { ImageFile } from "../types/imageTypes";
-import { Category } from "../types/categoryTypes";
-import { saveImageFile } from "../utils/imageUtils";
-import path from "path";
-import { promises as fs } from "fs";
-import { Media } from "../types/mediaTypes";
-import { MEDIA_BASE_PATH } from "../constants/mediaConstants";
 
 // Repository pour les opérations liées aux stacks dans la base de données
 export class StackRepository {
@@ -25,13 +18,11 @@ export class StackRepository {
     try {
       conn = await this.pool.getConnection();
       const rows = await conn.query(`
-        SELECT s.*, v.version, ss.skill, c.id as c_id, c.label as c_label, m.id as m_id, m.label as m_label, m.path as m_path, m.type as m_type
+        SELECT s.*, v.version, ss.skill
         FROM stack s
         LEFT JOIN stack_version v ON v.stack_id = s.id
         LEFT JOIN stack_skill ss ON ss.stack_id = s.id
-        LEFT JOIN category c ON s.category_id = c.id
-        LEFT JOIN medias m ON s.icon_id = m.id
-        ORDER BY c.label, s.label
+        ORDER BY s.label
       `);
       const stackMap = new Map();
       for (const row of rows) {
@@ -39,23 +30,11 @@ export class StackRepository {
           stackMap.set(row.id, {
             id: row.id,
             label: row.label,
-            icon: row.m_id
-              ? {
-                  id: row.m_id,
-                  label: row.m_label,
-                  path: row.m_path,
-                  type: row.m_type,
-                }
-              : undefined,
+            icon: row.icon_id,
             description: row.description,
             versions: [],
             skills: [],
-            category: row.c_id
-              ? {
-                  id: row.c_id,
-                  label: row.c_label,
-                }
-              : undefined,
+            category: row.category_id,
           });
         }
         if (row.version) stackMap.get(row.id).versions.push(row.version);
@@ -81,164 +60,26 @@ export class StackRepository {
    * @param {string} value La valeur correspondante à rechercher pour la clé spécifiée.
    * @returns {Promise<Stack | null>} La stack correspondant à la requête, avec ses propriétés, versions, compétences et catégorie associée, ou null si aucune stack n'est trouvée.
    */
-  async getAllByCategory(
-    key: "id" | "label",
-    value: string,
-  ): Promise<Category | undefined | null> {
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
-      // Récupère toutes les catégories de la sous-arborescence
-      const categories = await conn.query(
-        `
-          WITH RECURSIVE subcategories AS (
-            SELECT * FROM category WHERE ${key} = ?
-            UNION ALL
-            SELECT c.* FROM category c
-            INNER JOIN subcategories sc ON c.parent_id = sc.id
-          )
-          SELECT * FROM subcategories
-        `,
-        [value],
-      );
-      // Récupère toutes les stacks liées à ces catégories
-      const categoryIds = categories.map((cat: { id: string }) => cat.id);
-      let stacks: (Stack & {
-        version?: string;
-        skill?: string;
-        c_id?: string;
-        c_label?: string;
-        m_id?: string;
-        m_label?: string;
-        m_path?: string;
-        m_type?: string;
-      })[] = [];
-      if (categoryIds.length > 0) {
-        const placeholders = categoryIds.map(() => "?").join(",");
-        stacks = await conn.query(
-          `
-            SELECT s.*, v.version, ss.skill, c.id as c_id, c.label as c_label, m.id as m_id, m.path as m_path, m.type as m_type
-            FROM stack s
-            LEFT JOIN stack_version v ON v.stack_id = s.id
-            LEFT JOIN stack_skill ss ON ss.stack_id = s.id
-            LEFT JOIN category c ON s.category_id = c.id
-            LEFT JOIN medias m ON s.icon_id = m.id
-            WHERE s.category_id IN (${placeholders})
-          `,
-          categoryIds,
-        );
-      }
-      // Regroupe les versions par stack
-      const stackMap = new Map<string, Stack>();
-      for (const row of stacks) {
-        if (!stackMap.has(row.id)) {
-          stackMap.set(row.id, {
-            id: row.id,
-            label: row.label,
-            icon:
-              row.m_id && row.m_type
-                ? {
-                    id: row.m_id,
-                    label: row.m_label,
-                    path: MEDIA_BASE_PATH + row.m_path,
-                    type: row.m_type,
-                  }
-                : undefined,
-            description: row.description,
-            versions: [],
-            skills: [],
-            category: row.c_id
-              ? ({
-                  id: row.c_id,
-                  label: row.c_label,
-                } as Category)
-              : undefined,
-          });
-        }
-        if (row.version) stackMap.get(row.id)?.versions.push(row.version);
-        if (row.skill) stackMap.get(row.id)?.skills.push(row.skill);
-        // Déduplique les versions et compétences
-        for (const stack of stackMap.values()) {
-          stack.versions = Array.from(new Set(stack.versions));
-          stack.skills = Array.from(new Set(stack.skills));
-        }
-      }
-      // Construit l'arbre récursif
-      function buildTree(parentId: string | null): {
-        id: string;
-        label: string;
-        description: string;
-        entities: Stack[];
-        children: Category[];
-      }[] {
-        return categories
-          .filter(
-            (cat: { parent_id: string | null }) => cat.parent_id === parentId,
-          )
-          .map((cat: { id: string; label: string; description: string }) => {
-            const catStacks = Array.from(stackMap.values()).filter(
-              (s: Stack) => (s.category as Category).id === cat.id,
-            );
-            return {
-              id: cat.id,
-              label: cat.label,
-              description: cat.description,
-              entities: catStacks,
-              children: buildTree(cat.id),
-            };
-          });
-      }
-      // Trouve la racine (catégorie demandée)
-      const root = categories.find(
-        (cat: { [key: string]: any }) => cat[key] === value,
-      );
-      if (!root) return null;
-      const result = buildTree(root.parent_id).find(
-        (c: { id: string }) => c.id === root.id,
-      );
-      return result;
-    } finally {
-      if (conn) conn.release();
-    }
-  }
-
-  /**
-   * Récupère une stack spécifique de la base de données en fonction d'une clé (id ou label) et d'une valeur correspondante.
-   * La méthode utilise une requête SQL pour joindre les tables "stack", "stack_version", "stack_skill" et "category" afin d'obtenir les informations complètes sur la stack correspondant à la clé et à la valeur spécifiées, ainsi que ses versions, compétences et catégorie associée.
-   * Les résultats sont ensuite transformés en un format structuré où la stack est représentée avec ses propriétés, une liste de ses versions, compétences et sa catégorie associée.
-   * Si aucune stack correspondante n'est trouvée, la méthode retourne null.
-   * @param {string} key La clé à utiliser pour la recherche (id ou label).
-   * @param {string} value La valeur correspondante à rechercher pour la clé spécifiée.
-   * @returns {Promise<Stack | null>} La stack correspondant à la requête, avec ses propriétés, versions, compétences et catégorie associée, ou null si aucune stack n'est trouvée.
-   */
-  async get(key: "id" | "label", value: string): Promise<Stack | null> {
+  async get(id: string): Promise<Stack | null> {
     let conn;
     try {
       conn = await this.pool.getConnection();
       const rows = await conn.query(
         `
-        SELECT s.*, v.version, ss.skill, c.id as c_id, c.label as c_label, m.id as m_id, m.path as m_path, m.type as m_type
+        SELECT s.*, v.version, ss.skill
         FROM stack s
         LEFT JOIN stack_version v ON v.stack_id = s.id
         LEFT JOIN stack_skill ss ON ss.stack_id = s.id
-        LEFT JOIN category c ON s.category_id = c.id
-        LEFT JOIN media m ON s.icon_id = m.id
-        WHERE s.${key} = ?
+        WHERE s.id = ?
         `,
-        [value],
+        [id],
       );
       if (!rows || rows.length === 0) return null;
       const first = rows[0];
       const stack: Stack = {
         id: first.id,
         label: first.label,
-        icon: first.m_id
-          ? {
-              id: first.m_id,
-              path: MEDIA_BASE_PATH + first.m_path,
-              type: first.m_type,
-            }
-          : undefined,
+        icon: first.icon_id,
         description: first.description,
         versions: Array.from(
           new Set(
@@ -247,12 +88,7 @@ export class StackRepository {
               .map((r: { version: string }) => r.version),
           ),
         ),
-        category: first.c_id
-          ? {
-              id: first.c_id,
-              label: first.c_label,
-            }
-          : undefined,
+        category: first.category_id,
         skills: Array.from(
           new Set(
             rows
@@ -274,11 +110,7 @@ export class StackRepository {
    * @param {Omit<Stack, "id">} stack Les propriétés de la stack à créer, à l'exception de l'ID qui est généré automatiquement.
    * @returns {Promise<string>} L'ID de la stack nouvellement créée dans la base de données.
    */
-  async create(
-    stack: Omit<Stack, "id"> & {
-      iconFile: ImageFile;
-    },
-  ): Promise<string> {
+  async create(stack: Omit<Stack, "id">): Promise<string> {
     const id = crypto.randomUUID();
 
     let conn;

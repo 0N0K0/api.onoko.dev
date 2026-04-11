@@ -1,13 +1,10 @@
 import mariadb from "mariadb";
 import crypto from "crypto";
 import { Project, ProjectRow } from "../types/projectTypes";
-import { saveImageFile } from "../utils/imageUtils";
-import path from "path";
 import { Role } from "../types/roleTypes";
 import { Category } from "../types/categoryTypes";
 import { Coworker } from "../types/coworkerTypes";
 import { Stack } from "../types/stackTypes";
-import { ImageFile } from "../types/imageTypes";
 import { MEDIA_BASE_PATH } from "../constants/mediaConstants";
 import { Media } from "../types/mediaTypes";
 
@@ -24,14 +21,7 @@ export default class ProjectRepository {
     let conn;
     try {
       conn = await this.pool.getConnection();
-      const projects = await conn.query(`
-        SELECT p.*,
-          thumbnail.path as thumbnail_path, thumbnail.type as thumbnail_type
-          client_logo.path as client_logo_path, client_logo.type as client_logo_type,
-        FROM project p
-        LEFT JOIN media thumbnail ON p.thumbnail_id = thumbnail.id
-        LEFT JOIN media client_logo ON p.client_logo_id = client_logo.id
-      `);
+      const projects = await conn.query(`SELECT * FROM project`);
       for (const project of projects) {
         await this._hydrateProject(conn, project);
       }
@@ -42,27 +32,17 @@ export default class ProjectRepository {
   }
 
   /**
-   * Récupère un projet par son ID ou son label, avec ses relations (catégories, rôles, coworkers, stacks)
-   * @param key "id" ou "label"
-   * @param value Valeur de l'ID ou du label
+   * Récupère un projet par son ID, avec ses relations (catégories, rôles, coworkers, stacks)
+   * @param id ID du projet
    * @return Le projet correspondant ou null s'il n'existe pas
    */
-  async get(key: "id" | "label", value: string): Promise<Project | null> {
+  async get(id: string): Promise<Project | null> {
     let conn;
     try {
       conn = await this.pool.getConnection();
-      const projects = await conn.query(
-        `
-          SELECT p.*,
-          thumbnail.path as thumbnail_path, thumbnail.type as thumbnail_type,
-          client_logo.path as client_logo_path, client_logo.type as client_logo_type
-          FROM project p
-          LEFT JOIN media thumbnail ON p.thumbnail_id = thumbnail.id
-          LEFT JOIN media client_logo ON p.client_logo_id = client_logo.id
-          WHERE p.${key} = ?
-        `,
-        [value],
-      );
+      const projects = await conn.query(`SELECT * FROM project WHERE id = ?`, [
+        id,
+      ]);
       if (projects.length === 0) return null;
       const project = projects[0];
       await this._hydrateProject(conn, project);
@@ -93,95 +73,55 @@ export default class ProjectRepository {
     };
     // Récupère les catégories liées au projet
     const categories = await conn.query(
-      `
-        SELECT c.* FROM category c
-        INNER JOIN project_category pc ON pc.category_id = c.id
-        WHERE pc.project_id = ?
-      `,
+      `SELECT category_id FROM project_category WHERE project_id = ?`,
       [projectRow.id],
     );
-    project.categories = categories;
+    project.categories = categories.map((c: any) => c.category_id);
 
     // Récupère les rôles liés au projet
     const roles = await conn.query(
-      `
-        SELECT r.* FROM role r
-        INNER JOIN project_role pr ON pr.role_id = r.id
-        WHERE pr.project_id = ?
-      `,
+      `SELECT role_id FROM project_role WHERE project_id = ?`,
       [projectRow.id],
     );
-    project.roles = roles;
+    project.roles = roles.map((r: any) => r.role_id);
 
     // Récupère les coworkers liés au projet
     const coworkers = await conn.query(
       `
-        SELECT c.*, pc.role_id as roleId
-        FROM coworker c
-        INNER JOIN project_coworker pc ON pc.coworker_id = c.id
-        WHERE pc.project_id = ?
+        SELECT coworker_id, role_id
+        FROM project_coworker
+        WHERE project_id = ?
       `,
       [projectRow.id],
     );
     // Groupe les rôles par coworker
-    const coworkerMap: Record<string, Coworker> = {};
+    const coworkerArray: { id: string; roles: string[] }[] = [];
     for (const c of coworkers) {
-      if (!coworkerMap[c.id]) {
-        coworkerMap[c.id] = { ...c, roles: [] };
+      if (!coworkerArray[c.coworker_id]) {
+        coworkerArray[c.coworker_id] = { id: c.coworker_id, roles: [] };
       }
-      if (c.roleId) coworkerMap[c.id].roles?.push(c.roleId);
+      if (c.role_id) coworkerArray[c.coworker_id].roles?.push(c.role_id);
     }
-    project.coworkers = Object.values(coworkerMap);
+    project.coworkers = Object.values(coworkerArray);
 
     // Récupère les stacks liés au projet
     const stacks = await conn.query(
       `
-        SELECT s.id, s.label, s.icon,
-          ps.version, ps.section,
-          m.id as m_id, m.path as m_path, m.type as m_type,
-        FROM stack s
-        INNER JOIN project_stack ps ON ps.stack_id = s.id
-        LEFT JOIN media m ON s.icon = m.id
-        WHERE ps.project_id = ?
+        SELECT stack_id, version, section
+        FROM  project_stack 
+        WHERE project_id = ?
       `,
       [projectRow.id],
     );
     project.stacks = stacks.map(
-      (
-        s: Stack & {
-          section?: string;
-          version?: string;
-          m_id?: string;
-          m_path?: string;
-          m_type?: string;
-        },
-      ) => ({
+      (s: { id: string; section?: string; version?: string }) => ({
         id: s.id,
-        label: s.label,
-        icon:
-          s.m_id && s.m_type
-            ? {
-                id: s.m_id,
-                path: MEDIA_BASE_PATH + s.m_path,
-                type: s.m_type,
-              }
-            : undefined,
         version: s.version,
         section: s.section,
       }),
     );
 
-    if (
-      projectRow.thumbnail_id &&
-      projectRow.thumbnail_path &&
-      projectRow.thumbnail_type
-    ) {
-      project.thumbnail = {
-        id: projectRow.thumbnail_id,
-        path: `${MEDIA_BASE_PATH}${projectRow.thumbnail_path}`,
-        type: projectRow.thumbnail_type,
-      };
-    }
+    if (projectRow.thumbnail_id) project.thumbnail = projectRow.thumbnail_id;
 
     // Construit l'objet website si les champs sont présents
     if (projectRow.website_url && projectRow.website_label) {
@@ -194,26 +134,17 @@ export default class ProjectRepository {
     // Construit l'objet mockup et ajoute les images mockup si elles existent
     const mockupImagesResult = await conn.query(
       `
-        SELECT m.*
-        FROM media m
-        INNER JOIN project_mockup pm ON pm.media_id = m.id
-        WHERE pm.project_id = ?
+        SELECT media_id
+        FROM project_mockup
+        WHERE project_id = ?
       `,
       [projectRow.id],
     );
-    let mockupImages: Media[] | undefined = undefined;
-    if (mockupImagesResult.length) {
-      mockupImages = mockupImagesResult.map((row: any) => ({
-        id: row.id,
-        path: `${MEDIA_BASE_PATH}${row.path}`,
-        type: row.type,
-      }));
-    }
     if (projectRow.mockup_url && projectRow.mockup_label) {
       project.mockup = {
         url: projectRow.mockup_url,
         label: projectRow.mockup_label,
-        images: mockupImages,
+        images: mockupImagesResult,
       };
     }
 
@@ -221,16 +152,7 @@ export default class ProjectRepository {
     if (projectRow.client_label) {
       project.client = {
         label: projectRow.client_label,
-        logo:
-          projectRow.client_logo_id &&
-          projectRow.client_logo_path &&
-          projectRow.client_logo_type
-            ? {
-                id: projectRow.client_logo_id,
-                path: `${MEDIA_BASE_PATH}${projectRow.client_logo_path}`,
-                type: projectRow.client_logo_type,
-              }
-            : undefined,
+        logo: projectRow.client_logo_id,
       };
     }
 
@@ -409,7 +331,7 @@ export default class ProjectRepository {
         for (const { id: coworker_id, roles } of project.coworkers) {
           if (!roles || roles.length === 0) continue;
           for (const role of roles) {
-            const role_id = typeof role === "string" ? role : role.id;
+            const role_id = role;
             await conn.query(
               `INSERT INTO project_coworker (project_id, coworker_id, role_id) VALUES (?, ?, ?)`,
               [id, coworker_id, role_id],
@@ -561,10 +483,10 @@ export default class ProjectRepository {
           `SELECT coworker_id, role_id FROM project_coworker WHERE project_id = ?`,
           [id],
         );
-        const inputPairs = project.coworkers.flatMap((cw: Coworker) =>
-          (cw.roles || []).map((role: string | Role) => ({
+        const inputPairs = project.coworkers.flatMap((cw) =>
+          (cw.roles || []).map((role: string) => ({
             coworker_id: cw.id,
-            role_id: typeof role === "string" ? role : role.id,
+            role_id: role,
           })),
         );
         const toAdd = inputPairs.filter(

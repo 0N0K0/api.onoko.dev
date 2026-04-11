@@ -37,23 +37,15 @@ export default class CategoryRepository {
   }
 
   /**
-   * Récupère une catégorie spécifique de la base de données en fonction d'une clé (id ou label), d'une valeur correspondante et d'une entité optionnelle.
+   * Récupère une catégorie spécifique de la base de données en fonction de son ID.
    * La méthode utilise la liste complète des catégories récupérées par getAll() pour trouver la catégorie correspondante, puis utilise une fonction récursive pour trouver tous les descendants de cette catégorie.
    * Si aucune catégorie correspondante n'est trouvée, la méthode retourne null.
-   * @param {string} key - La clé à utiliser pour la recherche (id ou label).
-   * @param {string} value - La valeur correspondante à rechercher pour la clé spécifiée.
-   * @param {string} [entity] - L'entité optionnelle à prendre en compte lors de la recherche (si fournie).
+   * @param {string} id - L'ID de la catégorie à rechercher.
    * @returns {Promise<Category[] | null>} Un tableau de catégories correspondant à la requête, ou null si aucune catégorie n'est trouvée.
    */
-  async get(
-    key: "id" | "label",
-    value: string,
-    entity?: string,
-  ): Promise<Category[] | null> {
+  async get(id: string): Promise<Category[] | null> {
     const categories = await this.getAll();
-    const category = categories.find(
-      (c) => c[key] === value && (!entity || c.entity === entity),
-    );
+    const category = categories.find((c) => c.id === id);
     if (!category) return null;
     const findDescendants = (parentId: string): Category[] => {
       const children = categories.filter((c) => c.parent === parentId);

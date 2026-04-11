@@ -24,20 +24,19 @@ export default class RoleRepository {
   }
 
   /**
-   * Récupère un rôle spécifique de la base de données en fonction d'une clé (id ou label) et d'une valeur correspondante.
-   * La méthode exécute une requête SQL pour sélectionner le rôle correspondant à la clé et à la valeur spécifiées de la table "role" de la base de données, en récupérant les champs "id" et "label".
+   * Récupère un rôle spécifique de la base de données en fonction de son ID.
+   * La méthode exécute une requête SQL pour sélectionner le rôle correspondant à l'ID spécifié de la table "role" de la base de données, en récupérant les champs "id" et "label".
    * Si un rôle correspondant est trouvé, il est retourné sous forme d'un objet Role avec ses propriétés correspondantes. Si aucun rôle n'est trouvé, la méthode retourne null.
-   * @param {string} key - La clé à utiliser pour la recherche (id ou label).
-   * @param {string} value - La valeur correspondante à rechercher pour la clé spécifiée.
+   * @param {string} id - L'ID du rôle à rechercher.
    * @returns {Promise<Role | null>} Le rôle correspondant à la requête, avec ses propriétés "id" et "label", ou null si aucun rôle n'est trouvé.
    */
-  async get(key: "id" | "label", value: string): Promise<Role | null> {
+  async get(id: string): Promise<Role | null> {
     let conn;
     try {
       conn = await this.pool.getConnection();
       const results = await conn.query(
-        `SELECT id, label FROM role WHERE ${key} = ?`,
-        [value],
+        `SELECT id, label FROM role WHERE id = ?`,
+        [id],
       );
       return results[0] || null;
     } finally {

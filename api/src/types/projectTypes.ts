@@ -1,16 +1,9 @@
-import { Category } from "./categoryTypes";
-import { Coworker } from "./coworkerTypes";
-import { ImageFile } from "./imageTypes";
-import { Media } from "./mediaTypes";
-import { Role } from "./roleTypes";
-import { Stack } from "./stackTypes";
-
 // Interface représentant un projet
 export interface Project {
   id: string;
   label: string;
-  thumbnail?: string | Media;
-  categories?: Category[] | string[];
+  thumbnail?: string;
+  categories?: string[];
   website?: {
     url: string;
     label: string;
@@ -18,11 +11,11 @@ export interface Project {
   mockup?: {
     url: string;
     label: string;
-    images?: string[] | Media[];
+    images?: string[];
   };
   client?: {
     label: string;
-    logo?: string | Media;
+    logo?: string;
   };
   manager?: {
     name: string;
@@ -52,9 +45,9 @@ export interface Project {
     evolution?: string;
     validation?: string;
   };
-  roles?: Role[] | string[];
-  coworkers?: Coworker[];
-  stacks?: (Partial<Stack> & { section?: string; version?: string })[];
+  roles?: string[];
+  coworkers?: { id: string; roles?: string[] }[];
+  stacks?: { id: string; section?: string; version?: string }[];
   kpis?: {
     issues?: number;
     points?: number;
@@ -72,16 +65,12 @@ export interface ProjectRow {
   id: string;
   label: string;
   thumbnail_id?: string;
-  thumbnail_path?: string;
-  thumbnail_type?: string;
   website_url?: string;
   website_label?: string;
   mockup_url?: string;
   mockup_label?: string;
   client_label?: string;
   client_logo_id?: string;
-  client_logo_path?: string;
-  client_logo_type?: string;
   manager_name?: string;
   manager_email?: string;
   start_date?: Date;

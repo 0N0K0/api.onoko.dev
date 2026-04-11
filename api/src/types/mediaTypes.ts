@@ -12,5 +12,5 @@ export interface Media {
   path: string;
   type: string;
   file?: ImageFile;
-  category?: Category | string;
+  category?: string;
 }
