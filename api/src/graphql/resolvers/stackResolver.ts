@@ -28,13 +28,13 @@ const stackResolver = {
    * Après la création, récupère et retourne la stack créée.
    * @param {Object} _args Les arguments de la mutation, contenant les propriétés de la stack à créer (sauf l'ID) et le fichier d'icône.
    * @param {Object} context Le contexte de la requête, contenant les informations de l'utilisateur et le repository des stacks.
-   * @returns {Promise<Stack | null>} La stack nouvellement créée, récupérée de la base de données, ou null si la stack ne peut pas être trouvée après la création.
+   * @returns {Promise<boolean>} Indique si la création de la stack a réussi.
    * @throws {Error} Une erreur si l'utilisateur n'est pas authentifié ou si la stack ne peut pas être trouvée après la création.
    */
   createStack: async (
     _args: Omit<Stack, "id">,
     context: { user: jwt.JwtPayload | null; stackRepo: StackRepository },
-  ): Promise<Stack | null> => {
+  ): Promise<boolean> => {
     if (!context.user) throw new Error("Unauthorized");
     const input = { ..._args };
     // Sanitize tous les champs string pertinents
@@ -47,8 +47,9 @@ const stackResolver = {
     if (input.versions) input.versions = input.versions.map(sanitizeString);
     if (input.skills) input.skills = input.skills.map(sanitizeString);
     if (input.category) input.category = sanitizeString(input.category);
-    const id = await context.stackRepo.create(input);
-    return await context.stackRepo.get(id);
+    const result = await context.stackRepo.create(input);
+    if (!result) throw new Error("Failed to create stack");
+    return result;
   },
 
   /**
@@ -57,13 +58,13 @@ const stackResolver = {
    * Après la mise à jour, récupère et retourne la stack mise à jour.
    * @param {Object} _args Les arguments de la mutation, contenant les propriétés de la stack à mettre à jour (doit inclure l'ID).
    * @param {Object} context Le contexte de la requête, contenant les informations de l'utilisateur et le repository des stacks.
-   * @returns {Promise<Stack | null>} La stack mise à jour, récupérée de la base de données, ou null si la stack ne peut pas être trouvée après la mise à jour.
+   * @returns {Promise<boolean>} Indique si la mise à jour de la stack a réussi.
    * @throws {Error} Une erreur si l'utilisateur n'est pas authentifié ou si la stack ne peut pas être trouvée après la mise à jour.
    */
   updateStack: async (
     _args: Partial<Stack>,
     context: { user: jwt.JwtPayload | null; stackRepo: StackRepository },
-  ): Promise<Stack | null> => {
+  ): Promise<boolean> => {
     if (!context.user) throw new Error("Unauthorized");
     if (!_args.id) throw new Error("ID is required for update");
     if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
@@ -78,8 +79,9 @@ const stackResolver = {
     if (input.skills) input.skills = input.skills.map(sanitizeString);
     if (input.category) input.category = sanitizeString(input.category);
 
-    await context.stackRepo.update(input);
-    return await context.stackRepo.get(_args.id);
+    const result = await context.stackRepo.update(input);
+    if (!result) throw new Error("Failed to update stack");
+    return result;
   },
 
   /**
@@ -87,7 +89,7 @@ const stackResolver = {
    * Vérifie que l'utilisateur est authentifié, puis appelle la méthode delete du repository des stacks pour supprimer une stack existante de la base de données.
    * @param {Object} _args Les arguments de la mutation, contenant l'ID de la stack à supprimer.
    * @param {Object} context Le contexte de la requête, contenant les informations de l'utilisateur et le repository des stacks.
-   * @returns {Promise<boolean>} Un booléen indiquant que la suppression a réussi.
+   * @returns {Promise<boolean>} Indique si la suppression de la stack a réussi.
    * @throws {Error} Une erreur si l'utilisateur n'est pas authentifié ou si la stack ne peut pas être trouvée pour la suppression.
    */
   deleteStack: async (
@@ -97,7 +99,8 @@ const stackResolver = {
     if (!context.user) throw new Error("Unauthorized");
     if (!_args.id) throw new Error("ID is required");
     if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
-    await context.stackRepo.delete(_args.id);
+    const result = await context.stackRepo.delete(_args.id);
+    if (!result) throw new Error("Failed to delete stack");
     return true;
   },
 };

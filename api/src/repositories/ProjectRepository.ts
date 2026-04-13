@@ -3,9 +3,7 @@ import crypto from "crypto";
 import { Project, ProjectRow } from "../types/projectTypes";
 import { Role } from "../types/roleTypes";
 import { Category } from "../types/categoryTypes";
-import { Coworker } from "../types/coworkerTypes";
 import { Stack } from "../types/stackTypes";
-import { MEDIA_BASE_PATH } from "../constants/mediaConstants";
 import { Media } from "../types/mediaTypes";
 
 // Repository pour les opérations liées aux projets dans la base de données
@@ -16,6 +14,7 @@ export default class ProjectRepository {
   /**
    * Récupère tous les projets avec leurs relations (catégories, rôles, coworkers, stacks)
    * @return Liste de tous les projets
+   * @throws {Error} Une erreur si la récupération des projets échoue pour une raison quelconque.
    */
   async getAll(): Promise<Project[]> {
     let conn;
@@ -26,27 +25,9 @@ export default class ProjectRepository {
         await this._hydrateProject(conn, project);
       }
       return projects;
-    } finally {
-      if (conn) conn.release();
-    }
-  }
-
-  /**
-   * Récupère un projet par son ID, avec ses relations (catégories, rôles, coworkers, stacks)
-   * @param id ID du projet
-   * @return Le projet correspondant ou null s'il n'existe pas
-   */
-  async get(id: string): Promise<Project | null> {
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
-      const projects = await conn.query(`SELECT * FROM project WHERE id = ?`, [
-        id,
-      ]);
-      if (projects.length === 0) return null;
-      const project = projects[0];
-      await this._hydrateProject(conn, project);
-      return project;
+    } catch (error) {
+      console.error("Error retrieving projects:", error);
+      throw error;
     } finally {
       if (conn) conn.release();
     }
@@ -246,10 +227,11 @@ export default class ProjectRepository {
 
   /**
    * Crée un nouveau projet avec ses relations (catégories, rôles, coworkers, stacks)
-   * @param project Données du projet à créer (sans l'ID)
-   * @return ID du projet créé
+   * @param {Omit<Project, "id">} project Données du projet à créer (sans l'ID)
+   * @return {boolean} Indique si la création a réussi
+   * @throws {Error} Une erreur si la création échoue pour une raison quelconque, notamment si la requête SQL échoue ou si les données fournies sont invalides.
    */
-  async create(project: Omit<Project, "id">): Promise<string> {
+  async create(project: Omit<Project, "id">): Promise<boolean> {
     const id = crypto.randomUUID();
     let conn;
     try {
@@ -349,22 +331,26 @@ export default class ProjectRepository {
           );
         }
       }
-
-      return id;
+    } catch (error) {
+      console.error("Error creating project:", error);
+      throw error;
     } finally {
       if (conn) conn.release();
     }
+    return true;
   }
 
   /**
    * Met à jour un projet existant avec ses relations (catégories, rôles, coworkers, stacks)
    * @param id ID du projet à mettre à jour
    * @param project Données du projet à mettre à jour (sans l'ID)
+   * @return {boolean} Indique si la mise à jour a réussi
+   * @throws {Error} Une erreur si la mise à jour échoue pour une raison quelconque, notamment si la requête SQL échoue ou si les données fournies sont invalides.
    */
   async update(
     id: string,
     project: Partial<Omit<Project, "id">>,
-  ): Promise<void> {
+  ): Promise<boolean> {
     let conn;
     try {
       conn = await this.pool.getConnection();
@@ -611,22 +597,32 @@ export default class ProjectRepository {
           );
         }
       }
+    } catch (error) {
+      console.error("Error updating project:", error);
+      throw error;
     } finally {
       if (conn) conn.release();
     }
+    return true;
   }
 
   /**
    * Supprime un projet et toutes ses relations (catégories, rôles, coworkers, stacks)
    * @param id ID du projet à supprimer
+   * @return {boolean} Indique si la suppression a réussi
+   * @throws {Error} Une erreur si la suppression échoue pour une raison quelconque, notamment si la requête SQL échoue ou si l'ID fourni est invalide.
    */
-  async delete(id: string): Promise<void> {
+  async delete(id: string): Promise<boolean> {
     let conn;
     try {
       conn = await this.pool.getConnection();
       await conn.query(`DELETE FROM project WHERE id = ?`, [id]);
+    } catch (error) {
+      console.error("Error deleting project:", error);
+      throw error;
     } finally {
       if (conn) conn.release();
     }
+    return true;
   }
 }

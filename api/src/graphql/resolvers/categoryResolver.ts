@@ -35,7 +35,7 @@ const categoryResolver = {
   createCategory: async (
     _args: Omit<Category, "id">,
     context: { user: jwt.JwtPayload | null; categoryRepo: CategoryRepository },
-  ): Promise<Category> => {
+  ): Promise<boolean> => {
     if (!context.user) throw new Error("Unauthorized");
     const input = { ..._args };
     if (isEmpty(input.label)) throw new Error("Label is required");
@@ -50,10 +50,9 @@ const categoryResolver = {
 
     if (input.parent && !isValidUUID(input.parent)) delete input.parent;
 
-    const id = await context.categoryRepo.create(input);
-    const result = await context.categoryRepo.get(id);
-    if (!result || !result[0]) throw new Error("Category not found");
-    return result[0];
+    const result = await context.categoryRepo.create(input);
+    if (!result) throw new Error("Failed to create category");
+    return result;
   },
 
   /**
@@ -62,13 +61,13 @@ const categoryResolver = {
    * Après la mise à jour, récupère et retourne la catégorie mise à jour.
    * @param {Object} _args Les arguments de la mutation, contenant les propriétés de la catégorie à mettre à jour (doit inclure l'ID).
    * @param {Object} context Le contexte de la requête, contenant les informations de l'utilisateur et le repository des catégories.
-   * @returns {Promise<Category>} La catégorie mise à jour, récupérée de la base de données.
+   * @returns {Promise<boolean>} Indique si la mise à jour a réussi.
    * @throws {Error} Une erreur si l'utilisateur n'est pas authentifié, si l'ID n'est pas fourni ou si la catégorie ne peut pas être trouvée après la mise à jour.
    */
   updateCategory: async (
     _args: Partial<Category>,
     context: { user: jwt.JwtPayload | null; categoryRepo: CategoryRepository },
-  ): Promise<Category> => {
+  ): Promise<boolean> => {
     if (!context.user) throw new Error("Unauthorized");
     if (!_args.id) throw new Error("ID is required");
     if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
@@ -78,10 +77,9 @@ const categoryResolver = {
     if (input.description)
       input.description = sanitizeString(input.description);
     if (input.parent && !isValidUUID(input.parent)) delete input.parent;
-    await context.categoryRepo.update(input);
-    const result = await context.categoryRepo.get(_args.id);
-    if (!result || !result[0]) throw new Error("Category not found");
-    return result[0];
+    const result = await context.categoryRepo.update(input);
+    if (!result) throw new Error("Failed to update category");
+    return result;
   },
 
   /**
@@ -99,8 +97,9 @@ const categoryResolver = {
     if (!context.user) throw new Error("Unauthorized");
     if (!_args.id) throw new Error("ID is required");
     if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
-    await context.categoryRepo.delete(_args.id);
-    return true;
+    const result = await context.categoryRepo.delete(_args.id);
+    if (!result) throw new Error("Failed to delete category");
+    return result;
   },
 };
 

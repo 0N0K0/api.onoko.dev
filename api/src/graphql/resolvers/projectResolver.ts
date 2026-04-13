@@ -29,13 +29,13 @@ const projectResolver = {
    * Après la création, récupère et retourne le projet créé.
    * @param {Object} _args Les arguments de la mutation, contenant les propriétés du projet à créer (sauf l'ID).
    * @param {Object} context Le contexte de la requête, contenant les informations de l'utilisateur et le repository des projets.
-   * @returns {Promise<Project | null>} Le projet nouvellement créé, récupéré de la base de données, ou null si le projet ne peut pas être trouvé après la création.
+   * @returns {Promise<boolean>} Indique si la création du projet a réussi.
    * @throws {Error} Une erreur si l'utilisateur n'est pas authentifié ou si le projet ne peut pas être trouvé après la création.
    */
   createProject: async (
     _args: { input: Omit<Project, "id"> },
     context: { user: jwt.JwtPayload | null; projectRepo: ProjectRepository },
-  ): Promise<Project | null> => {
+  ): Promise<boolean> => {
     if (!context.user) throw new Error("Unauthorized");
     const input = { ..._args.input };
     if (isEmpty(input.label)) throw new Error("Label is required");
@@ -162,8 +162,9 @@ const projectResolver = {
       if (input.feedback.client)
         input.feedback.client = sanitizeString(input.feedback.client);
     }
-    const id = await context.projectRepo.create(input);
-    return await context.projectRepo.get(id);
+    const result = await context.projectRepo.create(input);
+    if (!result) throw new Error("Failed to create project");
+    return result;
   },
 
   /**
@@ -172,13 +173,13 @@ const projectResolver = {
    * Après la mise à jour, récupère et retourne le projet mis à jour.
    * @param {Object} _args Les arguments de la mutation, contenant l'ID du projet à mettre à jour et les propriétés à mettre à jour.
    * @param {Object} context Le contexte de la requête, contenant les informations de l'utilisateur et le repository des projets.
-   * @returns {Promise<Project | null>} Le projet mis à jour, récupéré de la base de données, ou null si le projet ne peut pas être trouvé après la mise à jour.
+   * @returns {Promise<boolean>} Indique si la mise à jour du projet a réussi.
    * @throws {Error} Une erreur si l'utilisateur n'est pas authentifié ou si le projet ne peut pas être trouvé après la mise à jour.
    */
   updateProject: async (
     _args: { id: string; input: Partial<Omit<Project, "id">> },
     context: { user: jwt.JwtPayload | null; projectRepo: ProjectRepository },
-  ): Promise<Project | null> => {
+  ): Promise<boolean> => {
     if (!context.user) throw new Error("Unauthorized");
     if (!_args.id) throw new Error("ID is required");
     if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
@@ -307,8 +308,9 @@ const projectResolver = {
       if (input.feedback.client)
         input.feedback.client = sanitizeString(input.feedback.client);
     }
-    await context.projectRepo.update(_args.id, input);
-    return await context.projectRepo.get(_args.id);
+    const result = await context.projectRepo.update(_args.id, input);
+    if (!result) throw new Error("Failed to update project");
+    return result;
   },
 
   /**
@@ -326,8 +328,9 @@ const projectResolver = {
     if (!context.user) throw new Error("Unauthorized");
     if (!_args.id) throw new Error("ID is required");
     if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
-    await context.projectRepo.delete(_args.id);
-    return true;
+    const result = await context.projectRepo.delete(_args.id);
+    if (!result) throw new Error("Failed to delete project");
+    return result;
   },
 };
 

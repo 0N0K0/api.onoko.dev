@@ -190,7 +190,7 @@ export const projectQueries = `
 
 // Mutations GraphQL pour les projets
 export const projectMutations = `
-    createProject(input: ProjectInput!): Project!
-    updateProject(id: ID!, input: ProjectInput): Project!
+    createProject(input: ProjectInput!): Boolean!
+    updateProject(id: ID!, input: ProjectInput): Boolean!
     deleteProject(id: ID!): Boolean!
 `;

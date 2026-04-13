@@ -12,6 +12,7 @@ export class StackRepository {
    * La méthode utilise une requête SQL pour joindre les tables "stack", "stack_version", "stack_skill" et "category" afin d'obtenir les informations complètes sur chaque stack.
    * Les résultats sont ensuite transformés en un format structuré où chaque stack est représentée avec ses propriétés, une liste de ses versions, compétences et sa catégorie associée.
    * @returns {Promise<Stack[]>} Un tableau de stacks récupérées de la base de données, avec leurs propriétés, versions, compétences et catégorie associée.
+   * @throws {Error} Une erreur si la récupération des stacks échoue pour une raison quelconque.
    */
   async getAll(): Promise<Stack[]> {
     let conn;
@@ -46,6 +47,9 @@ export class StackRepository {
         stack.skills = Array.from(new Set(stack.skills));
       }
       return Array.from(stackMap.values());
+    } catch (error) {
+      console.error("Error retrieving stacks:", error);
+      throw error;
     } finally {
       if (conn) conn.release();
     }
@@ -58,9 +62,10 @@ export class StackRepository {
    * Si aucune stack correspondante n'est trouvée, la méthode retourne null.
    * @param {string} key La clé à utiliser pour la recherche (id ou label).
    * @param {string} value La valeur correspondante à rechercher pour la clé spécifiée.
-   * @returns {Promise<Stack | null>} La stack correspondant à la requête, avec ses propriétés, versions, compétences et catégorie associée, ou null si aucune stack n'est trouvée.
+   * @returns {Promise<boolean>} Indique si la stack correspondant à la requête existe.
+   * @throws {Error} Une erreur si la récupération échoue pour une raison quelconque.
    */
-  async get(id: string): Promise<Stack | null> {
+  async get(id: string): Promise<boolean> {
     let conn;
     try {
       conn = await this.pool.getConnection();
@@ -74,7 +79,7 @@ export class StackRepository {
         `,
         [id],
       );
-      if (!rows || rows.length === 0) return null;
+      if (!rows || rows.length === 0) return false;
       const first = rows[0];
       const stack: Stack = {
         id: first.id,
@@ -97,10 +102,13 @@ export class StackRepository {
           ),
         ),
       };
-      return stack;
+    } catch (error) {
+      console.error("Error retrieving stack:", error);
+      throw error;
     } finally {
       if (conn) conn.release();
     }
+    return true;
   }
 
   /**
@@ -108,9 +116,9 @@ export class StackRepository {
    * La méthode génère un ID unique pour la nouvelle stack, puis insère les données dans la table "stack" de la base de données.
    * Après l'insertion, la méthode retourne l'ID de la stack nouvellement créée.
    * @param {Omit<Stack, "id">} stack Les propriétés de la stack à créer, à l'exception de l'ID qui est généré automatiquement.
-   * @returns {Promise<string>} L'ID de la stack nouvellement créée dans la base de données.
+   * @returns {Promise<boolean>} Indique si la création de la stack a réussi.
    */
-  async create(stack: Omit<Stack, "id">): Promise<string> {
+  async create(stack: Omit<Stack, "id">): Promise<boolean> {
     const id = crypto.randomUUID();
 
     let conn;
@@ -138,10 +146,13 @@ export class StackRepository {
           stack.skills.flatMap((skill) => [id, skill]),
         );
       }
-      return id;
+    } catch (error) {
+      console.error("Error creating stack:", error);
+      throw error;
     } finally {
       if (conn) conn.release();
     }
+    return true;
   }
 
   /**
@@ -153,7 +164,7 @@ export class StackRepository {
    * @returns {Promise<void>} Une promesse qui se résout lorsque la mise à jour est terminée, ou rejette une erreur si l'ID n'est pas fourni ou si la mise à jour échoue.
    * @throws {Error} Une erreur si l'ID n'est pas fourni dans les données de la stack, ou si la mise à jour échoue pour une raison quelconque.
    */
-  async update(stack: Partial<Stack>): Promise<void> {
+  async update(stack: Partial<Stack>): Promise<boolean> {
     if (!stack.id) throw new Error("ID is required for update");
     let conn;
     try {
@@ -206,15 +217,19 @@ export class StackRepository {
           await this.removeSkill(stack.id, skill);
         }
       }
-      if (fields.length === 0) return;
+      if (fields.length === 0) return false;
       values.push(stack.id);
       await conn.query(
         `UPDATE stack SET ${fields.join(", ")} WHERE id = ?`,
         values,
       );
+    } catch (error) {
+      console.error("Error updating stack:", error);
+      throw error;
     } finally {
       if (conn) conn.release();
     }
+    return true;
   }
 
   /**
@@ -223,17 +238,21 @@ export class StackRepository {
    * Avant de supprimer la stack, la méthode récupère le nom du fichier d'icône associé à la stack et tente de supprimer ce fichier du système de fichiers si il existe.
    * Après l'exécution de la requête de suppression, la méthode ne retourne rien.
    * @param {string} id L'ID de la stack à supprimer de la base de données.
-   * @returns {Promise<void>} Une promesse qui se résout lorsque la suppression est terminée, ou rejette une erreur si la suppression échoue pour une raison quelconque.
+   * @returns {Promise<boolean>} Indique si la suppression de la stack a réussi.
    * @throws {Error} Une erreur si la suppression échoue pour une raison quelconque.
    */
-  async delete(id: string): Promise<void> {
+  async delete(id: string): Promise<boolean> {
     let conn;
     try {
       conn = await this.pool.getConnection();
       await conn.query("DELETE FROM stack WHERE id = ?", [id]);
+    } catch (error) {
+      console.error("Error deleting stack:", error);
+      throw error;
     } finally {
       if (conn) conn.release();
     }
+    return true;
   }
 
   // Méthodes privées pour gérer les versions et compétences associées à une stack

@@ -14,7 +14,7 @@ export const roleQueries = `
 
 // Mutations GraphQL pour les rôles
 export const roleMutations = `
-    createRole(label: String!): Role!
-    updateRole(id: ID!, label: String): Role!
+    createRole(label: String!): Boolean!
+    updateRole(id: ID!, label: String): Boolean!
     deleteRole(id: ID!): Boolean!
 `;

@@ -29,19 +29,20 @@ const roleResolver = {
    * Après la création, récupère et retourne le rôle créé.
    * @param {Object} _args Les arguments de la mutation, contenant les propriétés du rôle à créer (sauf l'ID).
    * @param {Object} context Le contexte de la requête, contenant les informations de l'utilisateur et le repository des rôles.
-   * @returns {Promise<Role | null>} Le rôle nouvellement créé, récupéré de la base de données, ou null si le rôle ne peut pas être trouvé après la création.
+   * @returns {Promise<boolean>} Indique si la création du rôle a réussi.
    * @throws {Error} Une erreur si l'utilisateur n'est pas authentifié ou si le rôle ne peut pas être trouvé après la création.
    */
   createRole: async (
     _args: Omit<Role, "id">,
     context: { user: jwt.JwtPayload | null; roleRepo: RoleRepository },
-  ): Promise<Role | null> => {
+  ): Promise<boolean> => {
     if (!context.user) throw new Error("Unauthorized");
     const input = { ..._args };
     if (isEmpty(input.label)) throw new Error("Label is required");
     input.label = sanitizeString(input.label);
-    const id = await context.roleRepo.create(input);
-    return await context.roleRepo.get(id);
+    const result = await context.roleRepo.create(input);
+    if (!result) throw new Error("Failed to create role");
+    return result;
   },
 
   /**
@@ -50,20 +51,21 @@ const roleResolver = {
    * Après la mise à jour, récupère et retourne le rôle mis à jour.
    * @param {Object} _args Les arguments de la mutation, contenant les propriétés du rôle à mettre à jour (doit inclure l'ID).
    * @param {Object} context Le contexte de la requête, contenant les informations de l'utilisateur et le repository des rôles.
-   * @returns {Promise<Role | null>} Le rôle mis à jour, récupéré de la base de données, ou null si le rôle ne peut pas être trouvé après la mise à jour.
+   * @returns {Promise<boolean>} Indique si la mise à jour du rôle a réussi.
    * @throws {Error} Une erreur si l'utilisateur n'est pas authentifié ou si le rôle ne peut pas être trouvé après la mise à jour.
    */
   updateRole: async (
     _args: Partial<Role>,
     context: { user: jwt.JwtPayload | null; roleRepo: RoleRepository },
-  ): Promise<Role | null> => {
+  ): Promise<boolean> => {
     if (!context.user) throw new Error("Unauthorized");
     if (!_args.id) throw new Error("ID is required");
     if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
     const input = { ..._args };
     if (input.label) input.label = sanitizeString(input.label);
-    await context.roleRepo.update(input);
-    return await context.roleRepo.get(_args.id);
+    const result = await context.roleRepo.update(input);
+    if (!result) throw new Error("Failed to update role");
+    return result;
   },
 
   /**
@@ -71,7 +73,7 @@ const roleResolver = {
    * Vérifie que l'utilisateur est authentifié, puis appelle la méthode delete du repository des rôles pour supprimer un rôle existant de la base de données.
    * @param {Object} _args Les arguments de la mutation, contenant l'ID du rôle à supprimer.
    * @param {Object} context Le contexte de la requête, contenant les informations de l'utilisateur et le repository des rôles.
-   * @returns {Promise<boolean>} Un booléen indiquant que la suppression a réussi.
+   * @returns {Promise<boolean>} Indique si la suppression du rôle a réussi.
    * @throws {Error} Une erreur si l'utilisateur n'est pas authentifié ou si le rôle ne peut pas être trouvé pour la suppression.
    */
   deleteRole: async (
@@ -81,8 +83,9 @@ const roleResolver = {
     if (!context.user) throw new Error("Unauthorized");
     if (!_args.id) throw new Error("ID is required");
     if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
-    await context.roleRepo.delete(_args.id);
-    return true;
+    const result = await context.roleRepo.delete(_args.id);
+    if (!result) throw new Error("Failed to delete role");
+    return result;
   },
 };
 

@@ -26,44 +26,46 @@ const coworkerResolver = {
   /**
    * Crée un nouveau coworker
    * Vérifie que l'utilisateur est authentifié, puis appelle la méthode create du repository des coworkers pour créer un nouveau coworker dans la base de données.
-   * Après la création, récupère et retourne le coworker créé.
+   * Après la création, retourne un booléen indiquant si la création a réussi.
    * @param {Object} _args Les arguments de la mutation, contenant les propriétés du coworker à créer (sauf l'ID).
    * @param {Object} context Le contexte de la requête, contenant les informations de l'utilisateur et le repository des coworkers.
-   * @returns {Promise<Coworker | null>} Le coworker nouvellement créé, récupéré de la base de données, ou null si le coworker ne peut pas être trouvé après la création.
-   * @throws {Error} Une erreur si l'utilisateur n'est pas authentifié ou si le coworker ne peut pas être trouvé après la création.
+   * @returns {Promise<boolean>} Indique si la création a réussi.
+   * @throws {Error} Une erreur si l'utilisateur n'est pas authentifié ou si la création échoue.
    */
   createCoworker: async (
     _args: Omit<Coworker, "id">,
     context: { user: jwt.JwtPayload | null; coworkerRepo: CoworkerRepository },
-  ): Promise<Coworker | null> => {
+  ): Promise<boolean> => {
     if (!context.user) throw new Error("Unauthorized");
     const input = { ..._args };
     if (isEmpty(input.name)) throw new Error("Name is required");
     input.name = sanitizeString(input.name);
-    const id = await context.coworkerRepo.create(input);
-    return await context.coworkerRepo.get(id);
+    const result = await context.coworkerRepo.create(input);
+    if (!result) throw new Error("Failed to create coworker");
+    return result;
   },
 
   /**
    * Met à jour un coworker existant
    * Vérifie que l'utilisateur est authentifié, puis appelle la méthode update du repository des coworkers pour mettre à jour les propriétés d'un coworker existant dans la base de données.
-   * Après la mise à jour, récupère et retourne le coworker mis à jour.
+   * Après la mise à jour, retourne un booléen indiquant si la mise à jour a réussi.
    * @param {Object} _args Les arguments de la mutation, contenant les propriétés du coworker à mettre à jour (doit inclure l'ID).
    * @param {Object} context Le contexte de la requête, contenant les informations de l'utilisateur et le repository des coworkers.
-   * @returns {Promise<Coworker | null>} Le coworker mis à jour, récupéré de la base de données, ou null si le coworker ne peut pas être trouvé après la mise à jour.
-   * @throws {Error} Une erreur si l'utilisateur n'est pas authentifié ou si le coworker ne peut pas être trouvé après la mise à jour.
+   * @returns {Promise<boolean>} Indique si la mise à jour a réussi.
+   * @throws {Error} Une erreur si l'utilisateur n'est pas authentifié ou si la mise à jour échoue.
    */
   updateCoworker: async (
     _args: Partial<Coworker>,
     context: { user: jwt.JwtPayload | null; coworkerRepo: CoworkerRepository },
-  ): Promise<Coworker | null> => {
+  ): Promise<boolean> => {
     if (!context.user) throw new Error("Unauthorized");
     if (!_args.id) throw new Error("ID is required");
     if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
     const input = { ..._args };
     if (input.name) input.name = sanitizeString(input.name);
-    await context.coworkerRepo.update(input);
-    return await context.coworkerRepo.get(_args.id);
+    const result = await context.coworkerRepo.update(input);
+    if (!result) throw new Error("Failed to update coworker");
+    return result;
   },
 
   /**
@@ -72,7 +74,7 @@ const coworkerResolver = {
    * @param {Object} _args Les arguments de la mutation, contenant l'ID du coworker à supprimer.
    * @param {Object} context Le contexte de la requête, contenant les informations de l'utilisateur et le repository des coworkers.
    * @returns {Promise<boolean>} Un booléen indiquant que la suppression a réussi.
-   * @throws {Error} Une erreur si l'utilisateur n'est pas authentifié.
+   * @throws {Error} Une erreur si l'utilisateur n'est pas authentifié ou si la suppression échoue.
    */
   deleteCoworker: async (
     _args: { id: string },
@@ -81,8 +83,9 @@ const coworkerResolver = {
     if (!context.user) throw new Error("Unauthorized");
     if (!_args.id) throw new Error("ID is required");
     if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
-    await context.coworkerRepo.delete(_args.id);
-    return true;
+    const result = await context.coworkerRepo.delete(_args.id);
+    if (!result) throw new Error("Failed to delete coworker");
+    return result;
   },
 };
 

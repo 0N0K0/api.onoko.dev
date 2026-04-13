@@ -14,7 +14,7 @@ export const mediaQueries = `
 `;
 
 export const mediaMutations = `
-    addMedia(file: Upload!): Media!
-    updateMedia(id: ID!, label: String, category: ID): Media!
+    addMedia(file: Upload!): Boolean!
+    updateMedia(id: ID!, label: String, category: ID): Boolean!
     removeMedia(id: ID!): Boolean!
 `;

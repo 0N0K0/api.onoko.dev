@@ -6,4 +6,5 @@ export interface Category {
   description?: string;
   parent?: string;
   depth?: number;
+  path?: string;
 }

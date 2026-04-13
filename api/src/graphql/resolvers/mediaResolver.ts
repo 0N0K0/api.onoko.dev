@@ -24,17 +24,18 @@ const mediaResolver = {
    * Après l'ajout, récupère et retourne le média ajouté.
    * @param {Object} _args Les arguments de la mutation, contenant le fichier à ajouter.
    * @param {Object} context Le contexte de la requête, contenant le repository des médias.
-   * @returns {Promise<Media | null>} Le média ajouté, ou null si le média ne peut pas être trouvé après l'ajout.
+   * @returns {Promise<boolean>} Indique si l'ajout du média a réussi.
    * @throws {Error} Une erreur si le fichier est manquant ou invalide.
    */
   addMedia: async (
     _args: { file: any; category: string },
     context: { mediaRepo: MediaRepository },
-  ): Promise<Media | null> => {
+  ): Promise<boolean> => {
     const { file } = _args;
     if (!file) throw new Error("File is required");
-    const id = await context.mediaRepo.add({ file });
-    return await context.mediaRepo.get(id);
+    const result = await context.mediaRepo.add({ file });
+    if (!result) throw new Error("Failed to add media");
+    return result;
   },
 
   /**
@@ -43,13 +44,13 @@ const mediaResolver = {
    * Après la mise à jour, récupère et retourne le média mis à jour.
    * @param {Object} _args Les arguments de la mutation, contenant l'ID du média à mettre à jour et la nouvelle catégorie.
    * @param {Object} context Le contexte de la requête, contenant le repository des médias.
-   * @returns {Promise<Media | null>} Le média mis à jour, ou null si le média ne peut pas être trouvé après la mise à jour.
+   * @returns {Promise<boolean>} Indique si la mise à jour du média a réussi.
    * @throws {Error} Une erreur si l'ID du média ou la nouvelle catégorie est manquante ou invalide.
    */
   updateMedia: async (
     _args: { id: string; label?: string; category?: string },
     context: { mediaRepo: MediaRepository },
-  ): Promise<Media | null> => {
+  ): Promise<boolean> => {
     const { id, label, category } = _args;
     if (!id) throw new Error("ID is required");
     if (!isValidUUID(id)) throw new Error("Invalid ID");
@@ -57,8 +58,13 @@ const mediaResolver = {
     if (label) sanitizedLabel = sanitizeString(label);
     if (category && !isValidUUID(category))
       throw new Error("Invalid category ID");
-    await context.mediaRepo.update({ id, label: sanitizedLabel, category });
-    return await context.mediaRepo.get(id);
+    const result = await context.mediaRepo.update({
+      id,
+      label: sanitizedLabel,
+      category,
+    });
+    if (!result) throw new Error("Failed to update media");
+    return result;
   },
 
   /**
@@ -76,8 +82,9 @@ const mediaResolver = {
     const { id } = _args;
     if (!id) throw new Error("ID is required");
     if (!isValidUUID(id)) throw new Error("Invalid ID");
-    await context.mediaRepo.remove(id);
-    return true;
+    const result = await context.mediaRepo.remove(id);
+    if (!result) throw new Error("Failed to remove media");
+    return result;
   },
 };
 

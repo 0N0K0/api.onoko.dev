@@ -7,6 +7,7 @@ export const categoryTypes = `
     description: String
     parent: String
     depth: Int
+    path: String
   }
 `;
 
@@ -18,7 +19,7 @@ export const categoryQueries = `
 
 // Mutations GraphQL pour les catégories
 export const categoryMutations = `
-  createCategory(label: String!, entity: String!, description: String, parent: ID): Category!
-  updateCategory(id: ID!, label: String, entity: String, description: String, parent: ID): Category!
+  createCategory(label: String!, entity: String!, description: String, parent: ID): Boolean!
+  updateCategory(id: ID!, label: String, entity: String, description: String, parent: ID): Boolean!
   deleteCategory(id: ID!): Boolean!
 `;
