@@ -137,7 +137,7 @@ export const projectInputs = `
         validation: String
     }
 
-    input CoworkerInput {
+    input ProjectCoworkerInput {
         id: ID!
         roles: [ID!]!
     }
@@ -174,7 +174,7 @@ export const projectInputs = `
         presentation: PresentationInput
         need: NeedInput
         organization: OrganizationInput
-        coworkers: [CoworkerInput!]
+        coworkers: [ProjectCoworkerInput!]
         roles: [ID!]
         stacks: [ProjectStackInput!]
         kpis: KPIsInput

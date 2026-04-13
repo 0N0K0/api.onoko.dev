@@ -19,7 +19,7 @@ export default class CoworkerRepository {
     try {
       conn = await this.pool.getConnection();
       const coworkers = await conn.query(`
-        SELECT c.*, cr.id AS role_id
+        SELECT c.*, cr.role_id AS role_id
         FROM coworker c
         LEFT JOIN coworker_role cr ON c.id = cr.coworker_id
         ORDER BY c.name
