@@ -6,6 +6,12 @@ export const roleTypes = `
     }
 `;
 
+export const roleInputs = `
+    input RoleInput {
+        label: String!
+    }
+`;
+
 // Requêtes GraphQL pour les rôles
 export const roleQueries = `
     roles: [Role!]!
@@ -14,7 +20,7 @@ export const roleQueries = `
 
 // Mutations GraphQL pour les rôles
 export const roleMutations = `
-    createRole(input: { label: String! }): Boolean!
-    updateRole(id: ID!, input: { label: String }): Boolean!
+    createRole(input: RoleInput): Boolean!
+    updateRole(id: ID!, input: RoleInput): Boolean!
     deleteRole(id: ID!): Boolean!
 `;

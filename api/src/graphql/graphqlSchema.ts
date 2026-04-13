@@ -6,17 +6,25 @@ import {
   accountTypes,
 } from "./schemas/accountSchema";
 import {
+  stackInputs,
   stackMutations,
   stackQueries,
   stackTypes,
 } from "./schemas/stackSchema";
 import {
+  categoryInputs,
   categoryMutations,
   categoryQueries,
   categoryTypes,
 } from "./schemas/categorySchema";
-import { roleMutations, roleQueries, roleTypes } from "./schemas/roleSchema";
 import {
+  roleInputs,
+  roleMutations,
+  roleQueries,
+  roleTypes,
+} from "./schemas/roleSchema";
+import {
+  coworkerInputs,
   coworkerMutations,
   coworkerQueries,
   coworkerTypes,
@@ -35,6 +43,7 @@ import roleResolver from "./resolvers/roleResolver";
 import coworkerResolver from "./resolvers/coworkerResolver";
 import projectResolver from "./resolvers/projectResolver";
 import {
+  mediaInputs,
   mediaMutations,
   mediaQueries,
   mediaTypes,
@@ -51,10 +60,15 @@ export function getSchema() {
     ${authTypes}
     ${accountTypes}
     ${categoryTypes}
+    ${categoryInputs}
     ${mediaTypes}
+    ${mediaInputs}
     ${stackTypes}
+    ${stackInputs}
     ${roleTypes}
+    ${roleInputs}
     ${coworkerTypes}
+    ${coworkerInputs}
     ${projectTypes}
     ${projectInputs}
     type Query {

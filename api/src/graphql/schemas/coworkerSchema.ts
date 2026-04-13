@@ -7,6 +7,13 @@ export const coworkerTypes = `
   }
 `;
 
+export const coworkerInputs = `
+    input CoworkerInput {
+        name: String!
+        roles: [ID!]
+    }
+`;
+
 // Requêtes GraphQL pour les coworkers
 export const coworkerQueries = `
   coworkers: [Coworker!]!
@@ -15,7 +22,7 @@ export const coworkerQueries = `
 
 // Mutations GraphQL pour les coworkers
 export const coworkerMutations = `
-  createCoworker(input: { name: String!, roles: [ID!] }): Boolean!
-  updateCoworker(id: ID!, input: { name: String, roles: [ID!] }): Boolean!
+  createCoworker(input: CoworkerInput): Boolean!
+  updateCoworker(id: ID!, input: CoworkerInput): Boolean!
   deleteCoworker(id: ID!): Boolean!
 `;

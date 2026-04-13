@@ -8,13 +8,24 @@ export const mediaTypes = `
     }
 `;
 
+export const mediaInputs = `
+    input FileInput {
+        file: Upload!
+    }
+
+    input MediaInput {
+        label: String
+        category: ID
+    }
+`;
+
 export const mediaQueries = `
     medias: [Media!]!
     media(id: ID!): Media
 `;
 
 export const mediaMutations = `
-    addMedia(input: { file: Upload! }): Boolean!
-    updateMedia(id: ID!, input: { label: String, category: ID }): Boolean!
+    addMedia(input: FileInput): Boolean!
+    updateMedia(id: ID!, input: MediaInput): Boolean!
     removeMedia(id: ID!): Boolean!
 `;

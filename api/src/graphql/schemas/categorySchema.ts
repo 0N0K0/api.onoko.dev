@@ -11,6 +11,15 @@ export const categoryTypes = `
   }
 `;
 
+export const categoryInputs = `
+    input CategoryInput {
+        label: String!
+        entity: String!
+        description: String
+        parent: ID
+    }
+`;
+
 // Requêtes GraphQL pour les catégories
 export const categoryQueries = `
   categories: [Category!]!
@@ -19,7 +28,7 @@ export const categoryQueries = `
 
 // Mutations GraphQL pour les catégories
 export const categoryMutations = `
-  createCategory(input: { label: String!, entity: String!, description: String, parent: ID }): Boolean!
-  updateCategory(id: ID!, input: { label: String, entity: String, description: String, parent: ID }): Boolean!
+  createCategory(input: CategoryInput): Boolean!
+  updateCategory(id: ID!, input: CategoryInput): Boolean!
   deleteCategory(id: ID!): Boolean!
 `;

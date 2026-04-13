@@ -11,6 +11,17 @@ export const stackTypes = `
   }
 `;
 
+export const stackInputs = `
+  input StackInput {
+    label: String!
+    icon: ID!
+    description: String
+    versions: [String!]
+    skills: [String!]
+    category: ID
+  }
+`;
+
 // Requêtes GraphQL pour les stacks
 export const stackQueries = `
   stacks: [Stack!]!
@@ -20,7 +31,7 @@ export const stackQueries = `
 
 // Mutations GraphQL pour les stacks
 export const stackMutations = `
-  createStack(input: { label: String!, icon: ID!, description: String, versions: [String!], skills: [String!], category: ID }): Boolean!
-  updateStack(id: ID!, input: { label: String, icon: ID, description: String, versions: [String!], skills: [String!], category: ID }): Boolean!
+  createStack(input: StackInput): Boolean!
+  updateStack(id: ID!, input: StackInput): Boolean!
   deleteStack(id: ID!): Boolean!
 `;
