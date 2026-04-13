@@ -56,7 +56,6 @@ import mediaResolver from "./resolvers/mediaResolver";
  */
 export function getSchema() {
   return buildSchema(`
-    scalar Upload
     ${authTypes}
     ${accountTypes}
     ${categoryTypes}

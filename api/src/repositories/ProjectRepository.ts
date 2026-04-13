@@ -20,7 +20,9 @@ export default class ProjectRepository {
     let conn;
     try {
       conn = await this.pool.getConnection();
-      const projects = await conn.query(`SELECT * FROM project`);
+      const projects = await conn.query(
+        `SELECT * FROM project ORDER BY start_date DESC`,
+      );
       for (const project of projects) {
         await this._hydrateProject(conn, project);
       }

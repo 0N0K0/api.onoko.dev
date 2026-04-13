@@ -18,7 +18,7 @@ export default class RoleRepository {
     let conn;
     try {
       conn = await this.pool.getConnection();
-      return await conn.query(`SELECT id, label FROM role`);
+      return await conn.query(`SELECT id, label FROM role ORDER BY label ASC`);
     } catch (error) {
       console.error("Error retrieving roles:", error);
       throw error;

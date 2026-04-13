@@ -9,6 +9,8 @@ export const mediaTypes = `
 `;
 
 export const mediaInputs = `
+    scalar Upload
+
     input FileInput {
         file: Upload!
     }
