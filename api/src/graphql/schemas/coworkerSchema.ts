@@ -15,7 +15,7 @@ export const coworkerQueries = `
 
 // Mutations GraphQL pour les coworkers
 export const coworkerMutations = `
-  createCoworker(name: String!, roles: [ID!]): Boolean!
-  updateCoworker(id: ID!, name: String, roles: [ID!]): Boolean!
+  createCoworker(input: { name: String!, roles: [ID!] }): Boolean!
+  updateCoworker(id: ID!, input: { name: String, roles: [ID!] }): Boolean!
   deleteCoworker(id: ID!): Boolean!
 `;

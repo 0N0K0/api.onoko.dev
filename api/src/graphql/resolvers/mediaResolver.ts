@@ -1,6 +1,6 @@
 import { MediaRepository } from "../../repositories/MediaRepository";
 import { Category } from "../../types/categoryTypes";
-import { Media } from "../../types/mediaTypes";
+import { ImageFile, Media } from "../../types/mediaTypes";
 import { isValidUUID, sanitizeString } from "../../utils/validationUtils";
 
 const mediaResolver = {
@@ -28,10 +28,10 @@ const mediaResolver = {
    * @throws {Error} Une erreur si le fichier est manquant ou invalide.
    */
   addMedia: async (
-    _args: { file: any; category: string },
+    _args: { input: { file: ImageFile } },
     context: { mediaRepo: MediaRepository },
   ): Promise<boolean> => {
-    const { file } = _args;
+    const { file } = _args.input;
     if (!file) throw new Error("File is required");
     const result = await context.mediaRepo.add({ file });
     if (!result) throw new Error("Failed to add media");
@@ -48,10 +48,11 @@ const mediaResolver = {
    * @throws {Error} Une erreur si l'ID du média ou la nouvelle catégorie est manquante ou invalide.
    */
   updateMedia: async (
-    _args: { id: string; label?: string; category?: string },
+    _args: { id: string; input: { label?: string; category?: string } },
     context: { mediaRepo: MediaRepository },
   ): Promise<boolean> => {
-    const { id, label, category } = _args;
+    const { id, input } = _args;
+    const { label, category } = input;
     if (!id) throw new Error("ID is required");
     if (!isValidUUID(id)) throw new Error("Invalid ID");
     let sanitizedLabel: string | undefined;

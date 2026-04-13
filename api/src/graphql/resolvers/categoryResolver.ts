@@ -33,11 +33,11 @@ const categoryResolver = {
    * @throws {Error} Une erreur si l'utilisateur n'est pas authentifié ou si la catégorie ne peut pas être trouvée après la création.
    */
   createCategory: async (
-    _args: Omit<Category, "id">,
+    _args: { input: Omit<Category, "id"> },
     context: { user: jwt.JwtPayload | null; categoryRepo: CategoryRepository },
   ): Promise<boolean> => {
     if (!context.user) throw new Error("Unauthorized");
-    const input = { ..._args };
+    const input = { ..._args.input };
     if (isEmpty(input.label)) throw new Error("Label is required");
     input.label = sanitizeString(input.label);
 
@@ -65,13 +65,13 @@ const categoryResolver = {
    * @throws {Error} Une erreur si l'utilisateur n'est pas authentifié, si l'ID n'est pas fourni ou si la catégorie ne peut pas être trouvée après la mise à jour.
    */
   updateCategory: async (
-    _args: Partial<Category>,
+    _args: { id: string; input: Partial<Omit<Category, "id">> },
     context: { user: jwt.JwtPayload | null; categoryRepo: CategoryRepository },
   ): Promise<boolean> => {
     if (!context.user) throw new Error("Unauthorized");
     if (!_args.id) throw new Error("ID is required");
     if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
-    const input = { ..._args };
+    const input = { ..._args.input, id: _args.id };
     if (input.label) input.label = sanitizeString(input.label);
     if (input.entity) input.entity = sanitizeString(input.entity);
     if (input.description)

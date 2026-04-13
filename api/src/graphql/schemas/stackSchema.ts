@@ -20,7 +20,7 @@ export const stackQueries = `
 
 // Mutations GraphQL pour les stacks
 export const stackMutations = `
-  createStack(label: String!, icon: ID!, description: String, versions: [String!], skills: [String!], category: ID): Boolean!
-  updateStack(id: ID!, label: String, icon: ID, description: String, versions: [String!], skills: [String!], category: ID): Boolean!
+  createStack(input: { label: String!, icon: ID!, description: String, versions: [String!], skills: [String!], category: ID }): Boolean!
+  updateStack(id: ID!, input: { label: String, icon: ID, description: String, versions: [String!], skills: [String!], category: ID }): Boolean!
   deleteStack(id: ID!): Boolean!
 `;

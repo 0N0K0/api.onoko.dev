@@ -184,7 +184,7 @@ const projectResolver = {
     if (!_args.id) throw new Error("ID is required");
     if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
 
-    const input = { ..._args.input };
+    const input = { ..._args.input, id: _args.id };
     if (input.label) input.label = sanitizeString(input.label);
     if (input.thumbnail && !isValidUUID(input.thumbnail as string))
       throw new Error("Invalid thumbnail ID");

@@ -33,11 +33,11 @@ const coworkerResolver = {
    * @throws {Error} Une erreur si l'utilisateur n'est pas authentifié ou si la création échoue.
    */
   createCoworker: async (
-    _args: Omit<Coworker, "id">,
+    _args: { input: Omit<Coworker, "id"> },
     context: { user: jwt.JwtPayload | null; coworkerRepo: CoworkerRepository },
   ): Promise<boolean> => {
     if (!context.user) throw new Error("Unauthorized");
-    const input = { ..._args };
+    const input = { ..._args.input };
     if (isEmpty(input.name)) throw new Error("Name is required");
     input.name = sanitizeString(input.name);
     const result = await context.coworkerRepo.create(input);
@@ -55,13 +55,13 @@ const coworkerResolver = {
    * @throws {Error} Une erreur si l'utilisateur n'est pas authentifié ou si la mise à jour échoue.
    */
   updateCoworker: async (
-    _args: Partial<Coworker>,
+    _args: { id: string; input: Partial<Omit<Coworker, "id">> },
     context: { user: jwt.JwtPayload | null; coworkerRepo: CoworkerRepository },
   ): Promise<boolean> => {
     if (!context.user) throw new Error("Unauthorized");
     if (!_args.id) throw new Error("ID is required");
     if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
-    const input = { ..._args };
+    const input = { ..._args.input, id: _args.id };
     if (input.name) input.name = sanitizeString(input.name);
     const result = await context.coworkerRepo.update(input);
     if (!result) throw new Error("Failed to update coworker");

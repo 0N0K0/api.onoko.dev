@@ -32,11 +32,11 @@ const stackResolver = {
    * @throws {Error} Une erreur si l'utilisateur n'est pas authentifié ou si la stack ne peut pas être trouvée après la création.
    */
   createStack: async (
-    _args: Omit<Stack, "id">,
+    _args: { input: Omit<Stack, "id"> },
     context: { user: jwt.JwtPayload | null; stackRepo: StackRepository },
   ): Promise<boolean> => {
     if (!context.user) throw new Error("Unauthorized");
-    const input = { ..._args };
+    const input = { ..._args.input };
     // Sanitize tous les champs string pertinents
     if (isEmpty(input.label)) throw new Error("Label is required");
     input.label = sanitizeString(input.label);
@@ -62,13 +62,13 @@ const stackResolver = {
    * @throws {Error} Une erreur si l'utilisateur n'est pas authentifié ou si la stack ne peut pas être trouvée après la mise à jour.
    */
   updateStack: async (
-    _args: Partial<Stack>,
+    _args: { id: string; input: Partial<Omit<Stack, "id">> },
     context: { user: jwt.JwtPayload | null; stackRepo: StackRepository },
   ): Promise<boolean> => {
     if (!context.user) throw new Error("Unauthorized");
     if (!_args.id) throw new Error("ID is required for update");
     if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
-    const input = { ..._args };
+    const input = { ..._args.input, id: _args.id };
     if (input.id) input.id = sanitizeString(input.id);
     if (input.label) input.label = sanitizeString(input.label);
     if (input.icon && !isValidUUID(input.icon as string))
