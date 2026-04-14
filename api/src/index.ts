@@ -13,6 +13,7 @@ import { runMigrations } from "./database/migrations";
 import { getGraphqlContext } from "./graphql/graphqlContext";
 import { getRoot, getSchema } from "./graphql/graphqlSchema";
 import jwt from "jsonwebtoken";
+import graphqlUploadExpress from "graphql-upload/public/graphqlUploadExpress.js";
 
 async function main() {
   const pool = getPool();
@@ -57,6 +58,7 @@ async function main() {
   // Route GraphQL
   app.use(
     "/graphql",
+    graphqlUploadExpress({ maxFileSize: 10000000, maxFiles: 10 }),
     graphqlHTTP((req) => {
       let user: jwt.JwtPayload | null = null;
       const auth = req.headers.authorization;

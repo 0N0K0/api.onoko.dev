@@ -56,7 +56,7 @@ export class MediaRepository {
     try {
       if (!media.file) throw new Error("File is required to add media");
       const id = crypto.randomUUID();
-      const label = media.file.originalname;
+      const label = media.file.filename;
       const path = await saveImageFile(media.file);
       await conn.query(
         `INSERT INTO medias (id, path, type, label) VALUES (?, ?, ?, ?)`,
@@ -85,7 +85,6 @@ export class MediaRepository {
    * @throws {Error} Une erreur si l'ID du média n'est pas fourni, ou si la mise à jour échoue pour une raison quelconque, notamment si la requête SQL échoue ou si aucun champ à mettre à jour n'est spécifié.
    */
   async update(media: Partial<Media>): Promise<boolean> {
-    console.log(media);
     if (!media.id) throw new Error("ID is required to update media");
     const conn = await this.pool.getConnection();
     try {
@@ -101,7 +100,6 @@ export class MediaRepository {
       }
       if (fields.length > 0) {
         values.push(media.id);
-        console.log(fields, values);
         await conn.query(
           `UPDATE medias SET ${fields.join(", ")} WHERE id = ?`,
           values,

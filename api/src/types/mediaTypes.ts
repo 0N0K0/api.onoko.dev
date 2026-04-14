@@ -1,9 +1,12 @@
 import { Category } from "./categoryTypes";
 
+import { Readable } from "stream";
+
 export type ImageFile = {
-  buffer: Buffer;
+  filename: string;
   mimetype: string;
-  originalname: string;
+  encoding: string;
+  createReadStream: () => Readable;
 };
 
 export interface Media {

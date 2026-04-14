@@ -28,11 +28,12 @@ const mediaResolver = {
    * @throws {Error} Une erreur si le fichier est manquant ou invalide.
    */
   addMedia: async (
-    _args: { input: { file: ImageFile } },
+    _args: { input: { file: any } },
     context: { mediaRepo: MediaRepository },
   ): Promise<boolean> => {
-    const { file } = _args.input;
-    if (!file) throw new Error("File is required");
+    const upload = _args.input?.file;
+    if (!upload) throw new Error("File is required");
+    const file: ImageFile = await (upload.promise ?? upload);
     const result = await context.mediaRepo.add({ file });
     if (!result) throw new Error("Failed to add media");
     return result;
