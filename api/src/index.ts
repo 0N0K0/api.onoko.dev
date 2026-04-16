@@ -38,14 +38,13 @@ async function main() {
   // Limitation du nombre de requêtes (anti-bruteforce) : large fenêtre pour le dev
   const limiter = rateLimit({
     windowMs: 2 * 60 * 60 * 1000, // 2 heures
-    max: 1000, // Large tolérance pour le dev
+    max: 10000, // Large tolérance pour le dev
     standardHeaders: true,
     legacyHeaders: false,
   });
   app.use(limiter);
   app.use(express.json({ limit: "256mb" }));
 
-  // Toujours placer CORS AVANT les routes qui en ont besoin
   app.use(corsDynamicOrigin);
   app.options("/graphql", corsDynamicOrigin);
 
