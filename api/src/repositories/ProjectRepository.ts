@@ -117,9 +117,10 @@ export default class ProjectRepository {
     // Construit l'objet mockup et ajoute les images mockup si elles existent
     const mockupImagesResult = await conn.query(
       `
-        SELECT media_id
+        SELECT media_id, position
         FROM project_mockup
         WHERE project_id = ?
+        ORDER BY position ASC
       `,
       [projectRow.id],
     );
@@ -127,7 +128,13 @@ export default class ProjectRepository {
       project.mockup = {
         url: projectRow.mockup_url,
         label: projectRow.mockup_label,
-        images: mockupImagesResult,
+        images:
+          mockupImagesResult.map(
+            (m: { media_id: string; position: number }) => ({
+              id: m.media_id,
+              position: m.position,
+            }),
+          ) || [],
       };
     }
 
@@ -282,10 +289,11 @@ export default class ProjectRepository {
 
       // Insère les images mockups liées
       if (project.mockup?.images && project.mockup.images.length) {
-        for (const mediaId of project.mockup?.images) {
+        for (let i = 0; i < project.mockup.images.length; i++) {
+          const mediaId = project.mockup.images[i];
           await conn.query(
-            `INSERT INTO project_mockup (project_id, media_id) VALUES (?, ?)`,
-            [id, mediaId],
+            `INSERT INTO project_mockup (project_id, media_id, position) VALUES (?, ?, ?)`,
+            [id, mediaId, i],
           );
         }
       }
@@ -571,31 +579,47 @@ export default class ProjectRepository {
       if (project.mockup?.images) {
         const existing = (
           await conn.query(
-            `SELECT media_id FROM project_mockup WHERE project_id = ?`,
+            `SELECT media_id, position FROM project_mockup WHERE project_id = ?`,
             [id],
           )
-        ).map((r: { media_id: string }) => r.media_id);
+        ).map((r: { media_id: string; position: number }) => r.media_id);
         const toAdd = project.mockup.images.filter(
-          (m: string | Media) =>
-            !existing.includes(typeof m === "string" ? m : m.id),
+          (m: { id: string; position: number } | string): m is { id: string; position: number } => 
+            typeof m === 'object' && !existing.includes(m.id),
+        );
+        const toEdit = project.mockup.images.filter(
+          (m: { id: string; position: number } | string): m is { id: string; position: number } => 
+            typeof m === 'object' && existing.includes(m.id),
         );
         const toRemove = existing.filter(
           (m: string) =>
             !project.mockup?.images?.some(
-              (image: string | Media) =>
-                (typeof image === "string" ? image : image.id) === m,
+              (image: { id: string; position: number } | string): image is { id: string; position: number } =>
+                typeof image === 'object' && image.id === m,
             ),
         );
-        for (const mediaId of toRemove) {
+        for (const media of toRemove) {
           await conn.query(
             `DELETE FROM project_mockup WHERE project_id = ? AND media_id = ?`,
-            [id, mediaId],
+            [id, media],
           );
         }
-        for (const mediaId of toAdd) {
+        for (const media of toEdit) {
+          const position = project.mockup.images
+            .filter((m): m is { id: string; position: number } => typeof m === 'object')
+            .findIndex((m) => m.id === media.id);
           await conn.query(
-            `INSERT INTO project_mockup (project_id, media_id) VALUES (?, ?)`,
-            [id, mediaId],
+            `UPDATE project_mockup SET position = ? WHERE project_id = ? AND media_id = ?`,
+            [position, id, media.id],
+          );
+        }
+        for (const media of toAdd) {
+          const position = project.mockup.images
+            .filter((m): m is { id: string; position: number } => typeof m === 'object')
+            .findIndex((m) => m.id === media.id);
+          await conn.query(
+            `INSERT INTO project_mockup (project_id, media_id, position) VALUES (?, ?, ?)`,
+            [id, media.id, position],
           );
         }
       }

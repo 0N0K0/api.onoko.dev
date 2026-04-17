@@ -11,7 +11,7 @@ export interface Project {
   mockup?: {
     url: string;
     label: string;
-    images?: string[];
+    images?: { id: string; position: number }[] | string[]; // Peut être un tableau de chaînes (IDs) ou d'objets avec ID et position
   };
   client?: {
     label: string;
