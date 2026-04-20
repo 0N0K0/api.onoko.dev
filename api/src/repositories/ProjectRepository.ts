@@ -248,8 +248,8 @@ export default class ProjectRepository {
       // Insère le projet principal
       await conn.query(
         `INSERT INTO project (
-          id, label, thumbnail, website_url, website_label, mockup_url, mockup_label, client_label, client_logo, manager_name, manager_email, start_date, end_date, intro_context, intro_objective, intro_client, presentation_description, presentation_issue, presentation_audience, need_features, need_functional_constraints, need_technical_constraints, organization_workload, organization_anticipation, organization_methodology, organization_evolution, organization_validation, feedback, feedback_client, kpis_issues, kpis_points, kpis_commits, kpis_pull_requests
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          id, label, thumbnail_id, website_url, website_label, mockup_url, mockup_label, client_label, client_logo_id, manager_name, manager_email, start_date, end_date, intro_context, intro_objective, intro_client, presentation_description, presentation_issue, presentation_audience, need_features, need_functional_constraints, need_technical_constraints, organization_workload, organization_anticipation, organization_methodology, organization_evolution, organization_validation, feedback, feedback_client, kpis_issues, kpis_points, kpis_commits, kpis_pull_requests
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
           project.label,
@@ -584,18 +584,24 @@ export default class ProjectRepository {
           )
         ).map((r: { media_id: string; position: number }) => r.media_id);
         const toAdd = project.mockup.images.filter(
-          (m: { id: string; position: number } | string): m is { id: string; position: number } => 
-            typeof m === 'object' && !existing.includes(m.id),
+          (
+            m: { id: string; position: number } | string,
+          ): m is { id: string; position: number } =>
+            typeof m === "object" && !existing.includes(m.id),
         );
         const toEdit = project.mockup.images.filter(
-          (m: { id: string; position: number } | string): m is { id: string; position: number } => 
-            typeof m === 'object' && existing.includes(m.id),
+          (
+            m: { id: string; position: number } | string,
+          ): m is { id: string; position: number } =>
+            typeof m === "object" && existing.includes(m.id),
         );
         const toRemove = existing.filter(
           (m: string) =>
             !project.mockup?.images?.some(
-              (image: { id: string; position: number } | string): image is { id: string; position: number } =>
-                typeof image === 'object' && image.id === m,
+              (
+                image: { id: string; position: number } | string,
+              ): image is { id: string; position: number } =>
+                typeof image === "object" && image.id === m,
             ),
         );
         for (const media of toRemove) {
@@ -606,7 +612,10 @@ export default class ProjectRepository {
         }
         for (const media of toEdit) {
           const position = project.mockup.images
-            .filter((m): m is { id: string; position: number } => typeof m === 'object')
+            .filter(
+              (m): m is { id: string; position: number } =>
+                typeof m === "object",
+            )
             .findIndex((m) => m.id === media.id);
           await conn.query(
             `UPDATE project_mockup SET position = ? WHERE project_id = ? AND media_id = ?`,
@@ -615,7 +624,10 @@ export default class ProjectRepository {
         }
         for (const media of toAdd) {
           const position = project.mockup.images
-            .filter((m): m is { id: string; position: number } => typeof m === 'object')
+            .filter(
+              (m): m is { id: string; position: number } =>
+                typeof m === "object",
+            )
             .findIndex((m) => m.id === media.id);
           await conn.query(
             `INSERT INTO project_mockup (project_id, media_id, position) VALUES (?, ?, ?)`,

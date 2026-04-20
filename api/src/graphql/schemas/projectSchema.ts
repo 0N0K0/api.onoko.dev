@@ -16,7 +16,7 @@ export const projectTypes = `
         need: Need
         organization: Organization
         roles: [ID!]
-        coworkers: [ID!]
+        coworkers: [ProjectCoworker!]
         stacks: [ProjectStack!]
         kpis: KPIs
         feedback: Feedback
@@ -67,6 +67,11 @@ export const projectTypes = `
         methodology: String
         evolution: String
         validation: String
+    }
+
+    type ProjectCoworker {
+        id: ID!
+        roles: [ID!]!
     }
 
     type ProjectStack {
