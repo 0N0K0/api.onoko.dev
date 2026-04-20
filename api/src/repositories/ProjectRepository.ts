@@ -23,10 +23,12 @@ export default class ProjectRepository {
       const projects = await conn.query(
         `SELECT * FROM project ORDER BY start_date DESC`,
       );
+      let hydratedProjects: Project[] = [];
       for (const project of projects) {
-        await this._hydrateProject(conn, project);
+        const hydratedProject = await this._hydrateProject(conn, project);
+        hydratedProjects.push(hydratedProject);
       }
-      return projects;
+      return hydratedProjects;
     } catch (error) {
       console.error("Error retrieving projects:", error);
       throw error;
@@ -43,10 +45,11 @@ export default class ProjectRepository {
   private async _hydrateProject(
     conn: mariadb.PoolConnection,
     projectRow: ProjectRow,
-  ) {
+  ): Promise<Project> {
     let project: Project = {
       id: projectRow.id,
       label: projectRow.label,
+      thumbnail: projectRow.thumbnail_id,
       startDate: projectRow.start_date,
       endDate: projectRow.end_date,
       categories: [],
@@ -97,8 +100,8 @@ export default class ProjectRepository {
       [projectRow.id],
     );
     project.stacks = stacks.map(
-      (s: { id: string; section?: string; version?: string }) => ({
-        id: s.id,
+      (s: { stack_id: string; section?: string; version?: string }) => ({
+        id: s.stack_id,
         version: s.version,
         section: s.section,
       }),
@@ -107,10 +110,10 @@ export default class ProjectRepository {
     if (projectRow.thumbnail_id) project.thumbnail = projectRow.thumbnail_id;
 
     // Construit l'objet website si les champs sont présents
-    if (projectRow.website_url && projectRow.website_label) {
+    if (projectRow.website_url) {
       project.website = {
         url: projectRow.website_url,
-        label: projectRow.website_label,
+        label: projectRow.website_label || "",
       };
     }
 
@@ -124,10 +127,10 @@ export default class ProjectRepository {
       `,
       [projectRow.id],
     );
-    if (projectRow.mockup_url && projectRow.mockup_label) {
+    if (projectRow.mockup_url) {
       project.mockup = {
         url: projectRow.mockup_url,
-        label: projectRow.mockup_label,
+        label: projectRow.mockup_label || "",
         images:
           mockupImagesResult.map(
             (m: { media_id: string; position: number }) => ({
@@ -232,6 +235,8 @@ export default class ProjectRepository {
         client: projectRow.feedback_client,
       };
     }
+
+    return project;
   }
 
   /**
@@ -369,13 +374,13 @@ export default class ProjectRepository {
       const values: any[] = [];
       const map: Record<string, any> = {
         label: project.label,
-        thumbnail: project.thumbnail,
+        thumbnail_id: project.thumbnail,
         website_url: project.website?.url,
         website_label: project.website?.label,
         mockup_url: project.mockup?.url,
         mockup_label: project.mockup?.label,
         client_label: project.client?.label,
-        client_logo: project.client?.logo,
+        client_logo_id: project.client?.logo,
         manager_name: project.manager?.name,
         manager_email: project.manager?.email,
         start_date: project.startDate ? new Date(project.startDate) : undefined,
@@ -401,12 +406,21 @@ export default class ProjectRepository {
         kpis_commits: project.kpis?.commits,
         kpis_pull_requests: project.kpis?.pullRequests,
       };
+      console.log(map);
       for (const [col, val] of Object.entries(map)) {
         if (val !== undefined) {
           fields.push(`${col} = ?`);
           values.push(val);
         }
       }
+
+      if (fields.length > 0) {
+        await conn.query(
+          `UPDATE project SET ${fields.join(", ")} WHERE id = ?`,
+          [...values, id],
+        );
+      }
+
       // Met à jour les catégories liées
       if (project.categories) {
         const existing = (
