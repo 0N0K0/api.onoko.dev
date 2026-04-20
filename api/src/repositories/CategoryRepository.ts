@@ -2,9 +2,18 @@ import mariadb from "mariadb";
 import crypto from "crypto";
 import { Category } from "../types/categoryTypes";
 
+// Repository pour les opérations liées aux catégories dans la base de données
 export default class CategoryRepository {
+  // Constructeur qui initialise le repository avec un pool de connexions à la base de données MariaDB
   constructor(private pool: mariadb.Pool) {}
 
+  /**
+   * Récupère toutes les catégories de la base de données, en utilisant une requête récursive pour construire l'arborescence des catégories.
+   * La requête utilise une Common Table Expression (CTE) récursive pour récupérer les catégories et leurs descendants, en calculant la profondeur et le chemin de chaque catégorie.
+   * Les résultats sont triés par chemin pour garantir que les catégories parents apparaissent avant leurs enfants.
+   * @returns {Promise<Category[]>} Un tableau de catégories récupérées de la base de données, avec leurs propriétés et relations hiérarchiques.
+   * @throws {Error} Une erreur si la récupération des catégories échoue pour une raison quelconque.
+   */
   async getAll(): Promise<Category[]> {
     let conn;
     try {
@@ -21,36 +30,27 @@ export default class CategoryRepository {
           FROM category c
           JOIN category_tree ct ON c.parent_id = ct.id
         )
-        SELECT id, label, entity, description, parent, depth FROM category_tree ORDER BY path;
+        SELECT id, label, entity, description, parent, depth, path FROM category_tree ORDER BY path;
         `);
+    } catch (error) {
+      console.error("Error retrieving categories:", error);
+      throw error;
     } finally {
       if (conn) conn.release();
     }
   }
 
-  async get(
-    key: "id" | "label",
-    value: any,
-    entity?: string,
-  ): Promise<Category[] | null> {
-    const categories = await this.getAll();
-    const category = categories.find(
-      (c) => c[key] === value && (!entity || c.entity === entity),
-    );
-    if (!category) return null;
-    const findDescendants = (parentId: string): Category[] => {
-      const children = categories.filter((c) => c.parent === parentId);
-      return children.flatMap((child) => [child, ...findDescendants(child.id)]);
-    };
-    const descendants = findDescendants(category.id);
-    return [category, ...descendants];
-  }
-
-  async create(category: Omit<Category, "id">): Promise<string> {
-    const id = crypto.randomBytes(16).toString("hex");
-
+  /**
+   * Crée une nouvelle catégorie dans la base de données en utilisant les propriétés fournies.
+   * La méthode génère un ID unique pour la nouvelle catégorie, puis insère les données dans la table "category" de la base de données.
+   * Après l'insertion, la méthode retourne un booléen indiquant si la création a réussi.
+   * @param {Omit<Category, "id">} category - Les propriétés de la catégorie à créer, à l'exception de l'ID qui est généré automatiquement.
+   * @returns {Promise<boolean>} Indique si la catégorie a été créée avec succès.
+   * @throws {Error} Une erreur si la création échoue pour une raison quelconque.
+   */
+  async create(category: Omit<Category, "id">): Promise<boolean> {
+    const id = crypto.randomUUID();
     let conn;
-
     try {
       conn = await this.pool.getConnection();
       await conn.query(
@@ -63,13 +63,25 @@ export default class CategoryRepository {
           category.parent || null,
         ],
       );
+    } catch (error) {
+      console.error("Error creating category:", error);
+      throw error;
     } finally {
       if (conn) conn.release();
     }
-    return id;
+    return true;
   }
 
-  async update(category: Partial<Category>): Promise<void> {
+  /**
+   * Met à jour une catégorie existante dans la base de données en fonction des propriétés fournies.
+   * La méthode vérifie que l'ID de la catégorie est fourni, puis construit dynamiquement la requête SQL pour mettre à jour les champs spécifiés.
+   * Si le champ "parent" est défini à une valeur vide ou "null", il est traité comme une valeur NULL dans la base de données.
+   * Après l'exécution de la requête de mise à jour, la méthode ne retourne rien.
+   * @param {Partial<Category>} category - Les propriétés de la catégorie à mettre à jour, qui doivent inclure l'ID de la catégorie à mettre à jour.
+   * @returns {Promise<boolean>} Indique si la mise à jour a réussi.
+   * @throws {Error} Une erreur si l'ID de la catégorie n'est pas fourni, ou si la mise à jour échoue pour une raison quelconque.
+   */
+  async update(category: Partial<Category>): Promise<boolean> {
     if (!category.id) throw new Error("ID is required for update");
     let conn;
     try {
@@ -98,24 +110,40 @@ export default class CategoryRepository {
         }
       }
       // On exécute la requête même si la seule modif est parent_id = NULL
-      if (fields.length === 0) return;
+      if (fields.length === 0) return false;
       values.push(category.id);
       await conn.query(
         `UPDATE category SET ${fields.join(", ")} WHERE id = ?`,
         values,
       );
+    } catch (error) {
+      console.error("Error updating category:", error);
+      throw error;
     } finally {
       if (conn) conn.release();
     }
+    return true;
   }
 
-  async delete(id: string): Promise<void> {
+  /**
+   * Supprime une catégorie de la base de données en fonction de son ID.
+   * La méthode exécute une requête SQL pour supprimer la catégorie correspondante à l'ID spécifié de la table "category" de la base de données.
+   * Après l'exécution de la requête de suppression, la méthode retourne un booléen indiquant si la suppression a réussi.
+   * @param {string} id - L'ID de la catégorie à supprimer de la base de données.
+   * @returns {Promise<boolean>} Indique si la suppression a réussi.
+   * @throws {Error} Une erreur si la suppression échoue pour une raison quelconque.
+   */
+  async delete(id: string): Promise<boolean> {
     let conn;
     try {
       conn = await this.pool.getConnection();
       await conn.query("DELETE FROM category WHERE id = ?", [id]);
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      throw error;
     } finally {
       if (conn) conn.release();
     }
+    return true;
   }
 }

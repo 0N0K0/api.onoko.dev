@@ -1,4 +1,5 @@
-const authTypes = `
+// Types GraphQL pour l'authentification
+export const authTypes = `
   type AuthPayload {
     token: String!
   }
@@ -7,10 +8,9 @@ const authTypes = `
   }
 `;
 
-const authMutations = `
+// Mutations GraphQL pour l'authentification
+export const authMutations = `
   login(login: String!, password: String!): AuthPayload!
   refreshToken(token: String!): AuthPayload!
   verifyToken(token: String!): VerifyTokenPayload
 `;
-
-export { authTypes, authMutations };

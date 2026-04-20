@@ -1,4 +1,7 @@
 {
+  "ts-node": {
+    "files": true
+  },
   "compilerOptions": {
     "target": "ES2022",
     "module": "CommonJS",
@@ -12,4 +15,9 @@
     ],
     "skipLibCheck": true
   }
+  ,
+  "include": [
+    "src",
+    "../migrations"
+  ]
 }

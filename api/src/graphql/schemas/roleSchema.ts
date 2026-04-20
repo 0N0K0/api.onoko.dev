@@ -1,3 +1,4 @@
+// Types GraphQL pour les rôles
 export const roleTypes = `
     type Role {
         id: ID!
@@ -5,13 +6,21 @@ export const roleTypes = `
     }
 `;
 
+export const roleInputs = `
+    input RoleInput {
+        label: String!
+    }
+`;
+
+// Requêtes GraphQL pour les rôles
 export const roleQueries = `
     roles: [Role!]!
     role(id: ID!): Role
 `;
 
+// Mutations GraphQL pour les rôles
 export const roleMutations = `
-    createRole(label: String!): Role!
-    updateRole(id: ID!, label: String): Role!
+    createRole(input: RoleInput): Boolean!
+    updateRole(id: ID!, input: RoleInput): Boolean!
     deleteRole(id: ID!): Boolean!
 `;

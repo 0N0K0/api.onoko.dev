@@ -1,132 +1,65 @@
-import path from "path";
-import fs from "fs";
 import "dotenv/config";
 import express from "express";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import path from "path";
 import { graphqlHTTP } from "express-graphql";
-import { buildSchema } from "graphql";
-import mariadb from "mariadb";
-import { Umzug } from "umzug";
+import { verifyToken } from "./utils/auth/jwtUtils";
+import { corsDynamicOrigin } from "./middlewares/corsDynamicOrigin";
 import { initAdmin } from "./utils/initAdmin";
 import { SettingsRepository } from "./repositories/SettingsRepository";
-import { corsDynamicOrigin } from "./middlewares/corsDynamicOrigin";
-import { authMutations, authTypes } from "./graphql/schemas/authSchema";
-import {
-  accountMutations,
-  accountQueries,
-  accountTypes,
-} from "./graphql/schemas/accountSchema";
-import authResolver from "./graphql/resolvers/authResolver";
-import accountResolver from "./graphql/resolvers/accountResolver";
-import { verifyToken } from "./utils/auth/jwtUtils";
-import {
-  stackMutations,
-  stackQueries,
-  stackTypes,
-} from "./graphql/schemas/stackSchema";
-import stackResolver from "./graphql/resolvers/stackResolver";
-import { StackRepository } from "./repositories/StackRepository";
-import CategoryRepository from "./repositories/CategoryRepository";
-import {
-  categoryMutations,
-  categoryQueries,
-  categoryTypes,
-} from "./graphql/schemas/categorySchema";
-import categoryResolver from "./graphql/resolvers/categoryResolver";
-import {
-  roleMutations,
-  roleQueries,
-  roleTypes,
-} from "./graphql/schemas/roleSchema";
-import {
-  coworkerMutations,
-  coworkerQueries,
-  coworkerTypes,
-} from "./graphql/schemas/coworkerSchema";
-import roleResolver from "./graphql/resolvers/roleResolver";
-import coworkerResolver from "./graphql/resolvers/coworkerResolver";
-import RoleRepository from "./repositories/RoleRepository";
-import CoworkerRepository from "./repositories/CoworkerRepository";
-
-const pool = mariadb.createPool({
-  host: process.env.DB_HOST || "localhost",
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "root",
-  database: process.env.DB_NAME || "onokodb",
-  connectionLimit: 5,
-});
-
-const settingsRepo = new SettingsRepository(pool);
+import { getPool } from "./database/db";
+import { runMigrations } from "./database/migrations";
+import { getGraphqlContext } from "./graphql/graphqlContext";
+import { getRoot, getSchema } from "./graphql/graphqlSchema";
+import jwt from "jsonwebtoken";
+import graphqlUploadExpress from "graphql-upload/public/graphqlUploadExpress.js";
 
 async function main() {
-  const isProd =
-    process.env.NODE_ENV === "production" ||
-    fs.existsSync(path.join(__dirname, "migrations", "202603252047.js"));
-  const migrationsPath = isProd
-    ? path.join(__dirname, "migrations", "*.js")
-    : path.join(__dirname, "migrations", "*.ts");
+  const pool = getPool();
+  await runMigrations(pool);
 
-  const umzug = new Umzug({
-    migrations: { glob: migrationsPath },
-    context: pool,
-    logger: console,
-  });
-
-  await umzug.up();
-
+  const settingsRepo = new SettingsRepository(pool);
   await initAdmin(settingsRepo).catch((err) => {
     console.error("Admin init error:", err.message);
     process.exit(1);
   });
 
   const app = express();
-  const port = 4000;
-  app.use(express.json({ limit: "256mb" }));
 
+  // Sécurité HTTP : headers sécurisés (dev friendly)
   app.use(
-    "/public/stack",
-    express.static(path.join(process.cwd(), "public", "stack")),
+    helmet({
+      crossOriginResourcePolicy: false, // Permet le chargement des médias depuis le front
+      contentSecurityPolicy: false, // Désactive CSP strict pour le dev front
+    }),
   );
 
+  // Limitation du nombre de requêtes (anti-bruteforce) : large fenêtre pour le dev
+  const limiter = rateLimit({
+    windowMs: 2 * 60 * 60 * 1000, // 2 heures
+    max: 10000, // Large tolérance pour le dev
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  app.use(limiter);
+  app.use(express.json({ limit: "256mb" }));
+
   app.use(corsDynamicOrigin);
+  app.options("/graphql", corsDynamicOrigin);
 
-  const schema = buildSchema(`
-    scalar Upload
-    ${authTypes}
-    ${accountTypes}
-    ${categoryTypes}
-    ${stackTypes}
-    ${roleTypes}
-    ${coworkerTypes}
-    type Query {
-      ${accountQueries}
-      ${categoryQueries}
-      ${stackQueries}
-      ${roleQueries}
-      ${coworkerQueries}
-    }
-    type Mutation {
-      ${authMutations}
-      ${accountMutations}
-      ${categoryMutations}
-      ${stackMutations}
-      ${roleMutations}
-      ${coworkerMutations}
-    }
-  `);
+  // Route statique médias
+  app.use(
+    "/medias",
+    express.static(path.join(process.cwd(), "public", "medias")),
+  );
 
-  const root = {
-    ...authResolver,
-    ...accountResolver,
-    ...categoryResolver,
-    ...stackResolver,
-    ...roleResolver,
-    ...coworkerResolver,
-  };
-
+  // Route GraphQL
   app.use(
     "/graphql",
+    graphqlUploadExpress({ maxFileSize: 10000000, maxFiles: 10 }),
     graphqlHTTP((req) => {
-      let user = null;
+      let user: jwt.JwtPayload | null = null;
       const auth = req.headers.authorization;
       if (auth && auth.startsWith("Bearer ")) {
         try {
@@ -134,17 +67,10 @@ async function main() {
         } catch {}
       }
       return {
-        schema,
-        rootValue: root,
+        schema: getSchema(),
+        rootValue: getRoot(),
         graphiql: true,
-        context: {
-          user,
-          settingsRepo,
-          categoryRepo: new CategoryRepository(pool),
-          stackRepo: new StackRepository(pool),
-          roleRepo: new RoleRepository(pool),
-          coworkerRepo: new CoworkerRepository(pool),
-        },
+        context: getGraphqlContext({ user, pool }),
         customFormatErrorFn: (err) => {
           console.error("GraphQL Error:", err);
           return { message: err.message, stack: err.stack };
@@ -153,9 +79,13 @@ async function main() {
     }),
   );
 
+  const port = 4000;
   app.listen(port, () => {
     console.log(`API server running at http://localhost:${port}/graphql`);
   });
 }
 
-main();
+main().catch((err) => {
+  console.error("Server error:", err);
+  process.exit(1);
+});

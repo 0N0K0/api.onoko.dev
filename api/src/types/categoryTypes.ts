@@ -1,5 +1,4 @@
-import { Stack } from "./stackTypes";
-
+// Interface représentant une catégorie
 export interface Category {
   id: string;
   label: string;
@@ -7,5 +6,5 @@ export interface Category {
   description?: string;
   parent?: string;
   depth?: number;
-  entities?: Stack[];
+  path?: string;
 }
