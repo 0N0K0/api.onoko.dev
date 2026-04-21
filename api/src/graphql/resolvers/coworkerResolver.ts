@@ -17,7 +17,7 @@ const coworkerResolver = {
    * @returns {Promise<Coworker[]>} Un tableau de coworkers récupérés de la base de données.
    */
   coworkers: async (
-    _args: any,
+    _args: Record<string, never>,
     context: { coworkerRepo: CoworkerRepository },
   ): Promise<Coworker[]> => {
     return await context.coworkerRepo.getAll();

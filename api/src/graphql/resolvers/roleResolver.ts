@@ -17,7 +17,7 @@ const roleResolver = {
    * @returns {Promise<Role[]>} Un tableau de rôles récupérés de la base de données.
    */
   roles: async (
-    _args: any,
+    _args: Record<string, never>,
     context: { roleRepo: RoleRepository },
   ): Promise<Role[]> => {
     return await context.roleRepo.getAll();

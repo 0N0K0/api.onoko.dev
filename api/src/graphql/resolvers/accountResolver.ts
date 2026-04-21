@@ -20,7 +20,7 @@ const accountResolver = {
    * @throws {Error} Une erreur si l'utilisateur n'est pas authentifié.
    */
   account: async (
-    _args: any,
+    _args: Record<string, never>,
     context: {
       user: jwt.JwtPayload | null;
       settingsRepo: SettingsRepository;

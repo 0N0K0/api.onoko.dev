@@ -16,7 +16,7 @@ const stackResolver = {
    * @returns {Promise<Stack[]>} Un tableau de stacks récupérées de la base de données.
    */
   stacks: async (
-    _args: any,
+    _args: Record<string, never>,
     context: { stackRepo: StackRepository },
   ): Promise<Stack[]> => {
     return await context.stackRepo.getAll();

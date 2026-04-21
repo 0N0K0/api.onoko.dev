@@ -17,7 +17,7 @@ const categoryResolver = {
    * @returns {Promise<Category[]>} Un tableau de catégories récupérées de la base de données.
    */
   categories: async (
-    _args: any,
+    _args: Record<string, never>,
     context: { categoryRepo: CategoryRepository },
   ): Promise<Category[]> => {
     return await context.categoryRepo.getAll();

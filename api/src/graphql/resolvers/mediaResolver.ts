@@ -12,7 +12,7 @@ const mediaResolver = {
    * @returns {Promise<Category[] | null | undefined>} Un tableau de catégories avec leurs médias associés, ou null/undefined si aucune catégorie n'est trouvée.
    */
   medias: async (
-    _args: any,
+    _args: Record<string, never>,
     context: { mediaRepo: MediaRepository },
   ): Promise<Media[] | null | undefined> => {
     return await context.mediaRepo.getAll();
