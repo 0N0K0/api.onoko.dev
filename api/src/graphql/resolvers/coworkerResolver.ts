@@ -4,7 +4,6 @@ import jwt from "jsonwebtoken";
 import {
   sanitizeString,
   isEmpty,
-  isValidUUID,
   checkAuth,
   validateId,
 } from "../../utils/validationUtils";

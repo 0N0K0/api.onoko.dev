@@ -1,13 +1,10 @@
 import Redis from "ioredis";
-
-const ATTEMPT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
-const MAX_ATTEMPTS = 5;
-
-// Configure Redis connection (URL from env or default localhost)
-if (!process.env.REDIS_URL) throw new Error("REDIS_URL is not defined");
-const redis = new Redis(process.env.REDIS_URL);
-
-const ATTEMPT_PREFIX = "abf:"; // anti-bruteforce prefix
+import {
+  ATTEMPT_PREFIX,
+  ATTEMPT_WINDOW_MS,
+  MAX_ATTEMPTS,
+  redis,
+} from "../../constants/abfConstants";
 
 /**
  * Enregistre une tentative de connexion pour une adresse IP donnée.

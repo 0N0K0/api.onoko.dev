@@ -9,6 +9,8 @@ import { promises as fsPromises, createWriteStream } from "fs";
 import { Transform } from "stream";
 import { pipeline } from "stream/promises";
 import sharp from "sharp";
+
+// Repository pour les opérations liées aux médias dans la base de données
 export class MediaRepository {
   constructor(private pool: mariadb.Pool) {}
 

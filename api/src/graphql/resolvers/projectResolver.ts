@@ -12,6 +12,8 @@ import {
 /**
  * Sanitise et valide les champs d'un input projet (commun à create et update).
  * Modifie l'objet en place et lève une erreur si un UUID est invalide.
+ * @param {Partial<Omit<Project, "id">>} input L'input projet à sanitiser et valider
+ * @throws {Error} Si un champ UUID est invalide ou si un champ string est vide après sanitisation
  */
 function sanitizeProjectInput(input: Partial<Omit<Project, "id">>): void {
   if (input.thumbnail && !isValidUUID(input.thumbnail as string))

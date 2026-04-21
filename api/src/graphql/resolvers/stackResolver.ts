@@ -9,6 +9,7 @@ import {
   validateId,
 } from "../../utils/validationUtils";
 
+// Résolveur GraphQL pour les opérations liées aux stacks
 const stackResolver = {
   /**
    * Récupère toutes les stacks

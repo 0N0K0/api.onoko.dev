@@ -1,10 +1,5 @@
 import jwt, { SignOptions } from "jsonwebtoken";
-
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) throw new Error("JWT_SECRET is not defined");
-const _JWT_SECRET: string = JWT_SECRET;
-
-const JWT_EXPIRES_IN: string | number = process.env.JWT_EXPIRES_IN || "2h"; // Durée de validité des tokens JWT, définie dans les variables d'environnement ou une valeur par défaut de 2 heures
+import { _JWT_SECRET, JWT_EXPIRES_IN } from "../../constants/jwtConstants";
 
 /**
  * Génère un token JWT à partir d'un payload donné. Le token est signé avec une clé secrète définie dans les variables d'environnement et a une durée de validité également définie dans les variables d'environnement.
