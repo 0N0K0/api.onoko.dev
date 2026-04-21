@@ -89,13 +89,11 @@ export default class ProjectRepository {
       for (const row of stacks) {
         if (!stacksByProject.has(row.project_id))
           stacksByProject.set(row.project_id, []);
-        stacksByProject
-          .get(row.project_id)!
-          .push({
-            id: row.stack_id,
-            version: row.version,
-            section: row.section,
-          });
+        stacksByProject.get(row.project_id)!.push({
+          id: row.stack_id,
+          version: row.version,
+          section: row.section,
+        });
       }
 
       const mockupsByProject = new Map<
@@ -425,7 +423,6 @@ export default class ProjectRepository {
         kpis_commits: project.kpis?.commits,
         kpis_pull_requests: project.kpis?.pullRequests,
       };
-      console.log(map);
       for (const [col, val] of Object.entries(map)) {
         if (val !== undefined) {
           fields.push(`${col} = ?`);

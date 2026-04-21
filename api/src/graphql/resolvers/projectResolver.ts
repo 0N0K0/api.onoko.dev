@@ -20,9 +20,7 @@ const projectResolver = {
     _args: any,
     context: { projectRepo: ProjectRepository },
   ): Promise<Project[]> => {
-    const result = await context.projectRepo.getAll();
-    console.log("Fetched projects:", result);
-    return result;
+    return await context.projectRepo.getAll();
   },
 
   /**
