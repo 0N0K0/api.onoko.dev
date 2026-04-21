@@ -1,5 +1,3 @@
-import mariadb from "mariadb";
-import crypto from "crypto";
 import { Project, ProjectRow } from "../types/projectTypes";
 import { Role } from "../types/roleTypes";
 import { Category } from "../types/categoryTypes";
@@ -10,11 +8,11 @@ import {
   withTransaction,
   buildSetClause,
 } from "../database/dbHelpers";
+import { BaseRepository } from "./BaseRepository";
 
 // Repository pour les opérations liées aux projets dans la base de données
-export default class ProjectRepository {
-  // Constructeur qui initialise le repository avec un pool de connexions à la base de données MariaDB
-  constructor(private pool: mariadb.Pool) {}
+export default class ProjectRepository extends BaseRepository {
+  protected readonly tableName = "project";
 
   /**
    * Récupère tous les projets avec leurs relations (catégories, rôles, coworkers, stacks)
@@ -264,7 +262,7 @@ export default class ProjectRepository {
    * @throws {Error} Une erreur si la création échoue pour une raison quelconque, notamment si la requête SQL échoue ou si les données fournies sont invalides.
    */
   async create(project: Omit<Project, "id">): Promise<boolean> {
-    const id = crypto.randomUUID();
+    const id = this.generateId();
     await withTransaction(this.pool, async (conn) => {
       // Insère le projet principal
       await conn.query(
@@ -623,19 +621,6 @@ export default class ProjectRepository {
         }
       }
     });
-    return true;
-  }
-
-  /**
-   * Supprime un projet et toutes ses relations (catégories, rôles, coworkers, stacks)
-   * @param id ID du projet à supprimer
-   * @return {boolean} Indique si la suppression a réussi
-   * @throws {Error} Une erreur si la suppression échoue pour une raison quelconque, notamment si la requête SQL échoue ou si l'ID fourni est invalide.
-   */
-  async delete(id: string): Promise<boolean> {
-    await withConnection(this.pool, (conn) =>
-      conn.query(`DELETE FROM project WHERE id = ?`, [id]),
-    );
     return true;
   }
 }

@@ -1,12 +1,10 @@
-import mariadb from "mariadb";
-import crypto from "crypto";
 import { Category } from "../types/categoryTypes";
-import { withConnection, buildSetClause } from "../database/dbHelpers";
+import { withConnection } from "../database/dbHelpers";
+import { BaseRepository } from "./BaseRepository";
 
 // Repository pour les opérations liées aux catégories dans la base de données
-export default class CategoryRepository {
-  // Constructeur qui initialise le repository avec un pool de connexions à la base de données MariaDB
-  constructor(private pool: mariadb.Pool) {}
+export default class CategoryRepository extends BaseRepository {
+  protected readonly tableName = "category";
 
   /**
    * Récupère toutes les catégories de la base de données, en utilisant une requête récursive pour construire l'arborescence des catégories.
@@ -43,7 +41,7 @@ export default class CategoryRepository {
    * @throws {Error} Une erreur si la création échoue pour une raison quelconque.
    */
   async create(category: Omit<Category, "id">): Promise<boolean> {
-    const id = crypto.randomUUID();
+    const id = this.generateId();
     await withConnection(this.pool, (conn) =>
       conn.query(
         `INSERT INTO category (id, label, entity, description, parent_id) VALUES (?, ?, ?, ?, ?)`,
@@ -70,8 +68,8 @@ export default class CategoryRepository {
    */
   async update(category: Partial<Category>): Promise<boolean> {
     if (!category.id) throw new Error("ID is required for update");
-    // Gestion spéciale pour parent: si null, "", ou "null" on force à NULL
-    const set = buildSetClause({
+    // Gestion spéciale pour parent: si "", on force à NULL
+    return this.updateOne(category.id, {
       label: category.label || undefined,
       entity: category.entity || undefined,
       description: category.description,
@@ -82,28 +80,5 @@ export default class CategoryRepository {
             : category.parent
           : undefined,
     });
-    if (!set) return false;
-    await withConnection(this.pool, (conn) =>
-      conn.query(`UPDATE category SET ${set.sql} WHERE id = ?`, [
-        ...set.values,
-        category.id,
-      ]),
-    );
-    return true;
-  }
-
-  /**
-   * Supprime une catégorie de la base de données en fonction de son ID.
-   * La méthode exécute une requête SQL pour supprimer la catégorie correspondante à l'ID spécifié de la table "category" de la base de données.
-   * Après l'exécution de la requête de suppression, la méthode retourne un booléen indiquant si la suppression a réussi.
-   * @param {string} id - L'ID de la catégorie à supprimer de la base de données.
-   * @returns {Promise<boolean>} Indique si la suppression a réussi.
-   * @throws {Error} Une erreur si la suppression échoue pour une raison quelconque.
-   */
-  async delete(id: string): Promise<boolean> {
-    await withConnection(this.pool, (conn) =>
-      conn.query("DELETE FROM category WHERE id = ?", [id]),
-    );
-    return true;
   }
 }

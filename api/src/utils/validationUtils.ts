@@ -1,6 +1,42 @@
 import validator from "validator";
 
 /**
+ * Vérifie si une chaîne est un UUID valide
+ * @param {string} uuid L'UUID à valider
+ * @return {boolean} true si l'UUID est valide, false sinon
+ */
+export function isValidUUID(uuid: string): boolean {
+  return validator.isUUID(uuid);
+}
+
+/**
+ * Vérifie qu'un ID est fourni et est un UUID valide.
+ * @throws {Error} Si l'ID est absent ou invalide.
+ */
+export function validateId(id: string | undefined): asserts id is string {
+  if (!id) throw new Error("ID is required");
+  if (!isValidUUID(id)) throw new Error("Invalid ID");
+}
+
+/**
+ * Vérifie si une chaîne est vide ou ne contient que des espaces
+ * @param {string} str La chaîne à vérifier
+ * @return {boolean} true si la chaîne est vide ou ne contient que des espaces, false sinon
+ */
+export function isEmpty(str: string): boolean {
+  return validator.isEmpty(str.trim());
+}
+
+/**
+ * Nettoie une chaîne pour éviter les injections XSS
+ * @param {string} str La chaîne à nettoyer
+ * @return {string} La chaîne nettoyée
+ */
+export function sanitizeString(str: string): string {
+  return validator.escape(str.trim());
+}
+
+/**
  * Vérifie si une chaîne est un email valide
  * @param {string} email L'adresse email à valider
  * @return {boolean} true si l'email est valide, false sinon
@@ -25,33 +61,6 @@ export function isValidPassword(password: string): boolean {
 }
 
 /**
- * Nettoie une chaîne pour éviter les injections XSS
- * @param {string} str La chaîne à nettoyer
- * @return {string} La chaîne nettoyée
- */
-export function sanitizeString(str: string): string {
-  return validator.escape(str.trim());
-}
-
-/**
- * Vérifie si une chaîne est un UUID valide
- * @param {string} uuid L'UUID à valider
- * @return {boolean} true si l'UUID est valide, false sinon
- */
-export function isValidUUID(uuid: string): boolean {
-  return validator.isUUID(uuid);
-}
-
-/**
- * Vérifie si une chaîne est vide ou ne contient que des espaces
- * @param {string} str La chaîne à vérifier
- * @return {boolean} true si la chaîne est vide ou ne contient que des espaces, false sinon
- */
-export function isEmpty(str: string): boolean {
-  return validator.isEmpty(str.trim());
-}
-
-/**
  * Vérifie que le contexte contient un utilisateur authentifié.
  * @throws {Error} Si l'utilisateur n'est pas authentifié.
  */
@@ -59,13 +68,4 @@ export function checkAuth(context: {
   user: object | null | undefined;
 }): asserts context is { user: object } {
   if (!context.user) throw new Error("Unauthorized");
-}
-
-/**
- * Vérifie qu'un ID est fourni et est un UUID valide.
- * @throws {Error} Si l'ID est absent ou invalide.
- */
-export function validateId(id: string | undefined): asserts id is string {
-  if (!id) throw new Error("ID is required");
-  if (!isValidUUID(id)) throw new Error("Invalid ID");
 }

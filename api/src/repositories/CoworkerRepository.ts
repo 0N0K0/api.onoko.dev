@@ -1,16 +1,14 @@
-import mariadb from "mariadb";
-import crypto from "crypto";
 import { Coworker } from "../types/coworkerTypes";
 import {
   withConnection,
   withTransaction,
   buildSetClause,
 } from "../database/dbHelpers";
+import { BaseRepository } from "./BaseRepository";
 
 // Repository pour les opérations liées aux collaborateurs dans la base de données
-export default class CoworkerRepository {
-  // Constructeur qui initialise le repository avec un pool de connexions à la base de données MariaDB
-  constructor(private pool: mariadb.Pool) {}
+export default class CoworkerRepository extends BaseRepository {
+  protected readonly tableName = "coworker";
 
   /**
    * Récupère tous les collaborateurs de la base de données, en incluant leurs rôles associés.
@@ -56,7 +54,7 @@ export default class CoworkerRepository {
    * @throws {Error} Une erreur si la création échoue pour une raison quelconque.
    */
   async create(coworker: Omit<Coworker, "id">): Promise<boolean> {
-    const id = crypto.randomUUID();
+    const id = this.generateId();
     await withTransaction(this.pool, async (conn) => {
       await conn.query(`INSERT INTO coworker (id, name) VALUES (?, ?)`, [
         id,
@@ -103,21 +101,6 @@ export default class CoworkerRepository {
         }
       }
     });
-    return true;
-  }
-
-  /**
-   * Supprime un collaborateur de la base de données en fonction de son ID.
-   * La méthode exécute une requête SQL pour supprimer le collaborateur correspondant à l'ID spécifié de la table "coworker" de la base de données.
-   * Après l'exécution de la requête de suppression, la méthode retourne un booléen indiquant si la suppression a réussi.
-   * @param {string} id - L'ID du collaborateur à supprimer de la base de données.
-   * @returns {Promise<boolean>} Indique si la suppression a réussi.
-   * @throws {Error} Une erreur si la suppression échoue pour une raison quelconque.
-   */
-  async delete(id: string): Promise<boolean> {
-    await withConnection(this.pool, (conn) =>
-      conn.query(`DELETE FROM coworker WHERE id = ?`, [id]),
-    );
     return true;
   }
 }

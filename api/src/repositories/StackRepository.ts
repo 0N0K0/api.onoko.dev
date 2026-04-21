@@ -1,16 +1,14 @@
-import mariadb from "mariadb";
-import crypto from "crypto";
 import { Stack } from "../types/stackTypes";
 import {
   withConnection,
   withTransaction,
   buildSetClause,
 } from "../database/dbHelpers";
+import { BaseRepository } from "./BaseRepository";
 
 // Repository pour les opérations liées aux stacks dans la base de données
-export class StackRepository {
-  // Constructeur qui initialise le repository avec un pool de connexions à la base de données MariaDB
-  constructor(private pool: mariadb.Pool) {}
+export class StackRepository extends BaseRepository {
+  protected readonly tableName = "stack";
 
   /**
    * Récupère toutes les stacks de la base de données, en incluant leurs versions, compétences et catégories associées.
@@ -61,7 +59,7 @@ export class StackRepository {
    * @returns {Promise<boolean>} Indique si la création de la stack a réussi.
    */
   async create(stack: Omit<Stack, "id">): Promise<boolean> {
-    const id = crypto.randomUUID();
+    const id = this.generateId();
     await withTransaction(this.pool, async (conn) => {
       await conn.query(
         `INSERT INTO stack (id, label, icon_id, description, category_id) VALUES (?, ?, ?, ?, ?);`,
@@ -168,21 +166,5 @@ export class StackRepository {
       }
       return true;
     });
-  }
-
-  /**
-   * Supprime une stack de la base de données en fonction de son ID.
-   * La méthode exécute une requête SQL pour supprimer la stack correspondante à l'ID spécifié de la table "stack" de la base de données.
-   * Avant de supprimer la stack, la méthode récupère le nom du fichier d'icône associé à la stack et tente de supprimer ce fichier du système de fichiers si il existe.
-   * Après l'exécution de la requête de suppression, la méthode ne retourne rien.
-   * @param {string} id L'ID de la stack à supprimer de la base de données.
-   * @returns {Promise<boolean>} Indique si la suppression de la stack a réussi.
-   * @throws {Error} Une erreur si la suppression échoue pour une raison quelconque.
-   */
-  async delete(id: string): Promise<boolean> {
-    await withConnection(this.pool, (conn) =>
-      conn.query("DELETE FROM stack WHERE id = ?", [id]),
-    );
-    return true;
   }
 }
