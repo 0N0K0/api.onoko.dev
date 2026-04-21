@@ -5,6 +5,7 @@ import { Role } from "../types/roleTypes";
 import { Category } from "../types/categoryTypes";
 import { Stack } from "../types/stackTypes";
 import { Media } from "../types/mediaTypes";
+import { withConnection, withTransaction } from "../database/dbHelpers";
 
 // Repository pour les opérations liées aux projets dans la base de données
 export default class ProjectRepository {
@@ -17,9 +18,7 @@ export default class ProjectRepository {
    * @throws {Error} Une erreur si la récupération des projets échoue pour une raison quelconque.
    */
   async getAll(): Promise<Project[]> {
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
+    return withConnection(this.pool, async (conn) => {
       const projectRows: ProjectRow[] = await conn.query(
         `SELECT * FROM project ORDER BY start_date DESC`,
       );
@@ -119,12 +118,7 @@ export default class ProjectRepository {
           mockupImages: mockupsByProject.get(projectRow.id) ?? [],
         }),
       );
-    } catch (error) {
-      console.error("Error retrieving projects:", error);
-      throw error;
-    } finally {
-      if (conn) conn.release();
-    }
+    });
   }
 
   /**
@@ -267,11 +261,7 @@ export default class ProjectRepository {
    */
   async create(project: Omit<Project, "id">): Promise<boolean> {
     const id = crypto.randomUUID();
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
-      await conn.beginTransaction();
-
+    await withTransaction(this.pool, async (conn) => {
       // Insère le projet principal
       await conn.query(
         `INSERT INTO project (
@@ -359,15 +349,7 @@ export default class ProjectRepository {
           ]),
         );
       }
-
-      await conn.commit();
-    } catch (error) {
-      if (conn) await conn.rollback();
-      console.error("Error creating project:", error);
-      throw error;
-    } finally {
-      if (conn) conn.release();
-    }
+    });
     return true;
   }
 
@@ -382,14 +364,11 @@ export default class ProjectRepository {
     id: string,
     project: Partial<Omit<Project, "id">>,
   ): Promise<boolean> {
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
-      await conn.beginTransaction();
+    await withTransaction(this.pool, async (conn) => {
       // Construit dynamiquement la requête de mise à jour
       const fields: string[] = [];
-      const values: any[] = [];
-      const map: Record<string, any> = {
+      const values: unknown[] = [];
+      const map: Record<string, unknown> = {
         label: project.label,
         thumbnail_id: project.thumbnail,
         website_url: project.website?.url,
@@ -665,14 +644,7 @@ export default class ProjectRepository {
           );
         }
       }
-      await conn.commit();
-    } catch (error) {
-      if (conn) await conn.rollback();
-      console.error("Error updating project:", error);
-      throw error;
-    } finally {
-      if (conn) conn.release();
-    }
+    });
     return true;
   }
 
@@ -683,16 +655,9 @@ export default class ProjectRepository {
    * @throws {Error} Une erreur si la suppression échoue pour une raison quelconque, notamment si la requête SQL échoue ou si l'ID fourni est invalide.
    */
   async delete(id: string): Promise<boolean> {
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
-      await conn.query(`DELETE FROM project WHERE id = ?`, [id]);
-    } catch (error) {
-      console.error("Error deleting project:", error);
-      throw error;
-    } finally {
-      if (conn) conn.release();
-    }
+    await withConnection(this.pool, (conn) =>
+      conn.query(`DELETE FROM project WHERE id = ?`, [id]),
+    );
     return true;
   }
 }

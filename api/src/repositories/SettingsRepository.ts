@@ -1,4 +1,5 @@
 import mariadb from "mariadb";
+import { withConnection } from "../database/dbHelpers";
 
 // Repository pour les opérations liées aux paramètres de configuration dans la base de données
 export class SettingsRepository {
@@ -13,20 +14,13 @@ export class SettingsRepository {
    * @returns {Promise<string | null>} La valeur du paramètre de configuration correspondant à la clé spécifiée, ou null si aucun paramètre n'est trouvé.
    */
   async get(key: string): Promise<string | null> {
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
+    return withConnection(this.pool, async (conn) => {
       const rows = await conn.query(
         "SELECT value FROM settings WHERE `key` = ?",
         [key],
       );
-      if (rows.length > 0) {
-        return rows[0].value;
-      }
-      return null;
-    } finally {
-      if (conn) conn.release();
-    }
+      return rows.length > 0 ? rows[0].value : null;
+    });
   }
 
   /**
@@ -44,15 +38,11 @@ export class SettingsRepository {
   }
 
   async set(key: string, value: string): Promise<void> {
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
-      await conn.query(
+    await withConnection(this.pool, (conn) =>
+      conn.query(
         "INSERT INTO settings (`key`, `value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)",
         [key, value],
-      );
-    } finally {
-      if (conn) conn.release();
-    }
+      ),
+    );
   }
 }

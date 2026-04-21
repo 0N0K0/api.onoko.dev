@@ -1,6 +1,7 @@
 import mariadb from "mariadb";
 import crypto from "crypto";
 import { Category } from "../types/categoryTypes";
+import { withConnection } from "../database/dbHelpers";
 
 // Repository pour les opérations liées aux catégories dans la base de données
 export default class CategoryRepository {
@@ -15,10 +16,8 @@ export default class CategoryRepository {
    * @throws {Error} Une erreur si la récupération des catégories échoue pour une raison quelconque.
    */
   async getAll(): Promise<Category[]> {
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
-      return await conn.query(`
+    return withConnection(this.pool, (conn) =>
+      conn.query(`
         WITH RECURSIVE category_tree AS (
           SELECT id, label, entity, description, parent_id AS parent, 0 AS depth, CAST(label AS CHAR(255)) AS path
           FROM category
@@ -31,13 +30,8 @@ export default class CategoryRepository {
           JOIN category_tree ct ON c.parent_id = ct.id
         )
         SELECT id, label, entity, description, parent, depth, path FROM category_tree ORDER BY path;
-        `);
-    } catch (error) {
-      console.error("Error retrieving categories:", error);
-      throw error;
-    } finally {
-      if (conn) conn.release();
-    }
+        `),
+    );
   }
 
   /**
@@ -50,10 +44,8 @@ export default class CategoryRepository {
    */
   async create(category: Omit<Category, "id">): Promise<boolean> {
     const id = crypto.randomUUID();
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
-      await conn.query(
+    await withConnection(this.pool, (conn) =>
+      conn.query(
         `INSERT INTO category (id, label, entity, description, parent_id) VALUES (?, ?, ?, ?, ?)`,
         [
           id,
@@ -62,13 +54,8 @@ export default class CategoryRepository {
           category.description || null,
           category.parent || null,
         ],
-      );
-    } catch (error) {
-      console.error("Error creating category:", error);
-      throw error;
-    } finally {
-      if (conn) conn.release();
-    }
+      ),
+    );
     return true;
   }
 
@@ -83,45 +70,34 @@ export default class CategoryRepository {
    */
   async update(category: Partial<Category>): Promise<boolean> {
     if (!category.id) throw new Error("ID is required for update");
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
-      const fields = [];
-      const values = [];
-      if (category.label) {
-        fields.push("label = ?");
-        values.push(category.label);
-      }
-      if (category.entity) {
-        fields.push("entity = ?");
-        values.push(category.entity);
-      }
-      if (category.description !== undefined) {
-        fields.push("description = ?");
-        values.push(category.description);
-      }
-      // Gestion spéciale pour parent: si null, "", ou "null" on force à NULL
-      if (category.parent !== undefined) {
-        fields.push("parent_id = ?");
-        if (category.parent === "") {
-          values.push(null);
-        } else {
-          values.push(category.parent);
-        }
-      }
-      // On exécute la requête même si la seule modif est parent_id = NULL
-      if (fields.length === 0) return false;
-      values.push(category.id);
-      await conn.query(
+    const fields: string[] = [];
+    const values: unknown[] = [];
+    if (category.label) {
+      fields.push("label = ?");
+      values.push(category.label);
+    }
+    if (category.entity) {
+      fields.push("entity = ?");
+      values.push(category.entity);
+    }
+    if (category.description !== undefined) {
+      fields.push("description = ?");
+      values.push(category.description);
+    }
+    // Gestion spéciale pour parent: si null, "", ou "null" on force à NULL
+    if (category.parent !== undefined) {
+      fields.push("parent_id = ?");
+      values.push(category.parent === "" ? null : category.parent);
+    }
+    // On exécute la requête même si la seule modif est parent_id = NULL
+    if (fields.length === 0) return false;
+    values.push(category.id);
+    await withConnection(this.pool, (conn) =>
+      conn.query(
         `UPDATE category SET ${fields.join(", ")} WHERE id = ?`,
         values,
-      );
-    } catch (error) {
-      console.error("Error updating category:", error);
-      throw error;
-    } finally {
-      if (conn) conn.release();
-    }
+      ),
+    );
     return true;
   }
 
@@ -134,16 +110,9 @@ export default class CategoryRepository {
    * @throws {Error} Une erreur si la suppression échoue pour une raison quelconque.
    */
   async delete(id: string): Promise<boolean> {
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
-      await conn.query("DELETE FROM category WHERE id = ?", [id]);
-    } catch (error) {
-      console.error("Error deleting category:", error);
-      throw error;
-    } finally {
-      if (conn) conn.release();
-    }
+    await withConnection(this.pool, (conn) =>
+      conn.query("DELETE FROM category WHERE id = ?", [id]),
+    );
     return true;
   }
 }

@@ -5,6 +5,7 @@ import crypto from "crypto";
 import { promises as fs } from "fs";
 import path from "path";
 import { MEDIA_BASE_PATH } from "../constants/mediaConstants";
+import { withConnection } from "../database/dbHelpers";
 
 export class MediaRepository {
   constructor(private pool: mariadb.Pool) {}
@@ -16,8 +17,7 @@ export class MediaRepository {
    * @throws {Error} Une erreur si la récupération des médias échoue pour une raison quelconque.
    */
   async getAll(): Promise<Media[] | undefined> {
-    const conn = await this.pool.getConnection();
-    try {
+    return withConnection(this.pool, async (conn) => {
       const rows = await conn.query(
         `
             SELECT m.*
@@ -33,12 +33,7 @@ export class MediaRepository {
         type: row.type,
         category: row.category,
       }));
-    } catch (error) {
-      console.error("Error retrieving medias:", error);
-      throw error;
-    } finally {
-      conn.release();
-    }
+    });
   }
 
   /**
@@ -52,27 +47,21 @@ export class MediaRepository {
   async add(
     media: Omit<Media, "id" | "path" | "type" | "category">,
   ): Promise<boolean> {
-    const conn = await this.pool.getConnection();
-    try {
+    await withConnection(this.pool, async (conn) => {
       if (!media.file) throw new Error("File is required to add media");
       const id = crypto.randomUUID();
       const label = media.file.filename;
-      const path = await saveImageFile(media.file);
+      const filePath = await saveImageFile(media.file);
       await conn.query(
         `INSERT INTO medias (id, path, type, label) VALUES (?, ?, ?, ?)`,
         [
           id,
-          path,
+          filePath,
           media.file.mimetype === "image/svg+xml" ? "svg" : "webp",
           label,
         ],
       );
-    } catch (error) {
-      console.error("Error adding media:", error);
-      throw error;
-    } finally {
-      conn.release();
-    }
+    });
     return true;
   }
 
@@ -86,10 +75,9 @@ export class MediaRepository {
    */
   async update(media: Partial<Media>): Promise<boolean> {
     if (!media.id) throw new Error("ID is required to update media");
-    const conn = await this.pool.getConnection();
-    try {
-      const fields = [];
-      const values = [];
+    await withConnection(this.pool, async (conn) => {
+      const fields: string[] = [];
+      const values: unknown[] = [];
       if (media.label) {
         fields.push("label = ?");
         values.push(media.label);
@@ -107,12 +95,7 @@ export class MediaRepository {
       } else {
         throw new Error("No fields to update");
       }
-    } catch (error) {
-      console.error("Error updating media:", error);
-      throw error;
-    } finally {
-      conn.release();
-    }
+    });
     return true;
   }
 
@@ -126,8 +109,7 @@ export class MediaRepository {
    * @throws {Error} Une erreur si la suppression échoue pour une raison quelconque, notamment si la requête SQL échoue ou si les fichiers associés ne peuvent pas être supprimés.
    */
   async remove(id: string): Promise<boolean> {
-    const conn = await this.pool.getConnection();
-    try {
+    await withConnection(this.pool, async (conn) => {
       const result = await conn.query(`SELECT path FROM medias WHERE id = ?`, [
         id,
       ]);
@@ -141,12 +123,7 @@ export class MediaRepository {
         }
       }
       await conn.query(`DELETE FROM medias WHERE id = ?`, [id]);
-    } catch (error) {
-      console.error("Error removing media:", error);
-      throw error;
-    } finally {
-      conn.release();
-    }
+    });
     return true;
   }
 }

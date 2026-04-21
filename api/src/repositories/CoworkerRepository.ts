@@ -1,6 +1,7 @@
 import mariadb from "mariadb";
 import crypto from "crypto";
 import { Coworker } from "../types/coworkerTypes";
+import { withConnection } from "../database/dbHelpers";
 
 // Repository pour les opérations liées aux collaborateurs dans la base de données
 export default class CoworkerRepository {
@@ -15,9 +16,7 @@ export default class CoworkerRepository {
    * @throws {Error} Une erreur si la récupération des collaborateurs échoue pour une raison quelconque.
    */
   async getAll(): Promise<Coworker[]> {
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
+    return withConnection(this.pool, async (conn) => {
       const coworkers = await conn.query(`
         SELECT c.*, cr.role_id AS role_id
         FROM coworker c
@@ -40,12 +39,7 @@ export default class CoworkerRepository {
         },
       );
       return Object.values(coworkerMap);
-    } catch (error) {
-      console.error("Error retrieving coworkers:", error);
-      throw error;
-    } finally {
-      if (conn) conn.release();
-    }
+    });
   }
 
   /**
@@ -59,9 +53,7 @@ export default class CoworkerRepository {
    */
   async create(coworker: Omit<Coworker, "id">): Promise<boolean> {
     const id = crypto.randomUUID();
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
+    await withConnection(this.pool, async (conn) => {
       await conn.query(`INSERT INTO coworker (id, name) VALUES (?, ?)`, [
         id,
         coworker.name,
@@ -74,12 +66,7 @@ export default class CoworkerRepository {
           );
         }
       }
-    } catch (error) {
-      console.error("Error creating coworker:", error);
-      throw error;
-    } finally {
-      if (conn) conn.release();
-    }
+    });
     return true;
   }
 
@@ -94,11 +81,9 @@ export default class CoworkerRepository {
    */
   async update(coworker: Partial<Coworker>): Promise<boolean> {
     if (!coworker.id) throw new Error("ID is required for update");
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
-      const fields = [];
-      const values = [];
+    await withConnection(this.pool, async (conn) => {
+      const fields: string[] = [];
+      const values: unknown[] = [];
       if (coworker.name) {
         fields.push("name = ?");
         values.push(coworker.name);
@@ -123,12 +108,7 @@ export default class CoworkerRepository {
           }
         }
       }
-    } catch (error) {
-      console.error("Error updating coworker:", error);
-      throw error;
-    } finally {
-      if (conn) conn.release();
-    }
+    });
     return true;
   }
 
@@ -141,16 +121,9 @@ export default class CoworkerRepository {
    * @throws {Error} Une erreur si la suppression échoue pour une raison quelconque.
    */
   async delete(id: string): Promise<boolean> {
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
-      await conn.query(`DELETE FROM coworker WHERE id = ?`, [id]);
-    } catch (error) {
-      console.error("Error deleting coworker:", error);
-      throw error;
-    } finally {
-      if (conn) conn.release();
-    }
+    await withConnection(this.pool, (conn) =>
+      conn.query(`DELETE FROM coworker WHERE id = ?`, [id]),
+    );
     return true;
   }
 }

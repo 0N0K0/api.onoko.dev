@@ -9,6 +9,7 @@ import crypto from "crypto";
 import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
 import { SettingsRepository } from "../../repositories/SettingsRepository";
+import { withConnection } from "../../database/dbHelpers";
 
 // Résolveur GraphQL pour les opérations liées au compte utilisateur
 const accountResolver = {
@@ -100,9 +101,7 @@ const accountResolver = {
     const token = crypto.randomBytes(32).toString("hex");
     const expires = new Date(Date.now() + 1000 * 60 * 15); // 15 min
     const pool = context.settingsRepo.getPool();
-    let conn;
-    try {
-      conn = await pool.getConnection();
+    await withConnection(pool, async (conn) => {
       await conn.query(
         "DELETE FROM password_reset_tokens WHERE expires < NOW()",
       );
@@ -110,9 +109,7 @@ const accountResolver = {
         "INSERT INTO password_reset_tokens (token, email, expires) VALUES (?, ?, ?)",
         [token, _args.email, expires],
       );
-    } finally {
-      if (conn) conn.release();
-    }
+    });
 
     if (!process.env.RESET_URL) {
       throw new Error("RESET_URL is not defined");
@@ -155,10 +152,8 @@ const accountResolver = {
     if (isEmpty(token) || isEmpty(newPassword))
       throw new Error("Token and newPassword required");
     const pool = context.settingsRepo.getPool();
-    let conn;
     let entry;
-    try {
-      conn = await pool.getConnection();
+    await withConnection(pool, async (conn) => {
       await conn.query(
         "DELETE FROM password_reset_tokens WHERE expires < NOW()",
       );
@@ -171,9 +166,7 @@ const accountResolver = {
       if (new Date(entry.expires).getTime() < Date.now()) {
         throw new Error("Invalid or expired token");
       }
-    } finally {
-      if (conn) conn.release();
-    }
+    });
     if (!isValidPassword(newPassword)) {
       throw new Error(
         "Password trop faible (min 20 caractères, maj, min, chiffre, symbole)",
@@ -181,15 +174,9 @@ const accountResolver = {
     }
     const hash = await hashPassword(newPassword);
     await context.settingsRepo.set("password_hash", hash);
-    // Supprime le token en base
-    try {
-      conn = await pool.getConnection();
-      await conn.query("DELETE FROM password_reset_tokens WHERE token = ?", [
-        token,
-      ]);
-    } finally {
-      if (conn) conn.release();
-    }
+    await withConnection(pool, (conn) =>
+      conn.query("DELETE FROM password_reset_tokens WHERE token = ?", [token]),
+    );
     return true;
   },
 };

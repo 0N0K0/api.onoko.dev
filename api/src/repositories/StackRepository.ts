@@ -1,6 +1,7 @@
 import mariadb from "mariadb";
 import crypto from "crypto";
 import { Stack } from "../types/stackTypes";
+import { withConnection, withTransaction } from "../database/dbHelpers";
 
 // Repository pour les opérations liées aux stacks dans la base de données
 export class StackRepository {
@@ -15,9 +16,7 @@ export class StackRepository {
    * @throws {Error} Une erreur si la récupération des stacks échoue pour une raison quelconque.
    */
   async getAll(): Promise<Stack[]> {
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
+    return withConnection(this.pool, async (conn) => {
       const rows = await conn.query(`
         SELECT s.*, v.version, ss.skill
         FROM stack s
@@ -47,12 +46,7 @@ export class StackRepository {
         stack.skills = Array.from(new Set(stack.skills));
       }
       return Array.from(stackMap.values());
-    } catch (error) {
-      console.error("Error retrieving stacks:", error);
-      throw error;
-    } finally {
-      if (conn) conn.release();
-    }
+    });
   }
 
   /**
@@ -64,10 +58,7 @@ export class StackRepository {
    */
   async create(stack: Omit<Stack, "id">): Promise<boolean> {
     const id = crypto.randomUUID();
-
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
+    await withConnection(this.pool, async (conn) => {
       await conn.query(
         `INSERT INTO stack (id, label, icon_id, description, category_id) VALUES (?, ?, ?, ?, ?);`,
         [
@@ -90,12 +81,7 @@ export class StackRepository {
           stack.skills.flatMap((skill) => [id, skill]),
         );
       }
-    } catch (error) {
-      console.error("Error creating stack:", error);
-      throw error;
-    } finally {
-      if (conn) conn.release();
-    }
+    });
     return true;
   }
 
@@ -110,13 +96,9 @@ export class StackRepository {
    */
   async update(stack: Partial<Stack>): Promise<boolean> {
     if (!stack.id) throw new Error("ID is required for update");
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
-      await conn.beginTransaction();
-
+    return withTransaction(this.pool, async (conn) => {
       const fields: string[] = [];
-      const values: any[] = [];
+      const values: unknown[] = [];
       if (stack.label) {
         fields.push("label = ?");
         values.push(stack.label);
@@ -190,19 +172,10 @@ export class StackRepository {
       }
 
       if (fields.length === 0 && !stack.versions && !stack.skills) {
-        await conn.rollback();
         return false;
       }
-
-      await conn.commit();
-    } catch (error) {
-      if (conn) await conn.rollback();
-      console.error("Error updating stack:", error);
-      throw error;
-    } finally {
-      if (conn) conn.release();
-    }
-    return true;
+      return true;
+    });
   }
 
   /**
@@ -215,16 +188,9 @@ export class StackRepository {
    * @throws {Error} Une erreur si la suppression échoue pour une raison quelconque.
    */
   async delete(id: string): Promise<boolean> {
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
-      await conn.query("DELETE FROM stack WHERE id = ?", [id]);
-    } catch (error) {
-      console.error("Error deleting stack:", error);
-      throw error;
-    } finally {
-      if (conn) conn.release();
-    }
+    await withConnection(this.pool, (conn) =>
+      conn.query("DELETE FROM stack WHERE id = ?", [id]),
+    );
     return true;
   }
 }
