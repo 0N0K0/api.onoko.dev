@@ -19,7 +19,7 @@ const projectResolver = {
    * @returns {Promise<Project[]>} Un tableau de projets récupérés de la base de données.
    */
   projects: async (
-    _args: any,
+    _args: Record<string, never>,
     context: { projectRepo: ProjectRepository },
   ): Promise<Project[]> => {
     return await context.projectRepo.getAll();

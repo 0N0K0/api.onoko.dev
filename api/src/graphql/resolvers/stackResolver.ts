@@ -101,7 +101,7 @@ const stackResolver = {
     validateId(_args.id);
     const result = await context.stackRepo.delete(_args.id);
     if (!result) throw new Error("Failed to delete stack");
-    return true;
+    return result;
   },
 };
 
