@@ -311,7 +311,7 @@ export default class ProjectRepository {
       if (project.mockup?.images?.length) {
         await conn.batch(
           `INSERT INTO project_mockup (project_id, media_id, position) VALUES (?, ?, ?)`,
-          project.mockup.images.map((mediaId, i) => [id, mediaId, i]),
+          project.mockup.images.map((m, i) => [id, m.id, m.position ?? i]),
         );
       }
 
@@ -588,25 +588,14 @@ export default class ProjectRepository {
           )
         ).map((r: { media_id: string; position: number }) => r.media_id);
         const toAdd = project.mockup.images.filter(
-          (
-            m: { id: string; position: number } | string,
-          ): m is { id: string; position: number } =>
-            typeof m === "object" && !existing.includes(m.id),
+          (m) => !existing.includes(m.id),
         );
-        const toEdit = project.mockup.images.filter(
-          (
-            m: { id: string; position: number } | string,
-          ): m is { id: string; position: number } =>
-            typeof m === "object" && existing.includes(m.id),
+        const toEdit = project.mockup.images.filter((m) =>
+          existing.includes(m.id),
         );
         const toRemove = existing.filter(
           (m: string) =>
-            !project.mockup?.images?.some(
-              (
-                image: { id: string; position: number } | string,
-              ): image is { id: string; position: number } =>
-                typeof image === "object" && image.id === m,
-            ),
+            !project.mockup?.images?.some((image) => image.id === m),
         );
         for (const media of toRemove) {
           await conn.query(
@@ -615,24 +604,18 @@ export default class ProjectRepository {
           );
         }
         for (const media of toEdit) {
-          const position = project.mockup.images
-            .filter(
-              (m): m is { id: string; position: number } =>
-                typeof m === "object",
-            )
-            .findIndex((m) => m.id === media.id);
+          const position = project.mockup.images.findIndex(
+            (m) => m.id === media.id,
+          );
           await conn.query(
             `UPDATE project_mockup SET position = ? WHERE project_id = ? AND media_id = ?`,
             [position, id, media.id],
           );
         }
         for (const media of toAdd) {
-          const position = project.mockup.images
-            .filter(
-              (m): m is { id: string; position: number } =>
-                typeof m === "object",
-            )
-            .findIndex((m) => m.id === media.id);
+          const position = project.mockup.images.findIndex(
+            (m) => m.id === media.id,
+          );
           await conn.query(
             `INSERT INTO project_mockup (project_id, media_id, position) VALUES (?, ?, ?)`,
             [id, media.id, position],

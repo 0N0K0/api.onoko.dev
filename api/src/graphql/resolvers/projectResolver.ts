@@ -34,8 +34,7 @@ function sanitizeProjectInput(input: Partial<Omit<Project, "id">>): void {
       input.mockup.label = sanitizeString(input.mockup.label);
     if (input.mockup.images) {
       for (const image of input.mockup.images) {
-        if (!isValidUUID(image as string))
-          throw new Error("Invalid mockup image ID");
+        if (!isValidUUID(image.id)) throw new Error("Invalid mockup image ID");
       }
     }
   }

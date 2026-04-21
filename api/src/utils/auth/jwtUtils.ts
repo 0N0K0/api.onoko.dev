@@ -1,6 +1,9 @@
 import jwt, { SignOptions } from "jsonwebtoken";
 
-const JWT_SECRET: string | undefined = process.env.JWT_SECRET; // Clé secrète utilisée pour signer les tokens JWT, définie dans les variables d'environnement ou une valeur par défaut pour le développement
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) throw new Error("JWT_SECRET is not defined");
+const _JWT_SECRET: string = JWT_SECRET;
+
 const JWT_EXPIRES_IN: string | number = process.env.JWT_EXPIRES_IN || "2h"; // Durée de validité des tokens JWT, définie dans les variables d'environnement ou une valeur par défaut de 2 heures
 
 /**
@@ -9,12 +12,9 @@ const JWT_EXPIRES_IN: string | number = process.env.JWT_EXPIRES_IN || "2h"; // D
  * @returns {string} Le token JWT généré.
  */
 export function generateToken(payload: object): string {
-  if (!JWT_SECRET) {
-    throw new Error("JWT_SECRET is not defined");
-  }
-  return jwt.sign(payload, JWT_SECRET, {
+  return jwt.sign(payload, _JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN,
-  } as unknown as SignOptions);
+  } as SignOptions);
 }
 
 /**
@@ -24,8 +24,5 @@ export function generateToken(payload: object): string {
  * @throws {Error} Une erreur si le token JWT est invalide ou expiré.
  */
 export function verifyToken(token: string): jwt.JwtPayload {
-  if (!JWT_SECRET) {
-    throw new Error("JWT_SECRET is not defined");
-  }
-  return jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
+  return jwt.verify(token, _JWT_SECRET) as jwt.JwtPayload;
 }
