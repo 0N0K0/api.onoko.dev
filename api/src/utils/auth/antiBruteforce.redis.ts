@@ -53,3 +53,7 @@ export async function resetAttempts(ip: string): Promise<void> {
   const key = ATTEMPT_PREFIX + ip;
   await redis.del(key);
 }
+
+export async function disconnectRedis(): Promise<void> {
+  await redis.quit();
+}

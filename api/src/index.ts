@@ -14,6 +14,7 @@ import { getGraphqlContext } from "./graphql/graphqlContext";
 import { getRoot, getSchema } from "./graphql/graphqlSchema";
 import jwt from "jsonwebtoken";
 import graphqlUploadExpress from "graphql-upload/public/graphqlUploadExpress.js";
+import { disconnectRedis } from "./utils/auth/antiBruteforce.redis";
 
 async function main() {
   const pool = getPool();
@@ -93,9 +94,18 @@ async function main() {
   );
 
   const port = 4000;
-  app.listen(port, () => {
+  const server = app.listen(port, () => {
     console.log(`API server running at http://localhost:${port}/graphql`);
   });
+
+  async function shutdown() {
+    server.close();
+    await pool.end();
+    await disconnectRedis();
+  }
+
+  process.once("SIGTERM", shutdown);
+  process.once("SIGINT", shutdown);
 }
 
 main().catch((err) => {
