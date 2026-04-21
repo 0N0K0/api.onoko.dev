@@ -99,7 +99,7 @@ const accountResolver = {
     if (!storedEmail || storedEmail !== _args.email) return true; // Ne pas révéler l'existence
     const token = crypto.randomBytes(32).toString("hex");
     const expires = new Date(Date.now() + 1000 * 60 * 15); // 15 min
-    const pool = context.settingsRepo["pool"];
+    const pool = context.settingsRepo.getPool();
     let conn;
     try {
       conn = await pool.getConnection();
@@ -151,7 +151,7 @@ const accountResolver = {
     const { token, newPassword } = _args;
     if (isEmpty(token) || isEmpty(newPassword))
       throw new Error("Token and newPassword required");
-    const pool = context.settingsRepo["pool"];
+    const pool = context.settingsRepo.getPool();
     let conn;
     let entry;
     try {

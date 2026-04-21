@@ -29,12 +29,15 @@ import { MediaRepository } from "../repositories/MediaRepository";
 export function getGraphqlContext({
   user,
   pool,
+  ip,
 }: {
   user: jwt.JwtPayload | null;
   pool: Pool;
+  ip: string;
 }) {
   return {
     user,
+    ip,
     settingsRepo: new SettingsRepository(pool),
     categoryRepo: new CategoryRepository(pool),
     stackRepo: new StackRepository(pool),

@@ -23,7 +23,7 @@ const authResolver = {
    */
   login: async (
     _args: { login: string; password: string },
-    context: { settingsRepo: SettingsRepository },
+    context: { settingsRepo: SettingsRepository; ip: string },
   ): Promise<{ token: string }> => {
     const login = sanitizeString(_args.login);
     const password = sanitizeString(_args.password);
@@ -31,9 +31,7 @@ const authResolver = {
       throw new Error("Login et mot de passe requis");
     }
 
-    // Récupère l'IP du client (X-Forwarded-For ou req.ip)
-    // Ici, on suppose que l'IP est passée dans le contexte (à adapter si besoin)
-    const ip = (context as any).ip || "unknown";
+    const ip = context.ip;
 
     if (await isBlocked(ip)) {
       throw new Error("Trop de tentatives, réessayez plus tard.");

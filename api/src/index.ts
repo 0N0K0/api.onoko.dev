@@ -27,11 +27,13 @@ async function main() {
 
   const app = express();
 
-  // Sécurité HTTP : headers sécurisés (dev friendly)
+  const isDev = process.env.NODE_ENV === "development";
+
+  // Sécurité HTTP : headers sécurisés
   app.use(
     helmet({
-      crossOriginResourcePolicy: false, // Permet le chargement des médias depuis le front
-      contentSecurityPolicy: false, // Désactive CSP strict pour le dev front
+      crossOriginResourcePolicy: isDev ? false : { policy: "same-site" },
+      contentSecurityPolicy: isDev ? false : undefined,
     }),
   );
 
@@ -66,14 +68,25 @@ async function main() {
           user = verifyToken(auth.slice(7));
         } catch {}
       }
+      const forwarded = req.headers["x-forwarded-for"];
+      const ip =
+        (Array.isArray(forwarded)
+          ? forwarded[0]
+          : forwarded?.split(",")[0]
+        )?.trim() ??
+        req.socket.remoteAddress ??
+        "unknown";
       return {
         schema: getSchema(),
         rootValue: getRoot(),
         graphiql: true,
-        context: getGraphqlContext({ user, pool }),
+        context: getGraphqlContext({ user, pool, ip }),
         customFormatErrorFn: (err) => {
           console.error("GraphQL Error:", err);
-          return { message: err.message, stack: err.stack };
+          return {
+            message: err.message,
+            ...(isDev && { stack: err.stack }),
+          };
         },
       };
     }),

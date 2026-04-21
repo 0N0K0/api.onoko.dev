@@ -1,4 +1,3 @@
-// Middleware CORS pour Express
 import { Request, Response, NextFunction } from "express";
 
 /**

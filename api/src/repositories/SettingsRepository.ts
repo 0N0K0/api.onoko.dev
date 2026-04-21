@@ -39,6 +39,10 @@ export class SettingsRepository {
    * @returns {Promise<void>} Une promesse qui se résout lorsque l'opération est terminée, ou rejette une erreur si l'opération échoue pour une raison quelconque.
    * @throws {Error} Une erreur si l'opération échoue pour une raison quelconque.
    */
+  getPool(): mariadb.Pool {
+    return this.pool;
+  }
+
   async set(key: string, value: string): Promise<void> {
     let conn;
     try {
