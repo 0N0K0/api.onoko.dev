@@ -56,62 +56,6 @@ export class StackRepository {
   }
 
   /**
-   * Récupère une stack spécifique de la base de données en fonction d'une clé (id ou label) et d'une valeur correspondante.
-   * La méthode utilise une requête SQL pour joindre les tables "stack", "stack_version", "stack_skill" et "category" afin d'obtenir les informations complètes sur la stack correspondant à la clé et à la valeur spécifiées, ainsi que ses versions, compétences et catégorie associée.
-   * Les résultats sont ensuite transformés en un format structuré où la stack est représentée avec ses propriétés, une liste de ses versions, compétences et sa catégorie associée.
-   * Si aucune stack correspondante n'est trouvée, la méthode retourne null.
-   * @param {string} key La clé à utiliser pour la recherche (id ou label).
-   * @param {string} value La valeur correspondante à rechercher pour la clé spécifiée.
-   * @returns {Promise<boolean>} Indique si la stack correspondant à la requête existe.
-   * @throws {Error} Une erreur si la récupération échoue pour une raison quelconque.
-   */
-  async get(id: string): Promise<boolean> {
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
-      const rows = await conn.query(
-        `
-        SELECT s.*, v.version, ss.skill
-        FROM stack s
-        LEFT JOIN stack_version v ON v.stack_id = s.id
-        LEFT JOIN stack_skill ss ON ss.stack_id = s.id
-        WHERE s.id = ?
-        `,
-        [id],
-      );
-      if (!rows || rows.length === 0) return false;
-      const first = rows[0];
-      const stack: Stack = {
-        id: first.id,
-        label: first.label,
-        icon: first.icon_id,
-        description: first.description,
-        versions: Array.from(
-          new Set(
-            rows
-              .filter((r: { version: string | null }) => r.version != null)
-              .map((r: { version: string }) => r.version),
-          ),
-        ),
-        category: first.category_id,
-        skills: Array.from(
-          new Set(
-            rows
-              .filter((r: { skill: string | null }) => r.skill != null)
-              .map((r: { skill: string }) => r.skill),
-          ),
-        ),
-      };
-    } catch (error) {
-      console.error("Error retrieving stack:", error);
-      throw error;
-    } finally {
-      if (conn) conn.release();
-    }
-    return true;
-  }
-
-  /**
    * Crée une nouvelle stack dans la base de données en utilisant les propriétés fournies.
    * La méthode génère un ID unique pour la nouvelle stack, puis insère les données dans la table "stack" de la base de données.
    * Après l'insertion, la méthode retourne l'ID de la stack nouvellement créée.
