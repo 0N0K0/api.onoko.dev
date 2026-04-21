@@ -13,7 +13,10 @@ export function corsDynamicOrigin(
   res: Response,
   next: NextFunction,
 ) {
-  const origin = process.env.CORS_ORIGIN || "http://localhost:5173";
+  const origin = process.env.CORS_ORIGIN;
+  if (!origin) {
+    throw new Error("CORS_ORIGIN is not defined");
+  }
   res.header("Access-Control-Allow-Origin", origin);
   res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS");
   res.header(
