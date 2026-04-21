@@ -1,5 +1,7 @@
 import path from "path";
-import { promises as fsPromises } from "fs";
+import { promises as fsPromises, createWriteStream } from "fs";
+import { Transform } from "stream";
+import { pipeline } from "stream/promises";
 import sharp from "sharp";
 import crypto from "crypto";
 
@@ -14,51 +16,87 @@ export async function saveImageFile(imageFile: {
   mimetype: string;
   createReadStream: () => import("stream").Readable;
 }): Promise<string> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of imageFile.createReadStream()) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  }
-  const buffer = Buffer.concat(chunks);
-  const { mkdir, writeFile, unlink } = fsPromises;
+  const { mkdir, rename, unlink } = fsPromises;
   const publicDir = path.join(process.cwd(), "public", "medias");
   await mkdir(publicDir, { recursive: true });
 
-  // Hashe le contenu de l'image pour le nom de fichier
-  const baseName = crypto.createHash("sha256").update(buffer).digest("hex");
-  let imageExt = "webp";
-  let imagePath = path.join(publicDir, `${baseName}.${imageExt}`);
-
-  if (
+  const isSvg =
     imageFile.mimetype === "image/svg+xml" ||
-    imageFile.filename.endsWith(".svg")
-  ) {
-    imageExt = "svg";
-    imagePath = path.join(publicDir, `${baseName}.${imageExt}`);
+    imageFile.filename.endsWith(".svg");
+
+  const tempId = crypto.randomBytes(8).toString("hex");
+
+  if (isSvg) {
+    // Hash calculé à la volée sans bufferiser le fichier entier
+    const hash = crypto.createHash("sha256");
+    const hashThrough = new Transform({
+      transform(chunk: Buffer, _enc, cb) {
+        hash.update(chunk);
+        cb(null, chunk);
+      },
+    });
+    const tempPath = path.join(publicDir, `_tmp_${tempId}.svg`);
     try {
-      await unlink(imagePath);
-    } catch {}
-    await writeFile(imagePath, buffer);
-  } else {
-    try {
-      await unlink(imagePath);
-    } catch {}
-    const image = sharp(buffer);
-    const metadata = await image.metadata();
-    let widths: { [key: string]: number } = {
-      xl: 1920,
-      l: 1392,
-      m: 1056,
-      s: 720,
-      xs: 400,
-    };
-    for (const width in widths) {
-      const resizedPath = path.join(publicDir, `${baseName}_${width}.webp`);
-      if (metadata.width && metadata.width > widths[width]) {
-        await image.resize(widths[width]).webp().toFile(resizedPath);
-      } else {
-        await image.webp().toFile(resizedPath);
-      }
+      await pipeline(
+        imageFile.createReadStream(),
+        hashThrough,
+        createWriteStream(tempPath),
+      );
+      const baseName = hash.digest("hex");
+      await rename(tempPath, path.join(publicDir, `${baseName}.svg`));
+      return `${baseName}.svg`;
+    } catch (err) {
+      await unlink(tempPath).catch(() => {});
+      throw err;
     }
   }
-  return `${baseName}.${imageExt}`;
+
+  // Image raster : stream vers sharp, plusieurs tailles via clone()
+  // Un seul passage du stream en mémoire — pas de bufferisation complète
+  const hash = crypto.createHash("sha256");
+  const widths: Record<string, number> = {
+    xl: 1920,
+    l: 1392,
+    m: 1056,
+    s: 720,
+    xs: 400,
+  };
+
+  const sharpStream = sharp();
+
+  // Les clones doivent être créés AVANT que le pipe commence
+  const resizeOps = Object.entries(widths).map(([size, width]) => {
+    const tempPath = path.join(publicDir, `_tmp_${tempId}_${size}.webp`);
+    return {
+      tempPath,
+      finalName: (baseName: string) =>
+        path.join(publicDir, `${baseName}_${size}.webp`),
+      promise: sharpStream
+        .clone()
+        .resize(width, undefined, { withoutEnlargement: true })
+        .webp()
+        .toFile(tempPath),
+    };
+  });
+
+  const readStream = imageFile.createReadStream();
+  readStream.on("data", (chunk: Buffer) => hash.update(chunk));
+  readStream.on("error", (err) => sharpStream.destroy(err));
+  readStream.pipe(sharpStream);
+
+  try {
+    await Promise.all(resizeOps.map((op) => op.promise));
+    const baseName = hash.digest("hex");
+    await Promise.all(
+      resizeOps.map(({ tempPath, finalName }) =>
+        rename(tempPath, finalName(baseName)),
+      ),
+    );
+    return `${baseName}.webp`;
+  } catch (err) {
+    await Promise.all(
+      resizeOps.map(({ tempPath }) => unlink(tempPath).catch(() => {})),
+    );
+    throw err;
+  }
 }
