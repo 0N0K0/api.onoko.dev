@@ -8,7 +8,9 @@ import { MigrationParams } from "umzug";
 export async function up({ context: pool }: MigrationParams<Pool>) {
   const conn = await pool.getConnection();
   try {
-    await conn.query(`ALTER TABLE project_mockup ADD COLUMN position INT;`);
+    await conn.query(
+      `ALTER TABLE project_mockup ADD COLUMN IF NOT EXISTS position INT;`,
+    );
   } finally {
     conn.release();
   }
@@ -17,7 +19,9 @@ export async function up({ context: pool }: MigrationParams<Pool>) {
 export async function down({ context: pool }: MigrationParams<Pool>) {
   const conn = await pool.getConnection();
   try {
-    await conn.query(`ALTER TABLE project_mockup DROP COLUMN position;`);
+    await conn.query(
+      `ALTER TABLE project_mockup DROP COLUMN IF EXISTS position;`,
+    );
   } finally {
     conn.release();
   }

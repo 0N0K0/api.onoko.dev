@@ -8,7 +8,9 @@ import { MigrationParams } from "umzug";
 export async function up({ context: pool }: MigrationParams<Pool>) {
   const conn = await pool.getConnection();
   try {
-    await conn.query(`ALTER TABLE medias ADD COLUMN label VARCHAR(255);`);
+    await conn.query(
+      `ALTER TABLE medias ADD COLUMN IF NOT EXISTS label VARCHAR(255);`,
+    );
   } finally {
     conn.release();
   }
@@ -17,7 +19,7 @@ export async function up({ context: pool }: MigrationParams<Pool>) {
 export async function down({ context: pool }: MigrationParams<Pool>) {
   const conn = await pool.getConnection();
   try {
-    await conn.query(`ALTER TABLE medias DROP COLUMN label;`);
+    await conn.query(`ALTER TABLE medias DROP COLUMN IF EXISTS label;`);
   } finally {
     conn.release();
   }
