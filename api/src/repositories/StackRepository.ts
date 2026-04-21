@@ -62,7 +62,7 @@ export class StackRepository {
    */
   async create(stack: Omit<Stack, "id">): Promise<boolean> {
     const id = crypto.randomUUID();
-    await withConnection(this.pool, async (conn) => {
+    await withTransaction(this.pool, async (conn) => {
       await conn.query(
         `INSERT INTO stack (id, label, icon_id, description, category_id) VALUES (?, ?, ?, ?, ?);`,
         [

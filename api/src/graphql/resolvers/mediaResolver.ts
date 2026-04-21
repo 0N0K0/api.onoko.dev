@@ -1,7 +1,12 @@
 import { MediaRepository } from "../../repositories/MediaRepository";
-import { Category } from "../../types/categoryTypes";
 import { ImageFile, Media } from "../../types/mediaTypes";
-import { isValidUUID, sanitizeString } from "../../utils/validationUtils";
+import jwt from "jsonwebtoken";
+import {
+  isValidUUID,
+  sanitizeString,
+  checkAuth,
+  validateId,
+} from "../../utils/validationUtils";
 
 const mediaResolver = {
   /**
@@ -29,8 +34,9 @@ const mediaResolver = {
    */
   addMedia: async (
     _args: { input: { file: any } },
-    context: { mediaRepo: MediaRepository },
+    context: { user: jwt.JwtPayload | null; mediaRepo: MediaRepository },
   ): Promise<boolean> => {
+    checkAuth(context);
     const upload = _args.input?.file;
     if (!upload) throw new Error("File is required");
     const file: ImageFile = await (upload.promise ?? upload);
@@ -50,12 +56,12 @@ const mediaResolver = {
    */
   updateMedia: async (
     _args: { id: string; input: { label?: string; category?: string } },
-    context: { mediaRepo: MediaRepository },
+    context: { user: jwt.JwtPayload | null; mediaRepo: MediaRepository },
   ): Promise<boolean> => {
+    checkAuth(context);
+    validateId(_args.id);
     const { id, input } = _args;
     const { label, category } = input;
-    if (!id) throw new Error("ID is required");
-    if (!isValidUUID(id)) throw new Error("Invalid ID");
     let sanitizedLabel: string | undefined;
     if (label) sanitizedLabel = sanitizeString(label);
     if (category && !isValidUUID(category))
@@ -79,11 +85,11 @@ const mediaResolver = {
    */
   removeMedia: async (
     _args: { id: string },
-    context: { mediaRepo: MediaRepository },
+    context: { user: jwt.JwtPayload | null; mediaRepo: MediaRepository },
   ): Promise<boolean> => {
+    checkAuth(context);
+    validateId(_args.id);
     const { id } = _args;
-    if (!id) throw new Error("ID is required");
-    if (!isValidUUID(id)) throw new Error("Invalid ID");
     const result = await context.mediaRepo.remove(id);
     if (!result) throw new Error("Failed to remove media");
     return result;

@@ -48,7 +48,8 @@ const stackResolver = {
       input.description = sanitizeString(input.description);
     if (input.versions) input.versions = input.versions.map(sanitizeString);
     if (input.skills) input.skills = input.skills.map(sanitizeString);
-    if (input.category) input.category = sanitizeString(input.category);
+    if (input.category && !isValidUUID(input.category as string))
+      throw new Error("Invalid category ID");
     const result = await context.stackRepo.create(input);
     if (!result) throw new Error("Failed to create stack");
     return result;
@@ -70,7 +71,6 @@ const stackResolver = {
     checkAuth(context);
     validateId(_args.id);
     const input = { ..._args.input, id: _args.id };
-    if (input.id) input.id = sanitizeString(input.id);
     if (input.label) input.label = sanitizeString(input.label);
     if (input.icon && !isValidUUID(input.icon as string))
       throw new Error("Invalid icon ID");
@@ -78,7 +78,8 @@ const stackResolver = {
       input.description = sanitizeString(input.description);
     if (input.versions) input.versions = input.versions.map(sanitizeString);
     if (input.skills) input.skills = input.skills.map(sanitizeString);
-    if (input.category) input.category = sanitizeString(input.category);
+    if (input.category && !isValidUUID(input.category as string))
+      throw new Error("Invalid category ID");
 
     const result = await context.stackRepo.update(input);
     if (!result) throw new Error("Failed to update stack");

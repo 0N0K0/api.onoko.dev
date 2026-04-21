@@ -1,7 +1,11 @@
 import mariadb from "mariadb";
 import crypto from "crypto";
 import { Coworker } from "../types/coworkerTypes";
-import { withConnection, buildSetClause } from "../database/dbHelpers";
+import {
+  withConnection,
+  withTransaction,
+  buildSetClause,
+} from "../database/dbHelpers";
 
 // Repository pour les opérations liées aux collaborateurs dans la base de données
 export default class CoworkerRepository {
@@ -53,18 +57,16 @@ export default class CoworkerRepository {
    */
   async create(coworker: Omit<Coworker, "id">): Promise<boolean> {
     const id = crypto.randomUUID();
-    await withConnection(this.pool, async (conn) => {
+    await withTransaction(this.pool, async (conn) => {
       await conn.query(`INSERT INTO coworker (id, name) VALUES (?, ?)`, [
         id,
         coworker.name,
       ]);
       if (coworker.roles && coworker.roles.length > 0) {
-        for (const role of coworker.roles) {
-          await conn.query(
-            `INSERT INTO coworker_role (coworker_id, role_id) VALUES (?, ?)`,
-            [id, role],
-          );
-        }
+        await conn.batch(
+          `INSERT INTO coworker_role (coworker_id, role_id) VALUES (?, ?)`,
+          coworker.roles.map((role) => [id, role]),
+        );
       }
     });
     return true;
@@ -94,12 +96,10 @@ export default class CoworkerRepository {
           coworker.id,
         ]);
         if (coworker.roles.length > 0) {
-          for (const role of coworker.roles) {
-            await conn.query(
-              `INSERT INTO coworker_role (coworker_id, role_id) VALUES (?, ?)`,
-              [coworker.id, role],
-            );
-          }
+          await conn.batch(
+            `INSERT INTO coworker_role (coworker_id, role_id) VALUES (?, ?)`,
+            coworker.roles.map((role) => [coworker.id, role]),
+          );
         }
       }
     });

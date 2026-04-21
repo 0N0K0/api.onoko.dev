@@ -9,6 +9,131 @@ import {
   validateId,
 } from "../../utils/validationUtils";
 
+/**
+ * Sanitise et valide les champs d'un input projet (commun à create et update).
+ * Modifie l'objet en place et lève une erreur si un UUID est invalide.
+ */
+function sanitizeProjectInput(input: Partial<Omit<Project, "id">>): void {
+  if (input.thumbnail && !isValidUUID(input.thumbnail as string))
+    throw new Error("Invalid thumbnail ID");
+  if (input.categories) {
+    for (const category of input.categories) {
+      if (!isValidUUID(category as string))
+        throw new Error("Invalid category ID");
+    }
+  }
+  if (input.website) {
+    if (input.website.url)
+      input.website.url = sanitizeString(input.website.url);
+    if (input.website.label)
+      input.website.label = sanitizeString(input.website.label);
+  }
+  if (input.mockup) {
+    if (input.mockup.url) input.mockup.url = sanitizeString(input.mockup.url);
+    if (input.mockup.label)
+      input.mockup.label = sanitizeString(input.mockup.label);
+    if (input.mockup.images) {
+      for (const image of input.mockup.images) {
+        if (!isValidUUID(image as string))
+          throw new Error("Invalid mockup image ID");
+      }
+    }
+  }
+  if (input.client) {
+    if (input.client.label)
+      input.client.label = sanitizeString(input.client.label);
+    if (input.client.logo && !isValidUUID(input.client.logo as string))
+      throw new Error("Invalid client logo ID");
+  }
+  if (input.manager) {
+    if (input.manager.name)
+      input.manager.name = sanitizeString(input.manager.name);
+    if (input.manager.email)
+      input.manager.email = sanitizeString(input.manager.email);
+  }
+  if (input.startDate) input.startDate = new Date(input.startDate);
+  if (input.endDate) input.endDate = new Date(input.endDate);
+  if (input.intro) {
+    if (input.intro.context)
+      input.intro.context = sanitizeString(input.intro.context);
+    if (input.intro.objective)
+      input.intro.objective = sanitizeString(input.intro.objective);
+    if (input.intro.client)
+      input.intro.client = sanitizeString(input.intro.client);
+  }
+  if (input.presentation) {
+    if (input.presentation.description)
+      input.presentation.description = sanitizeString(
+        input.presentation.description,
+      );
+    if (input.presentation.issue)
+      input.presentation.issue = sanitizeString(input.presentation.issue);
+    if (input.presentation.audience)
+      input.presentation.audience = sanitizeString(input.presentation.audience);
+  }
+  if (input.need) {
+    if (input.need.features)
+      input.need.features = sanitizeString(input.need.features);
+    if (input.need.functionalConstraints)
+      input.need.functionalConstraints = sanitizeString(
+        input.need.functionalConstraints,
+      );
+    if (input.need.technicalConstraints)
+      input.need.technicalConstraints = sanitizeString(
+        input.need.technicalConstraints,
+      );
+  }
+  if (input.organization) {
+    if (input.organization.workload)
+      input.organization.workload = sanitizeString(input.organization.workload);
+    if (input.organization.anticipation)
+      input.organization.anticipation = sanitizeString(
+        input.organization.anticipation,
+      );
+    if (input.organization.methodology)
+      input.organization.methodology = sanitizeString(
+        input.organization.methodology,
+      );
+    if (input.organization.evolution)
+      input.organization.evolution = sanitizeString(
+        input.organization.evolution,
+      );
+    if (input.organization.validation)
+      input.organization.validation = sanitizeString(
+        input.organization.validation,
+      );
+  }
+  if (input.coworkers) {
+    for (const coworker of input.coworkers) {
+      if (!isValidUUID(coworker.id)) throw new Error("Invalid coworker ID");
+      if (coworker.roles) {
+        for (const role of coworker.roles) {
+          if (!isValidUUID(role)) throw new Error("Invalid role ID");
+        }
+      }
+    }
+  }
+  if (input.roles) {
+    for (const role of input.roles) {
+      if (!isValidUUID(role as string)) throw new Error("Invalid role ID");
+    }
+  }
+  if (input.stacks) {
+    for (const stack of input.stacks) {
+      if (stack.id && !isValidUUID(stack.id))
+        throw new Error("Invalid stack ID");
+      if (stack.section) stack.section = sanitizeString(stack.section);
+      if (stack.version) stack.version = sanitizeString(stack.version);
+    }
+  }
+  if (input.feedback) {
+    if (input.feedback.general)
+      input.feedback.general = sanitizeString(input.feedback.general);
+    if (input.feedback.client)
+      input.feedback.client = sanitizeString(input.feedback.client);
+  }
+}
+
 // Résolveur GraphQL pour les opérations liées aux projets
 const projectResolver = {
   /**
@@ -42,128 +167,7 @@ const projectResolver = {
     const input = { ..._args.input };
     if (isEmpty(input.label)) throw new Error("Label is required");
     input.label = sanitizeString(input.label);
-    if (input.thumbnail && !isValidUUID(input.thumbnail as string))
-      throw new Error("Invalid thumbnail ID");
-    if (input.categories) {
-      for (const category of input.categories) {
-        if (!isValidUUID(category as string))
-          throw new Error("Invalid category ID");
-      }
-    }
-    if (input.website) {
-      if (input.website.url)
-        input.website.url = sanitizeString(input.website.url);
-      if (input.website.label)
-        input.website.label = sanitizeString(input.website.label);
-    }
-    if (input.mockup) {
-      if (input.mockup.url) input.mockup.url = sanitizeString(input.mockup.url);
-      if (input.mockup.label)
-        input.mockup.label = sanitizeString(input.mockup.label);
-      if (input.mockup.images) {
-        for (const image of input.mockup.images) {
-          if (!isValidUUID(image as string))
-            throw new Error("Invalid mockup image ID");
-        }
-      }
-    }
-    if (input.client) {
-      if (input.client.label)
-        input.client.label = sanitizeString(input.client.label);
-      if (input.client.logo && !isValidUUID(input.client.logo as string))
-        throw new Error("Invalid client logo ID");
-    }
-    if (input.manager) {
-      if (input.manager.name)
-        input.manager.name = sanitizeString(input.manager.name);
-      if (input.manager.email)
-        input.manager.email = sanitizeString(input.manager.email);
-    }
-    if (input.startDate) input.startDate = new Date(input.startDate);
-    if (input.endDate) input.endDate = new Date(input.endDate);
-    if (input.intro) {
-      if (input.intro.context)
-        input.intro.context = sanitizeString(input.intro.context);
-      if (input.intro.objective)
-        input.intro.objective = sanitizeString(input.intro.objective);
-      if (input.intro.client)
-        input.intro.client = sanitizeString(input.intro.client);
-    }
-    if (input.presentation) {
-      if (input.presentation.description)
-        input.presentation.description = sanitizeString(
-          input.presentation.description,
-        );
-      if (input.presentation.issue)
-        input.presentation.issue = sanitizeString(input.presentation.issue);
-      if (input.presentation.audience)
-        input.presentation.audience = sanitizeString(
-          input.presentation.audience,
-        );
-    }
-    if (input.need) {
-      if (input.need.features)
-        input.need.features = sanitizeString(input.need.features);
-      if (input.need.functionalConstraints)
-        input.need.functionalConstraints = sanitizeString(
-          input.need.functionalConstraints,
-        );
-      if (input.need.technicalConstraints)
-        input.need.technicalConstraints = sanitizeString(
-          input.need.technicalConstraints,
-        );
-    }
-    if (input.organization) {
-      if (input.organization.workload)
-        input.organization.workload = sanitizeString(
-          input.organization.workload,
-        );
-      if (input.organization.anticipation)
-        input.organization.anticipation = sanitizeString(
-          input.organization.anticipation,
-        );
-      if (input.organization.methodology)
-        input.organization.methodology = sanitizeString(
-          input.organization.methodology,
-        );
-      if (input.organization.evolution)
-        input.organization.evolution = sanitizeString(
-          input.organization.evolution,
-        );
-      if (input.organization.validation)
-        input.organization.validation = sanitizeString(
-          input.organization.validation,
-        );
-    }
-    if (input.coworkers) {
-      for (const coworker of input.coworkers) {
-        if (!isValidUUID(coworker.id)) throw new Error("Invalid coworker ID");
-        if (coworker.roles) {
-          for (const role of coworker.roles) {
-            if (!isValidUUID(role)) throw new Error("Invalid role ID");
-          }
-        }
-      }
-    }
-    if (input.roles) {
-      for (const role of input.roles) {
-        if (!isValidUUID(role as string)) throw new Error("Invalid role ID");
-      }
-    }
-    if (input.stacks) {
-      for (const stack of input.stacks) {
-        if (stack.id && !isValidUUID(stack.id))
-          throw new Error("Invalid stack ID");
-        if (stack.section) stack.section = sanitizeString(stack.section);
-        if (stack.version) stack.version = sanitizeString(stack.version);
-      }
-    }
-    if (input.feedback) {
-      if (input.feedback.general)
-        input.feedback.general = sanitizeString(input.feedback.general);
-      if (input.feedback.client)
-        input.feedback.client = sanitizeString(input.feedback.client);
-    }
+    sanitizeProjectInput(input);
     const result = await context.projectRepo.create(input);
     if (!result) throw new Error("Failed to create project");
     return result;
@@ -187,128 +191,7 @@ const projectResolver = {
 
     const input = { ..._args.input, id: _args.id };
     if (input.label) input.label = sanitizeString(input.label);
-    if (input.thumbnail && !isValidUUID(input.thumbnail as string))
-      throw new Error("Invalid thumbnail ID");
-    if (input.categories) {
-      for (const category of input.categories) {
-        if (!isValidUUID(category as string))
-          throw new Error("Invalid category ID");
-      }
-    }
-    if (input.website) {
-      if (input.website.url)
-        input.website.url = sanitizeString(input.website.url);
-      if (input.website.label)
-        input.website.label = sanitizeString(input.website.label);
-    }
-    if (input.mockup) {
-      if (input.mockup.url) input.mockup.url = sanitizeString(input.mockup.url);
-      if (input.mockup.label)
-        input.mockup.label = sanitizeString(input.mockup.label);
-      if (input.mockup.images) {
-        for (const image of input.mockup.images) {
-          if (!isValidUUID(image as string))
-            throw new Error("Invalid mockup image ID");
-        }
-      }
-    }
-    if (input.client) {
-      if (input.client.label)
-        input.client.label = sanitizeString(input.client.label);
-      if (input.client.logo && !isValidUUID(input.client.logo as string))
-        throw new Error("Invalid client logo ID");
-    }
-    if (input.manager) {
-      if (input.manager.name)
-        input.manager.name = sanitizeString(input.manager.name);
-      if (input.manager.email)
-        input.manager.email = sanitizeString(input.manager.email);
-    }
-    if (input.startDate) input.startDate = new Date(input.startDate);
-    if (input.endDate) input.endDate = new Date(input.endDate);
-    if (input.intro) {
-      if (input.intro.context)
-        input.intro.context = sanitizeString(input.intro.context);
-      if (input.intro.objective)
-        input.intro.objective = sanitizeString(input.intro.objective);
-      if (input.intro.client)
-        input.intro.client = sanitizeString(input.intro.client);
-    }
-    if (input.presentation) {
-      if (input.presentation.description)
-        input.presentation.description = sanitizeString(
-          input.presentation.description,
-        );
-      if (input.presentation.issue)
-        input.presentation.issue = sanitizeString(input.presentation.issue);
-      if (input.presentation.audience)
-        input.presentation.audience = sanitizeString(
-          input.presentation.audience,
-        );
-    }
-    if (input.need) {
-      if (input.need.features)
-        input.need.features = sanitizeString(input.need.features);
-      if (input.need.functionalConstraints)
-        input.need.functionalConstraints = sanitizeString(
-          input.need.functionalConstraints,
-        );
-      if (input.need.technicalConstraints)
-        input.need.technicalConstraints = sanitizeString(
-          input.need.technicalConstraints,
-        );
-    }
-    if (input.organization) {
-      if (input.organization.workload)
-        input.organization.workload = sanitizeString(
-          input.organization.workload,
-        );
-      if (input.organization.anticipation)
-        input.organization.anticipation = sanitizeString(
-          input.organization.anticipation,
-        );
-      if (input.organization.methodology)
-        input.organization.methodology = sanitizeString(
-          input.organization.methodology,
-        );
-      if (input.organization.evolution)
-        input.organization.evolution = sanitizeString(
-          input.organization.evolution,
-        );
-      if (input.organization.validation)
-        input.organization.validation = sanitizeString(
-          input.organization.validation,
-        );
-    }
-    if (input.coworkers) {
-      for (const coworker of input.coworkers) {
-        if (!isValidUUID(coworker.id)) throw new Error("Invalid coworker ID");
-        if (coworker.roles) {
-          for (const role of coworker.roles) {
-            if (!isValidUUID(role)) throw new Error("Invalid role ID");
-          }
-        }
-      }
-    }
-    if (input.roles) {
-      for (const role of input.roles) {
-        if (!isValidUUID(role as string)) throw new Error("Invalid role ID");
-      }
-    }
-    if (input.stacks) {
-      for (const stack of input.stacks) {
-        if (stack.id && !isValidUUID(stack.id))
-          throw new Error("Invalid stack ID");
-        if (stack.section) stack.section = sanitizeString(stack.section);
-        if (stack.version) stack.version = sanitizeString(stack.version);
-      }
-    }
-    if (input.feedback) {
-      if (input.feedback.general)
-        input.feedback.general = sanitizeString(input.feedback.general);
-      if (input.feedback.client)
-        input.feedback.client = sanitizeString(input.feedback.client);
-    }
+    sanitizeProjectInput(input);
     const result = await context.projectRepo.update(_args.id, input);
     if (!result) throw new Error("Failed to update project");
     return result;

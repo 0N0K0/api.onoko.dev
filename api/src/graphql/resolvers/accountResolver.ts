@@ -75,7 +75,7 @@ const accountResolver = {
     if (_args.newPassword) {
       if (!isValidPassword(_args.newPassword)) {
         throw new Error(
-          "Password trop faible (min 8 caractères, maj, min, chiffre)",
+          "Password trop faible (min 20 caractères, maj, min, chiffre, symbole)",
         );
       }
       const hash = await hashPassword(_args.newPassword);
