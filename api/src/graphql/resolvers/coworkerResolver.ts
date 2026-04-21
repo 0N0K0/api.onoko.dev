@@ -5,6 +5,7 @@ import {
   sanitizeString,
   isEmpty,
   isValidUUID,
+  checkAuth,
 } from "../../utils/validationUtils";
 
 // Résolveur GraphQL pour les opérations liées aux coworkers
@@ -36,7 +37,7 @@ const coworkerResolver = {
     _args: { input: Omit<Coworker, "id"> },
     context: { user: jwt.JwtPayload | null; coworkerRepo: CoworkerRepository },
   ): Promise<boolean> => {
-    if (!context.user) throw new Error("Unauthorized");
+    checkAuth(context);
     const input = { ..._args.input };
     if (isEmpty(input.name)) throw new Error("Name is required");
     input.name = sanitizeString(input.name);
@@ -58,7 +59,7 @@ const coworkerResolver = {
     _args: { id: string; input: Partial<Omit<Coworker, "id">> },
     context: { user: jwt.JwtPayload | null; coworkerRepo: CoworkerRepository },
   ): Promise<boolean> => {
-    if (!context.user) throw new Error("Unauthorized");
+    checkAuth(context);
     if (!_args.id) throw new Error("ID is required");
     if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
     const input = { ..._args.input, id: _args.id };
@@ -80,7 +81,7 @@ const coworkerResolver = {
     _args: { id: string },
     context: { user: jwt.JwtPayload | null; coworkerRepo: CoworkerRepository },
   ): Promise<boolean> => {
-    if (!context.user) throw new Error("Unauthorized");
+    checkAuth(context);
     if (!_args.id) throw new Error("ID is required");
     if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
     const result = await context.coworkerRepo.delete(_args.id);

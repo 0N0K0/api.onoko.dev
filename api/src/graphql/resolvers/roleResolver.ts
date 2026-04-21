@@ -5,6 +5,7 @@ import {
   sanitizeString,
   isEmpty,
   isValidUUID,
+  checkAuth,
 } from "../../utils/validationUtils";
 
 // Résolveur GraphQL pour les opérations liées aux rôles
@@ -36,7 +37,7 @@ const roleResolver = {
     _args: { input: Omit<Role, "id"> },
     context: { user: jwt.JwtPayload | null; roleRepo: RoleRepository },
   ): Promise<boolean> => {
-    if (!context.user) throw new Error("Unauthorized");
+    checkAuth(context);
     const input = { ..._args.input };
     if (isEmpty(input.label)) throw new Error("Label is required");
     input.label = sanitizeString(input.label);
@@ -58,7 +59,7 @@ const roleResolver = {
     _args: { id: string; input: Partial<Omit<Role, "id">> },
     context: { user: jwt.JwtPayload | null; roleRepo: RoleRepository },
   ): Promise<boolean> => {
-    if (!context.user) throw new Error("Unauthorized");
+    checkAuth(context);
     if (!_args.id) throw new Error("ID is required");
     if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
     const input = { ..._args.input, id: _args.id };
@@ -80,7 +81,7 @@ const roleResolver = {
     _args: { id: string },
     context: { user: jwt.JwtPayload | null; roleRepo: RoleRepository },
   ): Promise<boolean> => {
-    if (!context.user) throw new Error("Unauthorized");
+    checkAuth(context);
     if (!_args.id) throw new Error("ID is required");
     if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
     const result = await context.roleRepo.delete(_args.id);

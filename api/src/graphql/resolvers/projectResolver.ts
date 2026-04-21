@@ -5,6 +5,7 @@ import {
   sanitizeString,
   isEmpty,
   isValidUUID,
+  checkAuth,
 } from "../../utils/validationUtils";
 
 // Résolveur GraphQL pour les opérations liées aux projets
@@ -36,7 +37,7 @@ const projectResolver = {
     _args: { input: Omit<Project, "id"> },
     context: { user: jwt.JwtPayload | null; projectRepo: ProjectRepository },
   ): Promise<boolean> => {
-    if (!context.user) throw new Error("Unauthorized");
+    checkAuth(context);
     const input = { ..._args.input };
     if (isEmpty(input.label)) throw new Error("Label is required");
     input.label = sanitizeString(input.label);
@@ -180,7 +181,7 @@ const projectResolver = {
     _args: { id: string; input: Partial<Omit<Project, "id">> },
     context: { user: jwt.JwtPayload | null; projectRepo: ProjectRepository },
   ): Promise<boolean> => {
-    if (!context.user) throw new Error("Unauthorized");
+    checkAuth(context);
     if (!_args.id) throw new Error("ID is required");
     if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
 
@@ -325,7 +326,7 @@ const projectResolver = {
     _args: { id: string },
     context: { user: jwt.JwtPayload | null; projectRepo: ProjectRepository },
   ): Promise<boolean> => {
-    if (!context.user) throw new Error("Unauthorized");
+    checkAuth(context);
     if (!_args.id) throw new Error("ID is required");
     if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
     const result = await context.projectRepo.delete(_args.id);

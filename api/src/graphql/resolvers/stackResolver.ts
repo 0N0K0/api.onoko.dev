@@ -5,6 +5,7 @@ import {
   sanitizeString,
   isEmpty,
   isValidUUID,
+  checkAuth,
 } from "../../utils/validationUtils";
 
 const stackResolver = {
@@ -35,7 +36,7 @@ const stackResolver = {
     _args: { input: Omit<Stack, "id"> },
     context: { user: jwt.JwtPayload | null; stackRepo: StackRepository },
   ): Promise<boolean> => {
-    if (!context.user) throw new Error("Unauthorized");
+    checkAuth(context);
     const input = { ..._args.input };
     // Sanitize tous les champs string pertinents
     if (isEmpty(input.label)) throw new Error("Label is required");
@@ -65,7 +66,7 @@ const stackResolver = {
     _args: { id: string; input: Partial<Omit<Stack, "id">> },
     context: { user: jwt.JwtPayload | null; stackRepo: StackRepository },
   ): Promise<boolean> => {
-    if (!context.user) throw new Error("Unauthorized");
+    checkAuth(context);
     if (!_args.id) throw new Error("ID is required for update");
     if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
     const input = { ..._args.input, id: _args.id };
@@ -96,7 +97,7 @@ const stackResolver = {
     _args: { id: string },
     context: { user: jwt.JwtPayload | null; stackRepo: StackRepository },
   ): Promise<boolean> => {
-    if (!context.user) throw new Error("Unauthorized");
+    checkAuth(context);
     if (!_args.id) throw new Error("ID is required");
     if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
     const result = await context.stackRepo.delete(_args.id);

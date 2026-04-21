@@ -50,3 +50,13 @@ export function isValidUUID(uuid: string): boolean {
 export function isEmpty(str: string): boolean {
   return validator.isEmpty(str.trim());
 }
+
+/**
+ * Vérifie que le contexte contient un utilisateur authentifié.
+ * @throws {Error} Si l'utilisateur n'est pas authentifié.
+ */
+export function checkAuth(context: {
+  user: object | null | undefined;
+}): asserts context is { user: object } {
+  if (!context.user) throw new Error("Unauthorized");
+}

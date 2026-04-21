@@ -4,6 +4,7 @@ import {
   isValidPassword,
   sanitizeString,
   isEmpty,
+  checkAuth,
 } from "../../utils/validationUtils";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
@@ -27,7 +28,7 @@ const accountResolver = {
       settingsRepo: SettingsRepository;
     },
   ): Promise<{ login: string | null; email: string | null }> => {
-    if (!context.user) throw new Error("Unauthorized");
+    checkAuth(context);
 
     const login = await context.settingsRepo.get("login");
     const email = await context.settingsRepo.get("email");
@@ -55,7 +56,7 @@ const accountResolver = {
       settingsRepo: SettingsRepository;
     },
   ): Promise<{ login: string | null; email: string | null }> => {
-    if (!context.user) throw new Error("Unauthorized");
+    checkAuth(context);
 
     const storedHash = await context.settingsRepo.get("password_hash");
     if (!storedHash || !(await verifyPassword(_args.oldPassword, storedHash))) {
