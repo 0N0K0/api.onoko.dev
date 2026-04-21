@@ -20,15 +20,107 @@ export default class ProjectRepository {
     let conn;
     try {
       conn = await this.pool.getConnection();
-      const projects = await conn.query(
+      const projectRows: ProjectRow[] = await conn.query(
         `SELECT * FROM project ORDER BY start_date DESC`,
       );
-      let hydratedProjects: Project[] = [];
-      for (const project of projects) {
-        const hydratedProject = await this._hydrateProject(conn, project);
-        hydratedProjects.push(hydratedProject);
+
+      if (projectRows.length === 0) return [];
+
+      const ids = projectRows.map((p) => p.id);
+      const placeholders = ids.map(() => "?").join(",");
+
+      // 5 requêtes batch au lieu de 5N requêtes individuelles
+      const [categories, roles, coworkers, stacks, mockups] = await Promise.all(
+        [
+          conn.query(
+            `SELECT project_id, category_id FROM project_category WHERE project_id IN (${placeholders})`,
+            ids,
+          ),
+          conn.query(
+            `SELECT project_id, role_id FROM project_role WHERE project_id IN (${placeholders})`,
+            ids,
+          ),
+          conn.query(
+            `SELECT project_id, coworker_id, role_id FROM project_coworker WHERE project_id IN (${placeholders})`,
+            ids,
+          ),
+          conn.query(
+            `SELECT project_id, stack_id, version, section FROM project_stack WHERE project_id IN (${placeholders})`,
+            ids,
+          ),
+          conn.query(
+            `SELECT project_id, media_id, position FROM project_mockup WHERE project_id IN (${placeholders}) ORDER BY position ASC`,
+            ids,
+          ),
+        ],
+      );
+
+      const categoriesByProject = new Map<string, string[]>();
+      for (const row of categories) {
+        if (!categoriesByProject.has(row.project_id))
+          categoriesByProject.set(row.project_id, []);
+        categoriesByProject.get(row.project_id)!.push(row.category_id);
       }
-      return hydratedProjects;
+
+      const rolesByProject = new Map<string, string[]>();
+      for (const row of roles) {
+        if (!rolesByProject.has(row.project_id))
+          rolesByProject.set(row.project_id, []);
+        rolesByProject.get(row.project_id)!.push(row.role_id);
+      }
+
+      const coworkersByProject = new Map<
+        string,
+        Map<string, { id: string; roles: string[] }>
+      >();
+      for (const row of coworkers) {
+        if (!coworkersByProject.has(row.project_id))
+          coworkersByProject.set(row.project_id, new Map());
+        const cwMap = coworkersByProject.get(row.project_id)!;
+        if (!cwMap.has(row.coworker_id))
+          cwMap.set(row.coworker_id, { id: row.coworker_id, roles: [] });
+        if (row.role_id) cwMap.get(row.coworker_id)!.roles.push(row.role_id);
+      }
+
+      const stacksByProject = new Map<
+        string,
+        { id: string; version?: string; section?: string }[]
+      >();
+      for (const row of stacks) {
+        if (!stacksByProject.has(row.project_id))
+          stacksByProject.set(row.project_id, []);
+        stacksByProject
+          .get(row.project_id)!
+          .push({
+            id: row.stack_id,
+            version: row.version,
+            section: row.section,
+          });
+      }
+
+      const mockupsByProject = new Map<
+        string,
+        { id: string; position: number }[]
+      >();
+      for (const row of mockups) {
+        if (!mockupsByProject.has(row.project_id))
+          mockupsByProject.set(row.project_id, []);
+        mockupsByProject
+          .get(row.project_id)!
+          .push({ id: row.media_id, position: row.position });
+      }
+
+      return projectRows.map((projectRow) =>
+        this._buildProject(projectRow, {
+          categories: categoriesByProject.get(projectRow.id) ?? [],
+          roles: rolesByProject.get(projectRow.id) ?? [],
+          coworkers: Array.from(
+            coworkersByProject.get(projectRow.id)?.values() ?? [],
+          ),
+          stacks: stacksByProject.get(projectRow.id) ?? [],
+          mockupImages: mockupsByProject.get(projectRow.id) ?? [],
+        }),
+      );
     } catch (error) {
       console.error("Error retrieving projects:", error);
       throw error;
@@ -42,74 +134,28 @@ export default class ProjectRepository {
    * @param conn Connexion à la base de données
    * @param projectRow Projet à hydrater (doit contenir au moins l'ID)
    */
-  private async _hydrateProject(
-    conn: mariadb.PoolConnection,
+  private _buildProject(
     projectRow: ProjectRow,
-  ): Promise<Project> {
-    let project: Project = {
+    relations: {
+      categories: string[];
+      roles: string[];
+      coworkers: { id: string; roles: string[] }[];
+      stacks: { id: string; version?: string; section?: string }[];
+      mockupImages: { id: string; position: number }[];
+    },
+  ): Project {
+    const project: Project = {
       id: projectRow.id,
       label: projectRow.label,
       thumbnail: projectRow.thumbnail_id,
       startDate: projectRow.start_date,
       endDate: projectRow.end_date,
-      categories: [],
-      roles: [],
-      coworkers: [],
-      stacks: [],
+      categories: relations.categories,
+      roles: relations.roles,
+      coworkers: relations.coworkers,
+      stacks: relations.stacks,
     };
-    // Récupère les catégories liées au projet
-    const categories = await conn.query(
-      `SELECT category_id FROM project_category WHERE project_id = ?`,
-      [projectRow.id],
-    );
-    project.categories = categories.map((c: any) => c.category_id);
 
-    // Récupère les rôles liés au projet
-    const roles = await conn.query(
-      `SELECT role_id FROM project_role WHERE project_id = ?`,
-      [projectRow.id],
-    );
-    project.roles = roles.map((r: any) => r.role_id);
-
-    // Récupère les coworkers liés au projet
-    const coworkers = await conn.query(
-      `
-        SELECT coworker_id, role_id
-        FROM project_coworker
-        WHERE project_id = ?
-      `,
-      [projectRow.id],
-    );
-    // Groupe les rôles par coworker
-    const coworkerArray: { id: string; roles: string[] }[] = [];
-    for (const c of coworkers) {
-      if (!coworkerArray[c.coworker_id]) {
-        coworkerArray[c.coworker_id] = { id: c.coworker_id, roles: [] };
-      }
-      if (c.role_id) coworkerArray[c.coworker_id].roles?.push(c.role_id);
-    }
-    project.coworkers = Object.values(coworkerArray);
-
-    // Récupère les stacks liés au projet
-    const stacks = await conn.query(
-      `
-        SELECT stack_id, version, section
-        FROM  project_stack 
-        WHERE project_id = ?
-      `,
-      [projectRow.id],
-    );
-    project.stacks = stacks.map(
-      (s: { stack_id: string; section?: string; version?: string }) => ({
-        id: s.stack_id,
-        version: s.version,
-        section: s.section,
-      }),
-    );
-
-    if (projectRow.thumbnail_id) project.thumbnail = projectRow.thumbnail_id;
-
-    // Construit l'objet website si les champs sont présents
     if (projectRow.website_url) {
       project.website = {
         url: projectRow.website_url,
@@ -117,31 +163,14 @@ export default class ProjectRepository {
       };
     }
 
-    // Construit l'objet mockup et ajoute les images mockup si elles existent
-    const mockupImagesResult = await conn.query(
-      `
-        SELECT media_id, position
-        FROM project_mockup
-        WHERE project_id = ?
-        ORDER BY position ASC
-      `,
-      [projectRow.id],
-    );
     if (projectRow.mockup_url) {
       project.mockup = {
         url: projectRow.mockup_url,
         label: projectRow.mockup_label || "",
-        images:
-          mockupImagesResult.map(
-            (m: { media_id: string; position: number }) => ({
-              id: m.media_id,
-              position: m.position,
-            }),
-          ) || [],
+        images: relations.mockupImages,
       };
     }
 
-    // Construit l'objet client si les champs sont présents
     if (projectRow.client_label) {
       project.client = {
         label: projectRow.client_label,
@@ -149,7 +178,6 @@ export default class ProjectRepository {
       };
     }
 
-    // Construit l'objet manager si les champs sont présents
     if (projectRow.manager_name) {
       project.manager = {
         name: projectRow.manager_name,
@@ -157,7 +185,6 @@ export default class ProjectRepository {
       };
     }
 
-    // Construit l'objet intro si les champs sont présents
     if (
       projectRow.intro_context ||
       projectRow.intro_objective ||
@@ -170,7 +197,6 @@ export default class ProjectRepository {
       };
     }
 
-    // Construit l'objet presentation si les champs sont présents
     if (
       projectRow.presentation_description ||
       projectRow.presentation_issue ||
@@ -183,7 +209,6 @@ export default class ProjectRepository {
       };
     }
 
-    // Construit l'objet need si les champs sont présents
     if (
       projectRow.need_features ||
       projectRow.need_functional_constraints ||
@@ -196,7 +221,6 @@ export default class ProjectRepository {
       };
     }
 
-    // Construit l'objet organization si les champs sont présents
     if (
       projectRow.organization_workload ||
       projectRow.organization_anticipation ||
@@ -213,7 +237,6 @@ export default class ProjectRepository {
       };
     }
 
-    // Construit l'objet kpis si les champs sont présents
     if (
       projectRow.kpis_issues !== undefined ||
       projectRow.kpis_points !== undefined ||
@@ -228,7 +251,6 @@ export default class ProjectRepository {
       };
     }
 
-    // Construit l'objet feedback si les champs sont présents
     if (projectRow.feedback || projectRow.feedback_client) {
       project.feedback = {
         general: projectRow.feedback,
@@ -250,6 +272,8 @@ export default class ProjectRepository {
     let conn;
     try {
       conn = await this.pool.getConnection();
+      await conn.beginTransaction();
+
       // Insère le projet principal
       await conn.query(
         `INSERT INTO project (
@@ -292,61 +316,55 @@ export default class ProjectRepository {
         ],
       );
 
-      // Insère les images mockups liées
-      if (project.mockup?.images && project.mockup.images.length) {
-        for (let i = 0; i < project.mockup.images.length; i++) {
-          const mediaId = project.mockup.images[i];
-          await conn.query(
-            `INSERT INTO project_mockup (project_id, media_id, position) VALUES (?, ?, ?)`,
-            [id, mediaId, i],
+      if (project.mockup?.images?.length) {
+        await conn.batch(
+          `INSERT INTO project_mockup (project_id, media_id, position) VALUES (?, ?, ?)`,
+          project.mockup.images.map((mediaId, i) => [id, mediaId, i]),
+        );
+      }
+
+      if (project.categories?.length) {
+        await conn.batch(
+          `INSERT INTO project_category (project_id, category_id) VALUES (?, ?)`,
+          project.categories.map((c) => [id, c]),
+        );
+      }
+
+      if (project.roles?.length) {
+        await conn.batch(
+          `INSERT INTO project_role (project_id, role_id) VALUES (?, ?)`,
+          project.roles.map((r) => [id, r]),
+        );
+      }
+
+      if (project.coworkers?.length) {
+        const coworkerRows = project.coworkers.flatMap(
+          ({ id: coworker_id, roles }) =>
+            (roles ?? []).map((role_id) => [id, coworker_id, role_id]),
+        );
+        if (coworkerRows.length) {
+          await conn.batch(
+            `INSERT INTO project_coworker (project_id, coworker_id, role_id) VALUES (?, ?, ?)`,
+            coworkerRows,
           );
         }
       }
 
-      // Insère les catégories liées
-      if (project.categories && project.categories.length) {
-        for (const categoryId of project.categories) {
-          await conn.query(
-            `INSERT INTO project_category (project_id, category_id) VALUES (?, ?)`,
-            [id, categoryId],
-          );
-        }
+      if (project.stacks?.length) {
+        await conn.batch(
+          `INSERT INTO project_stack (project_id, stack_id, version, section) VALUES (?, ?, ?, ?)`,
+          project.stacks.map(({ id: stack_id, version, section }) => [
+            id,
+            stack_id,
+            version ?? null,
+            section ?? null,
+          ]),
+        );
       }
 
-      // Insère les rôles liés
-      if (project.roles && project.roles.length) {
-        for (const roleId of project.roles) {
-          await conn.query(
-            `INSERT INTO project_role (project_id, role_id) VALUES (?, ?)`,
-            [id, roleId],
-          );
-        }
-      }
-
-      // Insère les coworkers liés
-      if (project.coworkers && project.coworkers.length) {
-        for (const { id: coworker_id, roles } of project.coworkers) {
-          if (!roles || roles.length === 0) continue;
-          for (const role of roles) {
-            const role_id = role;
-            await conn.query(
-              `INSERT INTO project_coworker (project_id, coworker_id, role_id) VALUES (?, ?, ?)`,
-              [id, coworker_id, role_id],
-            );
-          }
-        }
-      }
-
-      // Insère les stacks liés
-      if (project.stacks && project.stacks.length) {
-        for (const { id: stack_id, version, section } of project.stacks) {
-          await conn.query(
-            `INSERT INTO project_stack (project_id, stack_id, version, section) VALUES (?, ?, ?, ?)`,
-            [id, stack_id, version, section],
-          );
-        }
-      }
+      await conn.commit();
     } catch (error) {
+      if (conn) await conn.rollback();
       console.error("Error creating project:", error);
       throw error;
     } finally {
@@ -369,6 +387,7 @@ export default class ProjectRepository {
     let conn;
     try {
       conn = await this.pool.getConnection();
+      await conn.beginTransaction();
       // Construit dynamiquement la requête de mise à jour
       const fields: string[] = [];
       const values: any[] = [];
@@ -649,7 +668,9 @@ export default class ProjectRepository {
           );
         }
       }
+      await conn.commit();
     } catch (error) {
+      if (conn) await conn.rollback();
       console.error("Error updating project:", error);
       throw error;
     } finally {
