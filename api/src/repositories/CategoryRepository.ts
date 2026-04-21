@@ -1,7 +1,7 @@
 import mariadb from "mariadb";
 import crypto from "crypto";
 import { Category } from "../types/categoryTypes";
-import { withConnection } from "../database/dbHelpers";
+import { withConnection, buildSetClause } from "../database/dbHelpers";
 
 // Repository pour les opérations liées aux catégories dans la base de données
 export default class CategoryRepository {
@@ -70,33 +70,24 @@ export default class CategoryRepository {
    */
   async update(category: Partial<Category>): Promise<boolean> {
     if (!category.id) throw new Error("ID is required for update");
-    const fields: string[] = [];
-    const values: unknown[] = [];
-    if (category.label) {
-      fields.push("label = ?");
-      values.push(category.label);
-    }
-    if (category.entity) {
-      fields.push("entity = ?");
-      values.push(category.entity);
-    }
-    if (category.description !== undefined) {
-      fields.push("description = ?");
-      values.push(category.description);
-    }
     // Gestion spéciale pour parent: si null, "", ou "null" on force à NULL
-    if (category.parent !== undefined) {
-      fields.push("parent_id = ?");
-      values.push(category.parent === "" ? null : category.parent);
-    }
-    // On exécute la requête même si la seule modif est parent_id = NULL
-    if (fields.length === 0) return false;
-    values.push(category.id);
+    const set = buildSetClause({
+      label: category.label || undefined,
+      entity: category.entity || undefined,
+      description: category.description,
+      parent_id:
+        category.parent !== undefined
+          ? category.parent === ""
+            ? null
+            : category.parent
+          : undefined,
+    });
+    if (!set) return false;
     await withConnection(this.pool, (conn) =>
-      conn.query(
-        `UPDATE category SET ${fields.join(", ")} WHERE id = ?`,
-        values,
-      ),
+      conn.query(`UPDATE category SET ${set.sql} WHERE id = ?`, [
+        ...set.values,
+        category.id,
+      ]),
     );
     return true;
   }

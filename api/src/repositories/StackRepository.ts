@@ -1,7 +1,11 @@
 import mariadb from "mariadb";
 import crypto from "crypto";
 import { Stack } from "../types/stackTypes";
-import { withConnection, withTransaction } from "../database/dbHelpers";
+import {
+  withConnection,
+  withTransaction,
+  buildSetClause,
+} from "../database/dbHelpers";
 
 // Repository pour les opérations liées aux stacks dans la base de données
 export class StackRepository {
@@ -97,28 +101,16 @@ export class StackRepository {
   async update(stack: Partial<Stack>): Promise<boolean> {
     if (!stack.id) throw new Error("ID is required for update");
     return withTransaction(this.pool, async (conn) => {
-      const fields: string[] = [];
-      const values: unknown[] = [];
-      if (stack.label) {
-        fields.push("label = ?");
-        values.push(stack.label);
-      }
-      if (stack.icon) {
-        fields.push("icon_id = ?");
-        values.push(stack.icon as string);
-      }
-      if (stack.description !== undefined) {
-        fields.push("description = ?");
-        values.push(stack.description);
-      }
-      if (stack.category !== undefined) {
-        fields.push("category_id = ?");
-        values.push(stack.category ? stack.category : null);
-      }
-
-      if (fields.length > 0) {
-        await conn.query(`UPDATE stack SET ${fields.join(", ")} WHERE id = ?`, [
-          ...values,
+      const set = buildSetClause({
+        label: stack.label || undefined,
+        icon_id: stack.icon ? (stack.icon as string) : undefined,
+        description: stack.description,
+        category_id:
+          stack.category !== undefined ? stack.category || null : undefined,
+      });
+      if (set) {
+        await conn.query(`UPDATE stack SET ${set.sql} WHERE id = ?`, [
+          ...set.values,
           stack.id,
         ]);
       }
@@ -171,7 +163,7 @@ export class StackRepository {
         }
       }
 
-      if (fields.length === 0 && !stack.versions && !stack.skills) {
+      if (!set && !stack.versions && !stack.skills) {
         return false;
       }
       return true;

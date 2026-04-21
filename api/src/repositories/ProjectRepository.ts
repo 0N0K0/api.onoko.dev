@@ -5,7 +5,11 @@ import { Role } from "../types/roleTypes";
 import { Category } from "../types/categoryTypes";
 import { Stack } from "../types/stackTypes";
 import { Media } from "../types/mediaTypes";
-import { withConnection, withTransaction } from "../database/dbHelpers";
+import {
+  withConnection,
+  withTransaction,
+  buildSetClause,
+} from "../database/dbHelpers";
 
 // Repository pour les opérations liées aux projets dans la base de données
 export default class ProjectRepository {
@@ -366,9 +370,7 @@ export default class ProjectRepository {
   ): Promise<boolean> {
     await withTransaction(this.pool, async (conn) => {
       // Construit dynamiquement la requête de mise à jour
-      const fields: string[] = [];
-      const values: unknown[] = [];
-      const map: Record<string, unknown> = {
+      const set = buildSetClause({
         label: project.label,
         thumbnail_id: project.thumbnail,
         website_url: project.website?.url,
@@ -401,19 +403,12 @@ export default class ProjectRepository {
         kpis_points: project.kpis?.points,
         kpis_commits: project.kpis?.commits,
         kpis_pull_requests: project.kpis?.pullRequests,
-      };
-      for (const [col, val] of Object.entries(map)) {
-        if (val !== undefined) {
-          fields.push(`${col} = ?`);
-          values.push(val);
-        }
-      }
-
-      if (fields.length > 0) {
-        await conn.query(
-          `UPDATE project SET ${fields.join(", ")} WHERE id = ?`,
-          [...values, id],
-        );
+      });
+      if (set) {
+        await conn.query(`UPDATE project SET ${set.sql} WHERE id = ?`, [
+          ...set.values,
+          id,
+        ]);
       }
 
       // Met à jour les catégories liées

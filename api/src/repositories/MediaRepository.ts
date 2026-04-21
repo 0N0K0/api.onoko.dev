@@ -5,7 +5,7 @@ import crypto from "crypto";
 import { promises as fs } from "fs";
 import path from "path";
 import { MEDIA_BASE_PATH } from "../constants/mediaConstants";
-import { withConnection } from "../database/dbHelpers";
+import { withConnection, buildSetClause } from "../database/dbHelpers";
 
 export class MediaRepository {
   constructor(private pool: mariadb.Pool) {}
@@ -76,25 +76,16 @@ export class MediaRepository {
   async update(media: Partial<Media>): Promise<boolean> {
     if (!media.id) throw new Error("ID is required to update media");
     await withConnection(this.pool, async (conn) => {
-      const fields: string[] = [];
-      const values: unknown[] = [];
-      if (media.label) {
-        fields.push("label = ?");
-        values.push(media.label);
-      }
-      if (media.category !== undefined) {
-        fields.push("category = ?");
-        values.push(media.category ? media.category : null);
-      }
-      if (fields.length > 0) {
-        values.push(media.id);
-        await conn.query(
-          `UPDATE medias SET ${fields.join(", ")} WHERE id = ?`,
-          values,
-        );
-      } else {
-        throw new Error("No fields to update");
-      }
+      const set = buildSetClause({
+        label: media.label || undefined,
+        category:
+          media.category !== undefined ? media.category || null : undefined,
+      });
+      if (!set) throw new Error("No fields to update");
+      await conn.query(`UPDATE medias SET ${set.sql} WHERE id = ?`, [
+        ...set.values,
+        media.id,
+      ]);
     });
     return true;
   }

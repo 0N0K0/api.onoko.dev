@@ -1,7 +1,7 @@
 import mariadb from "mariadb";
 import crypto from "crypto";
 import { Role } from "../types/roleTypes";
-import { withConnection } from "../database/dbHelpers";
+import { withConnection, buildSetClause } from "../database/dbHelpers";
 
 // Repository pour les opérations liées aux rôles dans la base de données
 export default class RoleRepository {
@@ -50,16 +50,13 @@ export default class RoleRepository {
    */
   async update(role: Partial<Role>): Promise<boolean> {
     if (!role.id) throw new Error("ID is required for update");
-    const fields: string[] = [];
-    const values: unknown[] = [];
-    if (role.label) {
-      fields.push("label = ?");
-      values.push(role.label);
-    }
-    if (fields.length === 0) return false;
-    values.push(role.id);
+    const set = buildSetClause({ label: role.label || undefined });
+    if (!set) return false;
     await withConnection(this.pool, (conn) =>
-      conn.query(`UPDATE role SET ${fields.join(", ")} WHERE id = ?`, values),
+      conn.query(`UPDATE role SET ${set.sql} WHERE id = ?`, [
+        ...set.values,
+        role.id,
+      ]),
     );
     return true;
   }

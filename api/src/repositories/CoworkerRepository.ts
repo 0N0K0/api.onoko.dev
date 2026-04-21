@@ -1,7 +1,7 @@
 import mariadb from "mariadb";
 import crypto from "crypto";
 import { Coworker } from "../types/coworkerTypes";
-import { withConnection } from "../database/dbHelpers";
+import { withConnection, buildSetClause } from "../database/dbHelpers";
 
 // Repository pour les opérations liées aux collaborateurs dans la base de données
 export default class CoworkerRepository {
@@ -82,18 +82,12 @@ export default class CoworkerRepository {
   async update(coworker: Partial<Coworker>): Promise<boolean> {
     if (!coworker.id) throw new Error("ID is required for update");
     await withConnection(this.pool, async (conn) => {
-      const fields: string[] = [];
-      const values: unknown[] = [];
-      if (coworker.name) {
-        fields.push("name = ?");
-        values.push(coworker.name);
-      }
-      if (fields.length > 0) {
-        values.push(coworker.id);
-        await conn.query(
-          `UPDATE coworker SET ${fields.join(", ")} WHERE id = ?`,
-          values,
-        );
+      const set = buildSetClause({ name: coworker.name || undefined });
+      if (set) {
+        await conn.query(`UPDATE coworker SET ${set.sql} WHERE id = ?`, [
+          ...set.values,
+          coworker.id,
+        ]);
       }
       if (coworker.roles) {
         await conn.query(`DELETE FROM coworker_role WHERE coworker_id = ?`, [

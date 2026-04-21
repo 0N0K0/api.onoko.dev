@@ -38,3 +38,19 @@ export async function withTransaction<T>(
     conn.release();
   }
 }
+
+/**
+ * Construit la clause SET d'une requête UPDATE dynamique.
+ * Les entrées dont la valeur est `undefined` sont exclues.
+ * Retourne `null` si aucune entrée ne reste (rien à mettre à jour).
+ */
+export function buildSetClause(
+  columns: Record<string, unknown>,
+): { sql: string; values: unknown[] } | null {
+  const entries = Object.entries(columns).filter(([, v]) => v !== undefined);
+  if (entries.length === 0) return null;
+  return {
+    sql: entries.map(([col]) => `${col} = ?`).join(", "),
+    values: entries.map(([, v]) => v),
+  };
+}
