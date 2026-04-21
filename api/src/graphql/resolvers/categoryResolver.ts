@@ -6,6 +6,7 @@ import {
   isEmpty,
   isValidUUID,
   checkAuth,
+  validateId,
 } from "../../utils/validationUtils";
 
 // Résolveur GraphQL pour les opérations liées aux catégories
@@ -70,8 +71,7 @@ const categoryResolver = {
     context: { user: jwt.JwtPayload | null; categoryRepo: CategoryRepository },
   ): Promise<boolean> => {
     checkAuth(context);
-    if (!_args.id) throw new Error("ID is required");
-    if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
+    validateId(_args.id);
     const input = { ..._args.input, id: _args.id };
     if (input.label) input.label = sanitizeString(input.label);
     if (input.entity) input.entity = sanitizeString(input.entity);
@@ -96,8 +96,7 @@ const categoryResolver = {
     context: { user: jwt.JwtPayload | null; categoryRepo: CategoryRepository },
   ): Promise<boolean> => {
     checkAuth(context);
-    if (!_args.id) throw new Error("ID is required");
-    if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
+    validateId(_args.id);
     const result = await context.categoryRepo.delete(_args.id);
     if (!result) throw new Error("Failed to delete category");
     return result;

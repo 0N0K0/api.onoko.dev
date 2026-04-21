@@ -6,6 +6,7 @@ import {
   isEmpty,
   isValidUUID,
   checkAuth,
+  validateId,
 } from "../../utils/validationUtils";
 
 // Résolveur GraphQL pour les opérations liées aux rôles
@@ -60,8 +61,7 @@ const roleResolver = {
     context: { user: jwt.JwtPayload | null; roleRepo: RoleRepository },
   ): Promise<boolean> => {
     checkAuth(context);
-    if (!_args.id) throw new Error("ID is required");
-    if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
+    validateId(_args.id);
     const input = { ..._args.input, id: _args.id };
     if (input.label) input.label = sanitizeString(input.label);
     const result = await context.roleRepo.update(input);
@@ -82,8 +82,7 @@ const roleResolver = {
     context: { user: jwt.JwtPayload | null; roleRepo: RoleRepository },
   ): Promise<boolean> => {
     checkAuth(context);
-    if (!_args.id) throw new Error("ID is required");
-    if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
+    validateId(_args.id);
     const result = await context.roleRepo.delete(_args.id);
     if (!result) throw new Error("Failed to delete role");
     return result;

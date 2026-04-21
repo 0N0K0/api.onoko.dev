@@ -6,6 +6,7 @@ import {
   isEmpty,
   isValidUUID,
   checkAuth,
+  validateId,
 } from "../../utils/validationUtils";
 
 // Résolveur GraphQL pour les opérations liées aux coworkers
@@ -60,8 +61,7 @@ const coworkerResolver = {
     context: { user: jwt.JwtPayload | null; coworkerRepo: CoworkerRepository },
   ): Promise<boolean> => {
     checkAuth(context);
-    if (!_args.id) throw new Error("ID is required");
-    if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
+    validateId(_args.id);
     const input = { ..._args.input, id: _args.id };
     if (input.name) input.name = sanitizeString(input.name);
     const result = await context.coworkerRepo.update(input);
@@ -82,8 +82,7 @@ const coworkerResolver = {
     context: { user: jwt.JwtPayload | null; coworkerRepo: CoworkerRepository },
   ): Promise<boolean> => {
     checkAuth(context);
-    if (!_args.id) throw new Error("ID is required");
-    if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
+    validateId(_args.id);
     const result = await context.coworkerRepo.delete(_args.id);
     if (!result) throw new Error("Failed to delete coworker");
     return result;

@@ -60,3 +60,12 @@ export function checkAuth(context: {
 }): asserts context is { user: object } {
   if (!context.user) throw new Error("Unauthorized");
 }
+
+/**
+ * Vérifie qu'un ID est fourni et est un UUID valide.
+ * @throws {Error} Si l'ID est absent ou invalide.
+ */
+export function validateId(id: string | undefined): asserts id is string {
+  if (!id) throw new Error("ID is required");
+  if (!isValidUUID(id)) throw new Error("Invalid ID");
+}

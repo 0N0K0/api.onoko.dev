@@ -6,6 +6,7 @@ import {
   isEmpty,
   isValidUUID,
   checkAuth,
+  validateId,
 } from "../../utils/validationUtils";
 
 const stackResolver = {
@@ -67,8 +68,7 @@ const stackResolver = {
     context: { user: jwt.JwtPayload | null; stackRepo: StackRepository },
   ): Promise<boolean> => {
     checkAuth(context);
-    if (!_args.id) throw new Error("ID is required for update");
-    if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
+    validateId(_args.id);
     const input = { ..._args.input, id: _args.id };
     if (input.id) input.id = sanitizeString(input.id);
     if (input.label) input.label = sanitizeString(input.label);
@@ -98,8 +98,7 @@ const stackResolver = {
     context: { user: jwt.JwtPayload | null; stackRepo: StackRepository },
   ): Promise<boolean> => {
     checkAuth(context);
-    if (!_args.id) throw new Error("ID is required");
-    if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
+    validateId(_args.id);
     const result = await context.stackRepo.delete(_args.id);
     if (!result) throw new Error("Failed to delete stack");
     return true;

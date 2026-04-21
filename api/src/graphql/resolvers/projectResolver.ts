@@ -6,6 +6,7 @@ import {
   isEmpty,
   isValidUUID,
   checkAuth,
+  validateId,
 } from "../../utils/validationUtils";
 
 // Résolveur GraphQL pour les opérations liées aux projets
@@ -182,8 +183,7 @@ const projectResolver = {
     context: { user: jwt.JwtPayload | null; projectRepo: ProjectRepository },
   ): Promise<boolean> => {
     checkAuth(context);
-    if (!_args.id) throw new Error("ID is required");
-    if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
+    validateId(_args.id);
 
     const input = { ..._args.input, id: _args.id };
     if (input.label) input.label = sanitizeString(input.label);
@@ -327,8 +327,7 @@ const projectResolver = {
     context: { user: jwt.JwtPayload | null; projectRepo: ProjectRepository },
   ): Promise<boolean> => {
     checkAuth(context);
-    if (!_args.id) throw new Error("ID is required");
-    if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
+    validateId(_args.id);
     const result = await context.projectRepo.delete(_args.id);
     if (!result) throw new Error("Failed to delete project");
     return result;
