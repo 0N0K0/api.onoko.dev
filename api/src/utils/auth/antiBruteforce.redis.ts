@@ -4,9 +4,7 @@ const ATTEMPT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const MAX_ATTEMPTS = 5;
 
 // Configure Redis connection (URL from env or default localhost)
-if (!process.env.REDIS_URL) {
-  throw new Error("REDIS_URL is not defined");
-}
+if (!process.env.REDIS_URL) throw new Error("REDIS_URL is not defined");
 const redis = new Redis(process.env.REDIS_URL);
 
 const ATTEMPT_PREFIX = "abf:"; // anti-bruteforce prefix
@@ -54,6 +52,10 @@ export async function resetAttempts(ip: string): Promise<void> {
   await redis.del(key);
 }
 
+/**
+ * Ferme la connexion Redis proprement lorsque l'application se termine.
+ * @returns {Promise<void>} Une promesse qui se résout lorsque la connexion est fermée.
+ */
 export async function disconnectRedis(): Promise<void> {
   await redis.quit();
 }

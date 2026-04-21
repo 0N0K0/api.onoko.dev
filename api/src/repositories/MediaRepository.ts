@@ -53,7 +53,7 @@ export class MediaRepository {
       if (!media.file) throw new Error("File is required to add media");
       const id = crypto.randomUUID();
       const label = media.file.filename;
-      const filePath = await this.saveImageFile(media.file);
+      const filePath = await this._saveImageFile(media.file);
       await conn.query(
         `INSERT INTO medias (id, path, type, label) VALUES (?, ?, ?, ?)`,
         [
@@ -120,7 +120,16 @@ export class MediaRepository {
     return true;
   }
 
-  async saveImageFile(imageFile: {
+  /**
+   * Enregistre un fichier média sur le serveur, en gérant à la fois les images raster (JPEG, PNG, WebP) et les images vectorielles (SVG).
+   * Pour les images SVG, le fichier est enregistré directement après avoir calculé un hash de son contenu pour éviter les doublons.
+   * Pour les images raster, le fichier est traité avec Sharp pour générer plusieurs tailles d'image au format WebP, en utilisant également un hash du contenu pour éviter les doublons.
+   * La méthode retourne le nom du fichier enregistré, qui peut être utilisé pour construire le chemin d'accès complet du média.
+   * @param {Object} imageFile - L'objet représentant le fichier média à enregistrer, contenant les propriétés filename, mimetype et createReadStream.
+   * @returns {Promise<string>} Le nom du fichier enregistré sur le serveur, qui peut être utilisé pour construire le chemin d'accès complet du média.
+   * @throws {Error} Une erreur si l'enregistrement du fichier échoue pour une raison quelconque, notamment si le stream de lecture du fichier échoue ou si le traitement de l'image avec Sharp échoue.
+   */
+  private async _saveImageFile(imageFile: {
     filename: string;
     mimetype: string;
     createReadStream: () => import("stream").Readable;

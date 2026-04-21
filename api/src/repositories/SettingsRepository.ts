@@ -37,6 +37,16 @@ export class SettingsRepository {
     return this.pool;
   }
 
+  /**
+   * Définit ou met à jour la valeur d'un paramètre de configuration dans la base de données en fonction de sa clé.
+   * La méthode exécute une requête SQL pour insérer ou mettre à jour la valeur du paramètre correspondant à la clé spécifiée dans la table "settings" de la base de données.
+   * Si un paramètre avec la clé spécifiée existe déjà, sa valeur est mise à jour. Sinon, un nouveau paramètre est créé avec la clé et la valeur fournies.
+   * Après l'exécution de la requête d'insertion ou de mise à jour, la méthode ne retourne rien.
+   * @param {string} key - La clé du paramètre de configuration à définir ou mettre à jour.
+   * @param {string} value - La valeur du paramètre de configuration à définir ou mettre à jour.
+   * @returns {Promise<void>} Une promesse qui se résout lorsque l'opération est terminée, ou rejette une erreur si l'opération échoue pour une raison quelconque.
+   * @throws {Error} Une erreur si l'opération échoue pour une raison quelconque.
+   */
   async set(key: string, value: string): Promise<void> {
     await withConnection(this.pool, (conn) =>
       conn.query(
