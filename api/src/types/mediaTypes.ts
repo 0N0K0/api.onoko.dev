@@ -1,5 +1,3 @@
-import { Category } from "./categoryTypes";
-
 import { Readable } from "stream";
 
 export type ImageFile = {

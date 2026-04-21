@@ -1,5 +1,5 @@
 import CategoryRepository from "../repositories/CategoryRepository";
-import { StackRepository } from "../repositories/StackRepository";
+import StackRepository from "../repositories/StackRepository";
 import RoleRepository from "../repositories/RoleRepository";
 import CoworkerRepository from "../repositories/CoworkerRepository";
 import ProjectRepository from "../repositories/ProjectRepository";

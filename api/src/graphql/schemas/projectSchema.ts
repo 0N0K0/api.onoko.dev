@@ -27,10 +27,15 @@ export const projectTypes = `
         label: String!
     }
 
+    type MockupImage {
+        id: ID!
+        position: Int!
+    }
+
     type Mockup {
         url: String!
         label: String!
-        images: [ID!]
+        images: [MockupImage!]
     }
 
     type Client {

@@ -1,4 +1,4 @@
-import { StackRepository } from "../../repositories/StackRepository";
+import StackRepository from "../../repositories/StackRepository";
 import { Stack } from "../../types/stackTypes";
 import jwt from "jsonwebtoken";
 import {

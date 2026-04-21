@@ -7,7 +7,7 @@ import {
 import { BaseRepository } from "./BaseRepository";
 
 // Repository pour les opérations liées aux stacks dans la base de données
-export class StackRepository extends BaseRepository {
+export default class StackRepository extends BaseRepository {
   protected readonly tableName = "stack";
 
   /**

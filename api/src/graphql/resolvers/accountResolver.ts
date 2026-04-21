@@ -112,9 +112,7 @@ const accountResolver = {
       );
     });
 
-    if (!process.env.RESET_URL) {
-      throw new Error("RESET_URL is not defined");
-    }
+    if (!process.env.RESET_URL) throw new Error("RESET_URL is not defined");
     const resetUrl = `${process.env.RESET_URL}?token=${token}`;
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,

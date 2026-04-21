@@ -1,8 +1,5 @@
+import mariadb from "mariadb";
 import { Project, ProjectRow } from "../types/projectTypes";
-import { Role } from "../types/roleTypes";
-import { Category } from "../types/categoryTypes";
-import { Stack } from "../types/stackTypes";
-import { Media } from "../types/mediaTypes";
 import {
   withConnection,
   withTransaction,
@@ -409,218 +406,186 @@ export default class ProjectRepository extends BaseRepository {
         ]);
       }
 
-      // Met à jour les catégories liées
-      if (project.categories) {
-        const existing = (
-          await conn.query(
-            `SELECT category_id FROM project_category WHERE project_id = ?`,
-            [id],
-          )
-        ).map((r: { category_id: string }) => r.category_id);
-        const toAdd = project.categories.filter(
-          (c: string | Category) =>
-            !existing.includes(typeof c === "string" ? c : c.id),
+      if (project.categories)
+        await this._syncSimpleRelation(
+          conn,
+          id,
+          "project_category",
+          "category_id",
+          project.categories,
         );
-        const toRemove = existing.filter(
-          (c: string) =>
-            !project.categories?.some(
-              (category: string | Category) =>
-                (typeof category === "string" ? category : category.id) === c,
-            ),
-        );
-        for (const categoryId of toRemove) {
-          await conn.query(
-            `DELETE FROM project_category WHERE project_id = ? AND category_id = ?`,
-            [id, categoryId],
-          );
-        }
-        for (const categoryId of toAdd) {
-          await conn.query(
-            `INSERT INTO project_category (project_id, category_id) VALUES (?, ?)`,
-            [id, categoryId],
-          );
-        }
-      }
 
-      // Met à jour les rôles liés
-      if (project.roles) {
-        const existing = (
-          await conn.query(
-            `SELECT role_id FROM project_role WHERE project_id = ?`,
-            [id],
-          )
-        ).map((r: { role_id: string }) => r.role_id);
-        const toAdd = project.roles.filter(
-          (r: string | Role) =>
-            !existing.includes(typeof r === "string" ? r : r.id),
+      if (project.roles)
+        await this._syncSimpleRelation(
+          conn,
+          id,
+          "project_role",
+          "role_id",
+          project.roles,
         );
-        const toRemove = existing.filter(
-          (r: string) =>
-            !project.roles?.some(
-              (role: string | Role) =>
-                (typeof role === "string" ? role : role.id) === r,
-            ),
-        );
-        for (const roleId of toRemove) {
-          await conn.query(
-            `DELETE FROM project_role WHERE project_id = ? AND role_id = ?`,
-            [id, roleId],
-          );
-        }
-        for (const roleId of toAdd) {
-          await conn.query(
-            `INSERT INTO project_role (project_id, role_id) VALUES (?, ?)`,
-            [id, roleId],
-          );
-        }
-      }
 
-      // Met à jour les coworkers liés
-      if (project.coworkers) {
-        const existing = await conn.query(
-          `SELECT coworker_id, role_id FROM project_coworker WHERE project_id = ?`,
-          [id],
-        );
-        const inputPairs = project.coworkers.flatMap((cw) =>
-          (cw.roles || []).map((role: string) => ({
-            coworker_id: cw.id,
-            role_id: role,
-          })),
-        );
-        const toAdd = inputPairs.filter(
-          (p: { coworker_id: string; role_id: string }) =>
-            !existing.some(
-              (e: { coworker_id: string; role_id: string }) =>
-                e.coworker_id === p.coworker_id && e.role_id === p.role_id,
-            ),
-        );
-        const toRemove = existing.filter(
-          (e: { coworker_id: string; role_id: string }) =>
-            !inputPairs.some(
-              (p: { coworker_id: string; role_id: string }) =>
-                p.coworker_id === e.coworker_id && p.role_id === e.role_id,
-            ),
-        );
-        for (const { coworker_id, role_id } of toRemove) {
-          await conn.query(
-            `DELETE FROM project_coworker WHERE project_id = ? AND coworker_id = ? AND role_id = ?`,
-            [id, coworker_id, role_id],
-          );
-        }
-        for (const { coworker_id, role_id } of toAdd) {
-          await conn.query(
-            `INSERT INTO project_coworker (project_id, coworker_id, role_id) VALUES (?, ?, ?)`,
-            [id, coworker_id, role_id],
-          );
-        }
-      }
+      if (project.coworkers)
+        await this._syncCoworkers(conn, id, project.coworkers);
 
-      // Met à jour les stacks liés
-      if (project.stacks) {
-        const existing = await conn.query(
-          `SELECT stack_id, version, section FROM project_stack WHERE project_id = ?`,
-          [id],
-        );
-        const inputStacks = project.stacks.map(
-          (
-            s: Partial<Stack> & {
-              section?: string | null;
-              version?: string | null;
-            },
-          ) => ({
-            stack_id: s.id,
-            version: s.version ?? null,
-            section: s.section ?? null,
-          }),
-        );
-        const toAdd = inputStacks.filter(
-          (s) =>
-            !existing.some(
-              (e: {
-                stack_id: string | undefined;
-                version: string | null;
-                section: string | null;
-              }) =>
-                e.stack_id === s.stack_id &&
-                e.version === s.version &&
-                e.section === s.section,
-            ),
-        );
-        const toRemove = existing.filter(
-          (e: {
-            stack_id: string | undefined;
-            version: string | null;
-            section: string | null;
-          }) =>
-            !inputStacks.some(
-              (s: {
-                stack_id: string | undefined;
-                version: string | null;
-                section: string | null;
-              }) =>
-                e.stack_id === s.stack_id &&
-                e.version === s.version &&
-                e.section === s.section,
-            ),
-        );
-        for (const { stack_id, version, section } of toRemove) {
-          await conn.query(
-            `DELETE FROM project_stack WHERE project_id = ? AND stack_id = ? AND version <=> ? AND section <=> ?`,
-            [id, stack_id, version, section],
-          );
-        }
-        for (const { stack_id, version, section } of toAdd) {
-          await conn.query(
-            `INSERT INTO project_stack (project_id, stack_id, version, section) VALUES (?, ?, ?, ?)`,
-            [id, stack_id, version, section],
-          );
-        }
-      }
+      if (project.stacks) await this._syncStacks(conn, id, project.stacks);
 
-      // Met à jour les images mockup
-      if (project.mockup?.images) {
-        const existing = (
-          await conn.query(
-            `SELECT media_id, position FROM project_mockup WHERE project_id = ?`,
-            [id],
-          )
-        ).map((r: { media_id: string; position: number }) => r.media_id);
-        const toAdd = project.mockup.images.filter(
-          (m) => !existing.includes(m.id),
-        );
-        const toEdit = project.mockup.images.filter((m) =>
-          existing.includes(m.id),
-        );
-        const toRemove = existing.filter(
-          (m: string) =>
-            !project.mockup?.images?.some((image) => image.id === m),
-        );
-        for (const media of toRemove) {
-          await conn.query(
-            `DELETE FROM project_mockup WHERE project_id = ? AND media_id = ?`,
-            [id, media],
-          );
-        }
-        for (const media of toEdit) {
-          const position = project.mockup.images.findIndex(
-            (m) => m.id === media.id,
-          );
-          await conn.query(
-            `UPDATE project_mockup SET position = ? WHERE project_id = ? AND media_id = ?`,
-            [position, id, media.id],
-          );
-        }
-        for (const media of toAdd) {
-          const position = project.mockup.images.findIndex(
-            (m) => m.id === media.id,
-          );
-          await conn.query(
-            `INSERT INTO project_mockup (project_id, media_id, position) VALUES (?, ?, ?)`,
-            [id, media.id, position],
-          );
-        }
-      }
+      if (project.mockup?.images)
+        await this._syncMockupImages(conn, id, project.mockup.images);
     });
     return true;
+  }
+
+  private async _syncSimpleRelation(
+    conn: mariadb.Connection,
+    projectId: string,
+    table: string,
+    idField: string,
+    newIds: string[],
+  ): Promise<void> {
+    const existing: string[] = (
+      await conn.query(`SELECT ${idField} FROM ${table} WHERE project_id = ?`, [
+        projectId,
+      ])
+    ).map((r: Record<string, string>) => r[idField]);
+    const toAdd = newIds.filter((id) => !existing.includes(id));
+    const toRemove = existing.filter((id) => !newIds.includes(id));
+    for (const itemId of toRemove) {
+      await conn.query(
+        `DELETE FROM ${table} WHERE project_id = ? AND ${idField} = ?`,
+        [projectId, itemId],
+      );
+    }
+    for (const itemId of toAdd) {
+      await conn.query(
+        `INSERT INTO ${table} (project_id, ${idField}) VALUES (?, ?)`,
+        [projectId, itemId],
+      );
+    }
+  }
+
+  private async _syncCoworkers(
+    conn: mariadb.Connection,
+    projectId: string,
+    coworkers: { id: string; roles?: string[] }[],
+  ): Promise<void> {
+    const existing: { coworker_id: string; role_id: string }[] =
+      await conn.query(
+        `SELECT coworker_id, role_id FROM project_coworker WHERE project_id = ?`,
+        [projectId],
+      );
+    const inputPairs = coworkers.flatMap((cw) =>
+      (cw.roles || []).map((role_id) => ({ coworker_id: cw.id, role_id })),
+    );
+    const toAdd = inputPairs.filter(
+      (p) =>
+        !existing.some(
+          (e) => e.coworker_id === p.coworker_id && e.role_id === p.role_id,
+        ),
+    );
+    const toRemove = existing.filter(
+      (e) =>
+        !inputPairs.some(
+          (p) => p.coworker_id === e.coworker_id && p.role_id === e.role_id,
+        ),
+    );
+    for (const { coworker_id, role_id } of toRemove) {
+      await conn.query(
+        `DELETE FROM project_coworker WHERE project_id = ? AND coworker_id = ? AND role_id = ?`,
+        [projectId, coworker_id, role_id],
+      );
+    }
+    for (const { coworker_id, role_id } of toAdd) {
+      await conn.query(
+        `INSERT INTO project_coworker (project_id, coworker_id, role_id) VALUES (?, ?, ?)`,
+        [projectId, coworker_id, role_id],
+      );
+    }
+  }
+
+  private async _syncStacks(
+    conn: mariadb.Connection,
+    projectId: string,
+    stacks: { id: string; version?: string | null; section?: string | null }[],
+  ): Promise<void> {
+    type StackRow = {
+      stack_id: string;
+      version: string | null;
+      section: string | null;
+    };
+    const existing: StackRow[] = await conn.query(
+      `SELECT stack_id, version, section FROM project_stack WHERE project_id = ?`,
+      [projectId],
+    );
+    const input: StackRow[] = stacks.map((s) => ({
+      stack_id: s.id,
+      version: s.version ?? null,
+      section: s.section ?? null,
+    }));
+    const toAdd = input.filter(
+      (s) =>
+        !existing.some(
+          (e) =>
+            e.stack_id === s.stack_id &&
+            e.version === s.version &&
+            e.section === s.section,
+        ),
+    );
+    const toRemove = existing.filter(
+      (e) =>
+        !input.some(
+          (s) =>
+            e.stack_id === s.stack_id &&
+            e.version === s.version &&
+            e.section === s.section,
+        ),
+    );
+    for (const { stack_id, version, section } of toRemove) {
+      await conn.query(
+        `DELETE FROM project_stack WHERE project_id = ? AND stack_id = ? AND version <=> ? AND section <=> ?`,
+        [projectId, stack_id, version, section],
+      );
+    }
+    for (const { stack_id, version, section } of toAdd) {
+      await conn.query(
+        `INSERT INTO project_stack (project_id, stack_id, version, section) VALUES (?, ?, ?, ?)`,
+        [projectId, stack_id, version, section],
+      );
+    }
+  }
+
+  private async _syncMockupImages(
+    conn: mariadb.Connection,
+    projectId: string,
+    images: { id: string; position: number }[],
+  ): Promise<void> {
+    const existing: string[] = (
+      await conn.query(
+        `SELECT media_id FROM project_mockup WHERE project_id = ?`,
+        [projectId],
+      )
+    ).map((r: { media_id: string }) => r.media_id);
+    const toAdd = images.filter((m) => !existing.includes(m.id));
+    const toEdit = images.filter((m) => existing.includes(m.id));
+    const toRemove = existing.filter((id) => !images.some((m) => m.id === id));
+    for (const mediaId of toRemove) {
+      await conn.query(
+        `DELETE FROM project_mockup WHERE project_id = ? AND media_id = ?`,
+        [projectId, mediaId],
+      );
+    }
+    for (const media of toEdit) {
+      const position = images.findIndex((m) => m.id === media.id);
+      await conn.query(
+        `UPDATE project_mockup SET position = ? WHERE project_id = ? AND media_id = ?`,
+        [position, projectId, media.id],
+      );
+    }
+    for (const media of toAdd) {
+      const position = images.findIndex((m) => m.id === media.id);
+      await conn.query(
+        `INSERT INTO project_mockup (project_id, media_id, position) VALUES (?, ?, ?)`,
+        [projectId, media.id, position],
+      );
+    }
   }
 }
