@@ -104,6 +104,9 @@ const accountResolver = {
     try {
       conn = await pool.getConnection();
       await conn.query(
+        "DELETE FROM password_reset_tokens WHERE expires < NOW()",
+      );
+      await conn.query(
         "INSERT INTO password_reset_tokens (token, email, expires) VALUES (?, ?, ?)",
         [token, _args.email, expires],
       );
@@ -156,6 +159,9 @@ const accountResolver = {
     let entry;
     try {
       conn = await pool.getConnection();
+      await conn.query(
+        "DELETE FROM password_reset_tokens WHERE expires < NOW()",
+      );
       const rows = await conn.query(
         "SELECT email, expires FROM password_reset_tokens WHERE token = ?",
         [token],
