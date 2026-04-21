@@ -3,7 +3,6 @@ import { Media } from "../types/mediaTypes";
 import crypto from "crypto";
 import { promises as fs } from "fs";
 import path from "path";
-import { MEDIA_BASE_PATH } from "../constants/mediaConstants";
 import { withConnection, buildSetClause } from "../database/dbHelpers";
 import { promises as fsPromises, createWriteStream } from "fs";
 import { Transform } from "stream";
@@ -33,7 +32,7 @@ export class MediaRepository {
       return rows.map((row: Media) => ({
         id: row.id,
         label: row.label,
-        path: MEDIA_BASE_PATH + row.path,
+        path: "/medias/" + row.path,
         type: row.type,
         category: row.category,
       }));
