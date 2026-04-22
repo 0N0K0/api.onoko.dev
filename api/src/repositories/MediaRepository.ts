@@ -16,10 +16,10 @@ export class MediaRepository {
   /**
    * Récupère tous les médias de la base de données, en utilisant une requête SQL pour sélectionner les champs pertinents de la table "medias".
    * Les résultats sont ensuite transformés en un format structuré où chaque média est représenté avec ses propriétés, y compris le chemin complet du fichier média.
-   * @returns {Promise<Media[] | undefined>} Un tableau de médias récupérés de la base de données, avec leurs propriétés correspondantes. Si aucun média n'est trouvé, retourne un tableau vide.
+   * @returns {Promise<Media[]>} Un tableau de médias récupérés de la base de données, avec leurs propriétés correspondantes. Si aucun média n'est trouvé, retourne un tableau vide.
    * @throws {Error} Une erreur si la récupération des médias échoue pour une raison quelconque.
    */
-  async getAll(): Promise<Media[] | undefined> {
+  async getAll(): Promise<Media[]> {
     return withConnection(this.pool, async (conn) => {
       const rows = await conn.query(
         `

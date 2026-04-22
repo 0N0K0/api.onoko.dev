@@ -34,7 +34,7 @@ export function createGraphqlHandler(pool: mariadb.Pool, isDev: boolean) {
     return {
       schema: getSchema(),
       rootValue: getRoot(),
-      graphiql: true,
+      graphiql: isDev ? true : false,
       context: getGraphqlContext({ user, pool, ip }),
       customFormatErrorFn: (err) => {
         console.error("GraphQL Error:", err);
