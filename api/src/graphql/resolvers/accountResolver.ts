@@ -1,6 +1,5 @@
 import { hashPassword, verifyPassword } from "../../utils/passwordUtils";
 import {
-  isValidEmail,
   isValidPassword,
   sanitizeString,
   isEmpty,
@@ -11,6 +10,8 @@ import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
 import { SettingsRepository } from "../../repositories/SettingsRepository";
 import { withConnection } from "../../database/dbHelpers";
+import { getPool } from "../../database/db";
+import validator from "validator";
 
 // Résolveur GraphQL pour les opérations liées au compte utilisateur
 const accountResolver = {
@@ -69,7 +70,7 @@ const accountResolver = {
     }
     if (_args.email) {
       const email = sanitizeString(_args.email);
-      if (!isValidEmail(email)) throw new Error("Invalid email");
+      if (!validator.isEmail(email)) throw new Error("Invalid email");
       await context.settingsRepo.set("email", email);
     }
     if (_args.newPassword) {
@@ -101,7 +102,7 @@ const accountResolver = {
     if (!storedEmail || storedEmail !== _args.email) return true; // Ne pas révéler l'existence
     const token = crypto.randomBytes(32).toString("hex");
     const expires = new Date(Date.now() + 1000 * 60 * 15); // 15 min
-    const pool = context.settingsRepo.getPool();
+    const pool = getPool();
     await withConnection(pool, async (conn) => {
       await conn.query(
         "DELETE FROM password_reset_tokens WHERE expires < NOW()",
@@ -150,7 +151,7 @@ const accountResolver = {
     const { token, newPassword } = _args;
     if (isEmpty(token) || isEmpty(newPassword))
       throw new Error("Token and newPassword required");
-    const pool = context.settingsRepo.getPool();
+    const pool = getPool();
     let entry;
     await withConnection(pool, async (conn) => {
       await conn.query(

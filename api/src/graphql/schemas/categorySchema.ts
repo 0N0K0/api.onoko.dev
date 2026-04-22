@@ -10,7 +10,6 @@ export const categoryTypes = `
     path: String
   }
 `;
-
 export const categoryInputs = `
     input CategoryInput {
         label: String!
@@ -20,11 +19,8 @@ export const categoryInputs = `
     }
 `;
 
-// Requêtes GraphQL pour les catégories
-export const categoryQueries = `
-  categories: [Category!]!
-  category(key: String!, value: String!, entity: String): [Category!]
-`;
+// Requête GraphQL pour les catégories
+export const categoryQueries = `categories: [Category!]!`;
 
 // Mutations GraphQL pour les catégories
 export const categoryMutations = `

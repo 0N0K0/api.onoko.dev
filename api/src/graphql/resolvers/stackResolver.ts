@@ -4,10 +4,10 @@ import jwt from "jsonwebtoken";
 import {
   sanitizeString,
   isEmpty,
-  isValidUUID,
   checkAuth,
   validateId,
 } from "../../utils/validationUtils";
+import validator from "validator";
 
 // Résolveur GraphQL pour les opérations liées aux stacks
 const stackResolver = {
@@ -43,13 +43,13 @@ const stackResolver = {
     // Sanitize tous les champs string pertinents
     if (isEmpty(input.label)) throw new Error("Label is required");
     input.label = sanitizeString(input.label);
-    if (input.icon && !isValidUUID(input.icon as string))
+    if (input.icon && !validator.isUUID(input.icon as string))
       throw new Error("Invalid icon ID");
     if (input.description)
       input.description = sanitizeString(input.description);
     if (input.versions) input.versions = input.versions.map(sanitizeString);
     if (input.skills) input.skills = input.skills.map(sanitizeString);
-    if (input.category && !isValidUUID(input.category as string))
+    if (input.category && !validator.isUUID(input.category as string))
       throw new Error("Invalid category ID");
     const result = await context.stackRepo.create(input);
     if (!result) throw new Error("Failed to create stack");
@@ -73,13 +73,13 @@ const stackResolver = {
     validateId(_args.id);
     const input = { ..._args.input, id: _args.id };
     if (input.label) input.label = sanitizeString(input.label);
-    if (input.icon && !isValidUUID(input.icon as string))
+    if (input.icon && !validator.isUUID(input.icon as string))
       throw new Error("Invalid icon ID");
     if (input.description)
       input.description = sanitizeString(input.description);
     if (input.versions) input.versions = input.versions.map(sanitizeString);
     if (input.skills) input.skills = input.skills.map(sanitizeString);
-    if (input.category && !isValidUUID(input.category as string))
+    if (input.category && !validator.isUUID(input.category as string))
       throw new Error("Invalid category ID");
 
     const result = await context.stackRepo.update(input);

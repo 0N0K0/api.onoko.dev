@@ -1,4 +1,4 @@
-// Types GraphQL pour les coworkers
+// Types GraphQL pour les intervenants
 export const coworkerTypes = `
   type Coworker {
     id: ID!
@@ -6,7 +6,6 @@ export const coworkerTypes = `
     roles: [ID!]
   }
 `;
-
 export const coworkerInputs = `
     input CoworkerInput {
         name: String!
@@ -14,13 +13,10 @@ export const coworkerInputs = `
     }
 `;
 
-// Requêtes GraphQL pour les coworkers
-export const coworkerQueries = `
-  coworkers: [Coworker!]!
-  coworker(id: ID!): Coworker
-`;
+// Requête GraphQL pour les intervenants
+export const coworkerQueries = `coworkers: [Coworker!]!`;
 
-// Mutations GraphQL pour les coworkers
+// Mutations GraphQL pour les intervenants
 export const coworkerMutations = `
   createCoworker(input: CoworkerInput): Boolean!
   updateCoworker(id: ID!, input: CoworkerInput): Boolean!

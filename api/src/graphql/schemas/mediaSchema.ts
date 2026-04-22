@@ -1,3 +1,4 @@
+// Types GraphQL pour les médias
 export const mediaTypes = `
     type Media {
         id: ID!
@@ -7,7 +8,6 @@ export const mediaTypes = `
         category: ID
     }
 `;
-
 export const mediaInputs = `
     scalar Upload
 
@@ -21,11 +21,10 @@ export const mediaInputs = `
     }
 `;
 
-export const mediaQueries = `
-    medias: [Media!]!
-    media(id: ID!): Media
-`;
+// Requête GraphQL pour les médias
+export const mediaQueries = `medias: [Media!]!`;
 
+// Mutations GraphQL pour les médias
 export const mediaMutations = `
     addMedia(input: FileInput): Boolean!
     updateMedia(id: ID!, input: MediaInput): Boolean!

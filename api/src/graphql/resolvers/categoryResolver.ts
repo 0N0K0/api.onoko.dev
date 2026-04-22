@@ -4,10 +4,10 @@ import jwt from "jsonwebtoken";
 import {
   sanitizeString,
   isEmpty,
-  isValidUUID,
   checkAuth,
   validateId,
 } from "../../utils/validationUtils";
+import validator from "validator";
 
 // Résolveur GraphQL pour les opérations liées aux catégories
 const categoryResolver = {
@@ -50,7 +50,7 @@ const categoryResolver = {
     if (input.description)
       input.description = sanitizeString(input.description);
 
-    if (input.parent && !isValidUUID(input.parent)) delete input.parent;
+    if (input.parent && !validator.isUUID(input.parent)) delete input.parent;
 
     const result = await context.categoryRepo.create(input);
     if (!result) throw new Error("Failed to create category");
@@ -77,7 +77,7 @@ const categoryResolver = {
     if (input.entity) input.entity = sanitizeString(input.entity);
     if (input.description)
       input.description = sanitizeString(input.description);
-    if (input.parent && !isValidUUID(input.parent)) delete input.parent;
+    if (input.parent && !validator.isUUID(input.parent)) delete input.parent;
     const result = await context.categoryRepo.update(input);
     if (!result) throw new Error("Failed to update category");
     return result;

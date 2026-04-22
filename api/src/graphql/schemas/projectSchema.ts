@@ -97,8 +97,6 @@ export const projectTypes = `
         client: String
     }
 `;
-
-// Types GraphQL pour les entrées de projet (utilisées pour les mutations)
 export const projectInputs = `
     input WebsiteInput {
         url: String!
@@ -192,11 +190,8 @@ export const projectInputs = `
     }
 `;
 
-// Requêtes GraphQL pour les projets
-export const projectQueries = `
-    projects: [Project!]!
-    project(id: ID!): Project
-`;
+// Requête GraphQL pour les projets
+export const projectQueries = `projects: [Project!]!`;
 
 // Mutations GraphQL pour les projets
 export const projectMutations = `

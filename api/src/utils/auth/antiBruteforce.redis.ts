@@ -50,8 +50,9 @@ export async function resetAttempts(ip: string): Promise<void> {
 }
 
 /**
- * Ferme la connexion Redis proprement lorsque l'application se termine.
- * @returns {Promise<void>} Une promesse qui se résout lorsque la connexion est fermée.
+ * Ferme la connexion Redis proprement en appelant la méthode quit sur l'instance Redis.
+ * Cela permet de s'assurer que toutes les ressources sont libérées et que la connexion est fermée correctement.
+ * @returns {Promise<void>} Une promesse qui se résout lorsque la connexion Redis est fermée.
  */
 export async function disconnectRedis(): Promise<void> {
   await redis.quit();

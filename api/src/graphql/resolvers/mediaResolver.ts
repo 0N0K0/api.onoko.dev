@@ -2,11 +2,11 @@ import { MediaRepository } from "../../repositories/MediaRepository";
 import { ImageFile, Media } from "../../types/mediaTypes";
 import jwt from "jsonwebtoken";
 import {
-  isValidUUID,
   sanitizeString,
   checkAuth,
   validateId,
 } from "../../utils/validationUtils";
+import validator from "validator";
 
 const mediaResolver = {
   /**
@@ -64,7 +64,7 @@ const mediaResolver = {
     const { label, category } = input;
     let sanitizedLabel: string | undefined;
     if (label) sanitizedLabel = sanitizeString(label);
-    if (category && !isValidUUID(category))
+    if (category && !validator.isUUID(category))
       throw new Error("Invalid category ID");
     const result = await context.mediaRepo.update({
       id,

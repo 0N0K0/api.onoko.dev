@@ -435,6 +435,14 @@ export default class ProjectRepository extends BaseRepository {
     return true;
   }
 
+  /**
+   * Méthode privée pour synchroniser les relations simples (catégories, rôles) d'un projet
+   * @param conn Connexion à la base de données
+   * @param projectId ID du projet pour lequel synchroniser les relations
+   * @param table Nom de la table de relation (ex: "project_category")
+   * @param idField Nom du champ d'ID dans la table de relation (ex: "category_id")
+   * @param newIds Liste des nouveaux IDs à associer au projet
+   */
   private async _syncSimpleRelation(
     conn: mariadb.Connection,
     projectId: string,
@@ -463,6 +471,15 @@ export default class ProjectRepository extends BaseRepository {
     }
   }
 
+  /**
+   * Méthode privée pour synchroniser les relations de coworkers d'un projet
+   * Gère les ajouts et suppressions de coworkers ainsi que leurs rôles associés
+   * @param conn Connexion à la base de données
+   * @param projectId ID du projet pour lequel synchroniser les coworkers
+   * @param coworkers Liste des coworkers avec leurs rôles à associer au projet
+   * @returns {Promise<void>} Une promesse qui se résout lorsque la synchronisation est terminée, ou rejette une erreur si la mise à jour échoue pour une raison quelconque.
+   * @throws {Error} Une erreur si la mise à jour échoue pour une raison quelconque, notamment si la requête SQL échoue ou si les données fournies sont invalides.
+   */
   private async _syncCoworkers(
     conn: mariadb.Connection,
     projectId: string,
@@ -502,6 +519,15 @@ export default class ProjectRepository extends BaseRepository {
     }
   }
 
+  /**
+   * Méthode privée pour synchroniser les relations de stacks d'un projet
+   * Gère les ajouts et suppressions de stacks ainsi que leurs versions et sections associées
+   * @param conn Connexion à la base de données
+   * @param projectId ID du projet pour lequel synchroniser les stacks
+   * @param stacks Liste des stacks avec leurs versions et sections à associer au projet
+   * @returns {Promise<void>} Une promesse qui se résout lorsque la synchronisation est terminée, ou rejette une erreur si la mise à jour échoue pour une raison quelconque.
+   * @throws {Error} Une erreur si la mise à jour échoue pour une raison quelconque, notamment si la requête SQL échoue ou si les données fournies sont invalides.
+   */
   private async _syncStacks(
     conn: mariadb.Connection,
     projectId: string,
@@ -553,6 +579,20 @@ export default class ProjectRepository extends BaseRepository {
     }
   }
 
+  /**
+   * Méthode privée pour synchroniser les relations de mockup images d'un projet
+   * Gère les ajouts, suppressions et mises à jour de position des images associées au projet dans la table "project_mockup"
+   * La méthode compare la liste actuelle des images associées au projet avec la nouvelle liste fournie, puis effectue les opérations nécessaires pour que la base de données reflète exactement la nouvelle liste.
+   * Si des images sont présentes dans la base de données mais pas dans la nouvelle liste, elles sont supprimées.
+   * Si des images sont présentes dans la nouvelle liste mais pas dans la base de données, elles sont ajoutées.
+   * Si des images sont présentes dans les deux listes mais avec une position différente, leur position est mise à jour dans la base de données.
+   * La méthode utilise des requêtes SQL pour effectuer ces opérations de manière efficace, en minimisant le nombre de requêtes nécessaires grâce à l'utilisation de batchs et de comparaisons en mémoire.
+   * @param conn Connexion à la base de données
+   * @param projectId ID du projet pour lequel synchroniser les images de mockup
+   * @param images Liste des images de mockup avec leurs positions à associer au projet
+   * @returns {Promise<void>} Une promesse qui se résout lorsque la synchronisation est terminée, ou rejette une erreur si la mise à jour échoue pour une raison quelconque.
+   * @throws {Error} Une erreur si la mise à jour échoue pour une raison quelconque, notamment si la requête SQL échoue ou si les données fournies sont invalides.
+   */
   private async _syncMockupImages(
     conn: mariadb.Connection,
     projectId: string,

@@ -1,21 +1,13 @@
 import validator from "validator";
 
 /**
- * Vérifie si une chaîne est un UUID valide
- * @param {string} uuid L'UUID à valider
- * @return {boolean} true si l'UUID est valide, false sinon
- */
-export function isValidUUID(uuid: string): boolean {
-  return validator.isUUID(uuid);
-}
-
-/**
  * Vérifie qu'un ID est fourni et est un UUID valide.
  * @throws {Error} Si l'ID est absent ou invalide.
  */
 export function validateId(id: string | undefined): asserts id is string {
   if (!id) throw new Error("ID is required");
-  if (!isValidUUID(id)) throw new Error("Invalid ID");
+  const isValidUUID = validator.isUUID(id);
+  if (!isValidUUID) throw new Error("Invalid ID");
 }
 
 /**
@@ -37,15 +29,6 @@ export function sanitizeString(str: string): string {
 }
 
 /**
- * Vérifie si une chaîne est un email valide
- * @param {string} email L'adresse email à valider
- * @return {boolean} true si l'email est valide, false sinon
- */
-export function isValidEmail(email: string): boolean {
-  return validator.isEmail(email);
-}
-
-/**
  * Vérifie si une chaîne est un mot de passe valide (min 20 caractères, 1 maj, 1 min, 1 chiffre, 1 symbole)
  * @param {string} password Le mot de passe à valider
  * @return {boolean} true si le mot de passe est valide, false sinon
@@ -58,6 +41,24 @@ export function isValidPassword(password: string): boolean {
     minNumbers: 1,
     minSymbols: 1,
   });
+}
+
+/**
+ * Vérifie si une chaîne est une URL valide avec un protocole
+ * @param {string} url L'URL à valider
+ * @return {boolean} true si l'URL est valide, false sinon
+ */
+export function isValidUrl(url: string): boolean {
+  return validator.isURL(url, { require_protocol: true });
+}
+
+/**
+ * Vérifie si une chaîne est une date ISO 8601 valide
+ * @param {string} date La date à valider
+ * @return {boolean} true si la date est valide, false sinon
+ */
+export function isValidDate(date: string): boolean {
+  return validator.isISO8601(date);
 }
 
 /**

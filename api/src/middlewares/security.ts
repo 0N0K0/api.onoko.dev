@@ -2,6 +2,13 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { Application } from "express";
 
+/**
+ * Applique les middlewares de sécurité à l'application Express.
+ * Utilise Helmet pour sécuriser les en-têtes HTTP et express-rate-limit pour limiter le nombre de requêtes (anti-bruteforce).
+ * Les configurations sont adaptées en fonction de l'environnement (développement ou production).
+ * @param app L'application Express à laquelle appliquer les middlewares de sécurité.
+ * @param isDev Un booléen indiquant si l'environnement est en développement, utilisé pour ajuster les configurations de sécurité.
+ */
 export function applySecurityMiddlewares(app: Application, isDev: boolean) {
   app.use(
     helmet({

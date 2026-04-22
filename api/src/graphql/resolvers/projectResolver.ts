@@ -4,10 +4,10 @@ import jwt from "jsonwebtoken";
 import {
   sanitizeString,
   isEmpty,
-  isValidUUID,
   checkAuth,
   validateId,
 } from "../../utils/validationUtils";
+import validator from "validator";
 
 /**
  * Sanitise et valide les champs d'un input projet (commun à create et update).
@@ -16,11 +16,11 @@ import {
  * @throws {Error} Si un champ UUID est invalide ou si un champ string est vide après sanitisation
  */
 function sanitizeProjectInput(input: Partial<Omit<Project, "id">>): void {
-  if (input.thumbnail && !isValidUUID(input.thumbnail as string))
+  if (input.thumbnail && !validator.isUUID(input.thumbnail as string))
     throw new Error("Invalid thumbnail ID");
   if (input.categories) {
     for (const category of input.categories) {
-      if (!isValidUUID(category as string))
+      if (!validator.isUUID(category as string))
         throw new Error("Invalid category ID");
     }
   }
@@ -36,14 +36,15 @@ function sanitizeProjectInput(input: Partial<Omit<Project, "id">>): void {
       input.mockup.label = sanitizeString(input.mockup.label);
     if (input.mockup.images) {
       for (const image of input.mockup.images) {
-        if (!isValidUUID(image.id)) throw new Error("Invalid mockup image ID");
+        if (!validator.isUUID(image.id))
+          throw new Error("Invalid mockup image ID");
       }
     }
   }
   if (input.client) {
     if (input.client.label)
       input.client.label = sanitizeString(input.client.label);
-    if (input.client.logo && !isValidUUID(input.client.logo as string))
+    if (input.client.logo && !validator.isUUID(input.client.logo as string))
       throw new Error("Invalid client logo ID");
   }
   if (input.manager) {
@@ -106,22 +107,23 @@ function sanitizeProjectInput(input: Partial<Omit<Project, "id">>): void {
   }
   if (input.coworkers) {
     for (const coworker of input.coworkers) {
-      if (!isValidUUID(coworker.id)) throw new Error("Invalid coworker ID");
+      if (!validator.isUUID(coworker.id))
+        throw new Error("Invalid coworker ID");
       if (coworker.roles) {
         for (const role of coworker.roles) {
-          if (!isValidUUID(role)) throw new Error("Invalid role ID");
+          if (!validator.isUUID(role)) throw new Error("Invalid role ID");
         }
       }
     }
   }
   if (input.roles) {
     for (const role of input.roles) {
-      if (!isValidUUID(role as string)) throw new Error("Invalid role ID");
+      if (!validator.isUUID(role as string)) throw new Error("Invalid role ID");
     }
   }
   if (input.stacks) {
     for (const stack of input.stacks) {
-      if (stack.id && !isValidUUID(stack.id))
+      if (stack.id && !validator.isUUID(stack.id))
         throw new Error("Invalid stack ID");
       if (stack.section) stack.section = sanitizeString(stack.section);
       if (stack.version) stack.version = sanitizeString(stack.version);

@@ -11,12 +11,12 @@ import { MediaRepository } from "../repositories/MediaRepository";
 /**
  * Fonction pour créer le contexte GraphQL, qui sera passé à tous les résolveurs.
  * Le contexte contient les informations de l'utilisateur authentifié (s'il y en a un) et les instances des repositories pour accéder aux données.
- * @param {Object} param - Un objet contenant le token JWT de l'utilisateur et la pool de connexions à la base de données.
- * @param {jwt.JwtPayload | null} param.user - Les informations de l'utilisateur extraites du token JWT, ou null si l'utilisateur n'est pas authentifié.
- * @param {Pool} param.pool - La pool de connexions à la base de données, utilisée pour créer les instances des repositories.
- * @throws {Error} Une erreur si la création du contexte échoue pour une raison quelconque.
+ * @param {jwt.JwtPayload | null} param.user Les informations de l'utilisateur authentifié, ou null s'il n'y en a pas.
+ * @param {Pool} param.pool La pool de connexions à la base de données, utilisée pour créer les instances des repositories.
+ * @param {string} param.ip L'adresse IP du client effectuant la requête GraphQL.
  * @returns {{
  *             user: jwt.JwtPayload | null;
+ *             ip: string;
  *             settingsRepo: SettingsRepository;
  *             categoryRepo: CategoryRepository;
  *             stackRepo: StackRepository;
@@ -24,7 +24,8 @@ import { MediaRepository } from "../repositories/MediaRepository";
  *             coworkerRepo: CoworkerRepository;
  *             projectRepo: ProjectRepository;
  *             mediaRepo: MediaRepository;
- *           }} Un objet représentant le contexte GraphQL, avec les propriétés user, settingsRepo, categoryRepo, stackRepo, roleRepo, coworkerRepo, projectRepo et mediaRepo.
+ *           }} Le contexte GraphQL contenant les informations de l'utilisateur et les repositories.
+ * @throws {Error} Une erreur si la création du contexte échoue.
  */
 export function getGraphqlContext({
   user,
@@ -34,7 +35,17 @@ export function getGraphqlContext({
   user: jwt.JwtPayload | null;
   pool: Pool;
   ip: string;
-}) {
+}): {
+  user: jwt.JwtPayload | null;
+  ip: string;
+  settingsRepo: SettingsRepository;
+  categoryRepo: CategoryRepository;
+  stackRepo: StackRepository;
+  roleRepo: RoleRepository;
+  coworkerRepo: CoworkerRepository;
+  projectRepo: ProjectRepository;
+  mediaRepo: MediaRepository;
+} {
   return {
     user,
     ip,

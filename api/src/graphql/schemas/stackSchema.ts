@@ -1,4 +1,4 @@
-// Types GraphQL pour les stacks
+// Types GraphQL pour les technologies
 export const stackTypes = `
   type Stack {
     id: ID!
@@ -10,7 +10,6 @@ export const stackTypes = `
     category: ID
   }
 `;
-
 export const stackInputs = `
   input StackInput {
     label: String!
@@ -22,14 +21,10 @@ export const stackInputs = `
   }
 `;
 
-// Requêtes GraphQL pour les stacks
-export const stackQueries = `
-  stacks: [Stack!]!
-  stacksByCategory(key: String!, value: String!): [Stack!]!
-  stack(key: String!, value: String!): Stack
-`;
+// Requête GraphQL pour les technologies
+export const stackQueries = `stacks: [Stack!]!`;
 
-// Mutations GraphQL pour les stacks
+// Mutations GraphQL pour les technologies
 export const stackMutations = `
   createStack(input: StackInput): Boolean!
   updateStack(id: ID!, input: StackInput): Boolean!

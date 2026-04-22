@@ -6,9 +6,9 @@ if (!CORS_ORIGIN) throw new Error("CORS_ORIGIN is not defined");
 /**
  * Middleware pour gérer les CORS avec une origine dynamique.
  * Permet de définir l'origine autorisée à partir d'une variable d'environnement.
- * @param req - La requête entrante.
- * @param res - La réponse à envoyer.
- * @param next - La fonction pour passer au middleware suivant.
+ * @param req La requête entrante.
+ * @param res La réponse à envoyer.
+ * @param next La fonction pour passer au middleware suivant.
  */
 export function corsDynamicOrigin(
   req: Request,
