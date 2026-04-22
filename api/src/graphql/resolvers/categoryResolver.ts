@@ -9,6 +9,22 @@ import {
 } from "../../utils/validationUtils";
 import validator from "validator";
 
+/**
+ * Fonction utilitaire pour nettoyer et valider les entrées de catégorie
+ * Cette fonction prend un objet d'entrée partiel pour une catégorie (sans l'ID) et applique des transformations de nettoyage et de validation sur les champs pertinents.
+ * - Si le champ "label" est présent, il est nettoyé en supprimant les espaces superflus et les caractères indésirables.
+ * - Si le champ "entity" est présent, il est également nettoyé de la même manière que "label".
+ * - Si le champ "description" est présent, il est nettoyé de la même manière que "label".
+ * - Si le champ "parent" est présent, il est vérifié pour s'assurer qu'il s'agit d'un UUID valide. Si ce n'est pas le cas, le champ "parent" est supprimé de l'entrée.
+ * @param {Partial<Omit<Category, "id">>} input L'objet d'entrée partiel pour une catégorie, qui peut contenir les champs "label", "entity", "description" et "parent".
+ */
+function sanitizeCategoryInput(input: Partial<Omit<Category, "id">>) {
+  if (input.label) input.label = sanitizeString(input.label);
+  if (input.entity) input.entity = sanitizeString(input.entity);
+  if (input.description) input.description = sanitizeString(input.description);
+  if (input.parent && !validator.isUUID(input.parent)) delete input.parent;
+}
+
 // Résolveur GraphQL pour les opérations liées aux catégories
 const categoryResolver = {
   /**
@@ -41,17 +57,9 @@ const categoryResolver = {
     checkAuth(context);
     const input = { ..._args.input };
     if (isEmpty(input.label)) throw new Error("Label is required");
-    input.label = sanitizeString(input.label);
-
     if (!input.entity || isEmpty(input.entity))
       throw new Error("Entity is required");
-    input.entity = sanitizeString(input.entity);
-
-    if (input.description)
-      input.description = sanitizeString(input.description);
-
-    if (input.parent && !validator.isUUID(input.parent)) delete input.parent;
-
+    sanitizeCategoryInput(input);
     const result = await context.categoryRepo.create(input);
     if (!result) throw new Error("Failed to create category");
     return result;
@@ -73,11 +81,7 @@ const categoryResolver = {
     checkAuth(context);
     validateId(_args.id);
     const input = { ..._args.input, id: _args.id };
-    if (input.label) input.label = sanitizeString(input.label);
-    if (input.entity) input.entity = sanitizeString(input.entity);
-    if (input.description)
-      input.description = sanitizeString(input.description);
-    if (input.parent && !validator.isUUID(input.parent)) delete input.parent;
+    sanitizeCategoryInput(input);
     const result = await context.categoryRepo.update(input);
     if (!result) throw new Error("Failed to update category");
     return result;

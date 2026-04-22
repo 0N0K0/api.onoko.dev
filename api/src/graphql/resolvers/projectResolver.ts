@@ -6,6 +6,9 @@ import {
   isEmpty,
   checkAuth,
   validateId,
+  isValidUrl,
+  isValidDate,
+  isValidPositiveInteger,
 } from "../../utils/validationUtils";
 import validator from "validator";
 
@@ -17,27 +20,31 @@ import validator from "validator";
  */
 function sanitizeProjectInput(input: Partial<Omit<Project, "id">>): void {
   if (input.thumbnail && !validator.isUUID(input.thumbnail as string))
-    throw new Error("Invalid thumbnail ID");
+    delete input.thumbnail;
   if (input.categories) {
-    for (const category of input.categories) {
-      if (!validator.isUUID(category as string))
-        throw new Error("Invalid category ID");
+    for (const [i, category] of input.categories.entries()) {
+      if (!validator.isUUID(category as string)) delete input.categories[i];
     }
   }
   if (input.website) {
-    if (input.website.url)
+    if (input.website.url) {
       input.website.url = sanitizeString(input.website.url);
+      if (!isValidUrl(input.website.url))
+        throw new Error("Invalid website URL");
+    }
     if (input.website.label)
       input.website.label = sanitizeString(input.website.label);
   }
   if (input.mockup) {
-    if (input.mockup.url) input.mockup.url = sanitizeString(input.mockup.url);
+    if (input.mockup.url) {
+      input.mockup.url = sanitizeString(input.mockup.url);
+      if (!isValidUrl(input.mockup.url)) throw new Error("Invalid mockup URL");
+    }
     if (input.mockup.label)
       input.mockup.label = sanitizeString(input.mockup.label);
     if (input.mockup.images) {
-      for (const image of input.mockup.images) {
-        if (!validator.isUUID(image.id))
-          throw new Error("Invalid mockup image ID");
+      for (const [i, image] of input.mockup.images.entries()) {
+        if (!validator.isUUID(image.id)) delete input.mockup.images[i];
       }
     }
   }
@@ -45,16 +52,29 @@ function sanitizeProjectInput(input: Partial<Omit<Project, "id">>): void {
     if (input.client.label)
       input.client.label = sanitizeString(input.client.label);
     if (input.client.logo && !validator.isUUID(input.client.logo as string))
-      throw new Error("Invalid client logo ID");
+      delete input.client.logo;
   }
   if (input.manager) {
     if (input.manager.name)
       input.manager.name = sanitizeString(input.manager.name);
-    if (input.manager.email)
+    if (input.manager.email) {
       input.manager.email = sanitizeString(input.manager.email);
+      if (!validator.isEmail(input.manager.email))
+        throw new Error("Invalid manager email");
+    }
   }
-  if (input.startDate) input.startDate = new Date(input.startDate);
-  if (input.endDate) input.endDate = new Date(input.endDate);
+  if (input.startDate) {
+    input.startDate = new Date(input.startDate);
+    if (!isValidDate(input.startDate?.toISOString() ?? ""))
+      throw new Error("Invalid start date");
+  }
+  if (input.endDate) {
+    input.endDate = new Date(input.endDate);
+    if (!isValidDate(input.endDate?.toISOString() ?? ""))
+      throw new Error("Invalid end date");
+    if (input.startDate && input.endDate < input.startDate)
+      throw new Error("End date cannot be before start date");
+  }
   if (input.intro) {
     if (input.intro.context)
       input.intro.context = sanitizeString(input.intro.context);
@@ -106,28 +126,48 @@ function sanitizeProjectInput(input: Partial<Omit<Project, "id">>): void {
       );
   }
   if (input.coworkers) {
-    for (const coworker of input.coworkers) {
-      if (!validator.isUUID(coworker.id))
-        throw new Error("Invalid coworker ID");
+    for (const [i, coworker] of input.coworkers.entries()) {
+      if (!validator.isUUID(coworker.id)) delete input.coworkers[i];
       if (coworker.roles) {
-        for (const role of coworker.roles) {
-          if (!validator.isUUID(role)) throw new Error("Invalid role ID");
+        for (const [j, role] of coworker.roles.entries()) {
+          if (!validator.isUUID(role)) delete coworker.roles[j];
         }
       }
     }
   }
   if (input.roles) {
-    for (const role of input.roles) {
-      if (!validator.isUUID(role as string)) throw new Error("Invalid role ID");
+    for (const [i, role] of input.roles.entries()) {
+      if (!validator.isUUID(role as string)) delete input.roles[i];
     }
   }
   if (input.stacks) {
-    for (const stack of input.stacks) {
-      if (stack.id && !validator.isUUID(stack.id))
-        throw new Error("Invalid stack ID");
+    for (const [i, stack] of input.stacks.entries()) {
+      if (stack.id && !validator.isUUID(stack.id)) delete input.stacks[i];
       if (stack.section) stack.section = sanitizeString(stack.section);
       if (stack.version) stack.version = sanitizeString(stack.version);
     }
+  }
+  if (input.kpis) {
+    if (
+      input.kpis.issues !== undefined &&
+      !isValidPositiveInteger(input.kpis.issues)
+    )
+      throw new Error("Invalid issues KPI");
+    if (
+      input.kpis.points !== undefined &&
+      !isValidPositiveInteger(input.kpis.points)
+    )
+      throw new Error("Invalid points KPI");
+    if (
+      input.kpis.commits !== undefined &&
+      !isValidPositiveInteger(input.kpis.commits)
+    )
+      throw new Error("Invalid commits KPI");
+    if (
+      input.kpis.pullRequests !== undefined &&
+      !isValidPositiveInteger(input.kpis.pullRequests)
+    )
+      throw new Error("Invalid pull requests KPI");
   }
   if (input.feedback) {
     if (input.feedback.general)

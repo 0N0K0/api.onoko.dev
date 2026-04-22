@@ -64,8 +64,7 @@ const mediaResolver = {
     const { label, category } = input;
     let sanitizedLabel: string | undefined;
     if (label) sanitizedLabel = sanitizeString(label);
-    if (category && !validator.isUUID(category))
-      throw new Error("Invalid category ID");
+    if (category && !validator.isUUID(category)) delete input.category;
     const result = await context.mediaRepo.update({
       id,
       label: sanitizedLabel,

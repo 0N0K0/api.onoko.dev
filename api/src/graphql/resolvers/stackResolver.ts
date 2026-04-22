@@ -9,6 +9,29 @@ import {
 } from "../../utils/validationUtils";
 import validator from "validator";
 
+/**
+ * Fonction utilitaire pour nettoyer et valider les entrées de stack
+ * Cette fonction prend un objet d'entrée partiel pour une stack (sans l'ID) et applique des transformations de nettoyage et de validation sur les champs pertinents.
+ * - Si le champ "label" est présent, il est nettoyé en supprimant les espaces superflus et les caractères indésirables.
+ * - Si le champ "icon" est présent, il est vérifié pour s'assurer qu'il s'agit d'un UUID valide. Si ce n'est pas le cas, le champ "icon" est supprimé de l'entrée.
+ * - Si le champ "description" est présent, il est nettoyé de la même manière que "label".
+ * - Si le champ "versions" est présent, chaque élément du tableau est nettoyé de la même manière que "label".
+ * - Si le champ "skills" est présent, chaque élément du tableau est nettoyé de la même manière que "label".
+ * - Si le champ "category" est présent, il est vérifié pour s'assurer qu'il s'agit d'un UUID valide. Si ce n'est pas le cas, le champ "category" est supprimé de l'entrée.
+ * @param {Partial<Omit<Stack, "id">>} input L'objet d'entrée partiel pour une stack, qui peut contenir les champs "label", "icon", "description", "versions", "skills" et "category".
+ */
+function sanitizeStackInput(input: Partial<Omit<Stack, "id">>) {
+  if (input.label) input.label = sanitizeString(input.label);
+  if (input.icon && !validator.isUUID(input.icon as string)) delete input.icon;
+  else if (input.icon) input.icon = input.icon;
+  if (input.description) input.description = sanitizeString(input.description);
+  if (input.versions) input.versions = input.versions.map(sanitizeString);
+  if (input.skills) input.skills = input.skills.map(sanitizeString);
+  if (input.category && !validator.isUUID(input.category as string))
+    delete input.category;
+  else if (input.category) input.category = input.category;
+}
+
 // Résolveur GraphQL pour les opérations liées aux stacks
 const stackResolver = {
   /**
@@ -42,15 +65,7 @@ const stackResolver = {
     const input = { ..._args.input };
     // Sanitize tous les champs string pertinents
     if (isEmpty(input.label)) throw new Error("Label is required");
-    input.label = sanitizeString(input.label);
-    if (input.icon && !validator.isUUID(input.icon as string))
-      throw new Error("Invalid icon ID");
-    if (input.description)
-      input.description = sanitizeString(input.description);
-    if (input.versions) input.versions = input.versions.map(sanitizeString);
-    if (input.skills) input.skills = input.skills.map(sanitizeString);
-    if (input.category && !validator.isUUID(input.category as string))
-      throw new Error("Invalid category ID");
+    sanitizeStackInput(input);
     const result = await context.stackRepo.create(input);
     if (!result) throw new Error("Failed to create stack");
     return result;
@@ -72,16 +87,7 @@ const stackResolver = {
     checkAuth(context);
     validateId(_args.id);
     const input = { ..._args.input, id: _args.id };
-    if (input.label) input.label = sanitizeString(input.label);
-    if (input.icon && !validator.isUUID(input.icon as string))
-      throw new Error("Invalid icon ID");
-    if (input.description)
-      input.description = sanitizeString(input.description);
-    if (input.versions) input.versions = input.versions.map(sanitizeString);
-    if (input.skills) input.skills = input.skills.map(sanitizeString);
-    if (input.category && !validator.isUUID(input.category as string))
-      throw new Error("Invalid category ID");
-
+    sanitizeStackInput(input);
     const result = await context.stackRepo.update(input);
     if (!result) throw new Error("Failed to update stack");
     return result;

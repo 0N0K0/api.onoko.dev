@@ -29,6 +29,15 @@ export function sanitizeString(str: string): string {
 }
 
 /**
+ * Vérifie si une valeur est un entier positif ou zéro
+ * @param {unknown} value La valeur à vérifier
+ * @return {boolean} true si la valeur est un entier positif ou zéro, false sinon
+ */
+export function isValidPositiveInteger(value: unknown): boolean {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+
+/**
  * Vérifie si une chaîne est un mot de passe valide (min 20 caractères, 1 maj, 1 min, 1 chiffre, 1 symbole)
  * @param {string} password Le mot de passe à valider
  * @return {boolean} true si le mot de passe est valide, false sinon
