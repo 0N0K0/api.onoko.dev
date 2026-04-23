@@ -28,7 +28,6 @@ function sanitizeProjectInput(input: Partial<Omit<Project, "id">>): void {
   }
   if (input.website) {
     if (input.website.url) {
-      input.website.url = sanitizeString(input.website.url);
       if (!isValidUrl(input.website.url))
         throw new Error("Invalid website URL");
     }
@@ -37,7 +36,6 @@ function sanitizeProjectInput(input: Partial<Omit<Project, "id">>): void {
   }
   if (input.mockup) {
     if (input.mockup.url) {
-      input.mockup.url = sanitizeString(input.mockup.url);
       if (!isValidUrl(input.mockup.url)) throw new Error("Invalid mockup URL");
     }
     if (input.mockup.label)
@@ -148,23 +146,15 @@ function sanitizeProjectInput(input: Partial<Omit<Project, "id">>): void {
     }
   }
   if (input.kpis) {
-    if (
-      input.kpis.issues !== undefined &&
-      !isValidPositiveInteger(input.kpis.issues)
-    )
+    console.log(input.kpis);
+    if (input.kpis.issues && !isValidPositiveInteger(input.kpis.issues))
       throw new Error("Invalid issues KPI");
-    if (
-      input.kpis.points !== undefined &&
-      !isValidPositiveInteger(input.kpis.points)
-    )
+    if (input.kpis.points && !isValidPositiveInteger(input.kpis.points))
       throw new Error("Invalid points KPI");
-    if (
-      input.kpis.commits !== undefined &&
-      !isValidPositiveInteger(input.kpis.commits)
-    )
+    if (input.kpis.commits && !isValidPositiveInteger(input.kpis.commits))
       throw new Error("Invalid commits KPI");
     if (
-      input.kpis.pullRequests !== undefined &&
+      input.kpis.pullRequests &&
       !isValidPositiveInteger(input.kpis.pullRequests)
     )
       throw new Error("Invalid pull requests KPI");
