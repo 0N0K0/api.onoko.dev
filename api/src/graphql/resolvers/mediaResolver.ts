@@ -55,20 +55,25 @@ const mediaResolver = {
    * @throws {Error} Une erreur si l'ID du média ou la nouvelle catégorie est manquante ou invalide.
    */
   updateMedia: async (
-    _args: { id: string; input: { label?: string; category?: string } },
+    _args: {
+      id: string;
+      input: { label?: string; category?: string; focus?: string };
+    },
     context: { user: jwt.JwtPayload | null; mediaRepo: MediaRepository },
   ): Promise<boolean> => {
     checkAuth(context);
     validateId(_args.id);
     const { id, input } = _args;
-    const { label, category } = input;
+    const { label, category, focus } = input;
     let sanitizedLabel: string | undefined;
     if (label) sanitizedLabel = sanitizeString(label);
     if (category && !validator.isUUID(category)) delete input.category;
+    if (focus) input.focus = sanitizeString(focus);
     const result = await context.mediaRepo.update({
       id,
       label: sanitizedLabel,
       category,
+      focus,
     });
     if (!result) throw new Error("Failed to update media");
     return result;

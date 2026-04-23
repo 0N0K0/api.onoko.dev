@@ -35,6 +35,7 @@ export class MediaRepository {
         path: "/medias/" + row.path,
         type: row.type,
         category: row.category,
+        focus: row.focus,
       }));
     });
   }
@@ -70,9 +71,9 @@ export class MediaRepository {
 
   /**
    * Met à jour les propriétés d'un média existant dans la base de données en fonction des propriétés fournies.
-   * La méthode vérifie que l'ID du média est fourni, puis construit dynamiquement la requête SQL pour mettre à jour les champs spécifiés (label et catégorie).
+   * La méthode vérifie que l'ID du média est fourni, puis construit dynamiquement la requête SQL pour mettre à jour les champs spécifiés (label, catégorie et focus).
    * Après l'exécution de la requête de mise à jour, la méthode retourne un booléen indiquant si la mise à jour a réussi.
-   * @param {Partial<Media>} media - Les propriétés du média à mettre à jour, qui doivent inclure l'ID du média à mettre à jour. Les autres propriétés (label et catégorie) sont facultatives et seront mises à jour si elles sont fournies.
+   * @param {Partial<Media>} media Les propriétés du média à mettre à jour, qui doivent inclure l'ID du média à mettre à jour. Les autres propriétés (label, catégorie et focus) sont facultatives et seront mises à jour si elles sont fournies.
    * @returns {Promise<boolean>} Indique si la mise à jour du média a réussi.
    * @throws {Error} Une erreur si l'ID du média n'est pas fourni, ou si la mise à jour échoue pour une raison quelconque, notamment si la requête SQL échoue ou si aucun champ à mettre à jour n'est spécifié.
    */
@@ -83,6 +84,7 @@ export class MediaRepository {
         label: media.label || undefined,
         category:
           media.category !== undefined ? media.category || null : undefined,
+        focus: media.focus !== undefined ? media.focus || null : undefined,
       });
       if (!set) throw new Error("No fields to update");
       await conn.query(`UPDATE medias SET ${set.sql} WHERE id = ?`, [

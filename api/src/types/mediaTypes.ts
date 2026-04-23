@@ -14,4 +14,5 @@ export interface Media {
   type: string;
   file?: ImageFile;
   category?: string;
+  focus?: string;
 }

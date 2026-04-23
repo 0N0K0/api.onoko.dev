@@ -6,6 +6,7 @@ export const mediaTypes = `
         path: String!
         type: String!
         category: ID
+        focus: String
     }
 `;
 export const mediaInputs = `
@@ -18,6 +19,7 @@ export const mediaInputs = `
     input MediaInput {
         label: String
         category: ID
+        focus: String
     }
 `;
 
