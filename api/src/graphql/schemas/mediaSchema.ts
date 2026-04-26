@@ -14,6 +14,7 @@ export const mediaInputs = `
 
     input FileInput {
         file: Upload!
+        category: ID
     }
 
     input MediaInput {

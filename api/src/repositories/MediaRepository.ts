@@ -48,21 +48,20 @@ export class MediaRepository {
    * @returns {Promise<boolean>} Indique si la création du média a réussi.
    * @throws {Error} Une erreur si la création du média échoue pour une raison quelconque, notamment si le fichier média n'est pas fourni ou si l'enregistrement du fichier échoue.
    */
-  async add(
-    media: Omit<Media, "id" | "path" | "type" | "category">,
-  ): Promise<boolean> {
+  async add(media: Omit<Media, "id" | "path" | "type">): Promise<boolean> {
     await withConnection(this.pool, async (conn) => {
       if (!media.file) throw new Error("File is required to add media");
       const id = crypto.randomUUID();
       const label = media.file.filename;
       const filePath = await this._saveImageFile(media.file);
       await conn.query(
-        `INSERT INTO medias (id, path, type, label) VALUES (?, ?, ?, ?)`,
+        `INSERT INTO medias (id, path, type, label, category) VALUES (?, ?, ?, ?, ?)`,
         [
           id,
           filePath,
           media.file.mimetype === "image/svg+xml" ? "svg" : "webp",
           label,
+          media.category || null,
         ],
       );
     });

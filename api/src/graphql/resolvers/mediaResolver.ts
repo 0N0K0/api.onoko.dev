@@ -33,14 +33,17 @@ const mediaResolver = {
    * @throws {Error} Une erreur si le fichier est manquant ou invalide.
    */
   addMedia: async (
-    _args: { input: { file: any } },
+    _args: { input: { file: any; category?: string } },
     context: { user: jwt.JwtPayload | null; mediaRepo: MediaRepository },
   ): Promise<boolean> => {
     checkAuth(context);
     const upload = _args.input?.file;
     if (!upload) throw new Error("File is required");
     const file: ImageFile = await (upload.promise ?? upload);
-    const result = await context.mediaRepo.add({ file });
+    let category: string | undefined;
+    if (_args.input.category && validator.isUUID(_args.input.category))
+      category = _args.input.category;
+    const result = await context.mediaRepo.add({ file, category });
     if (!result) throw new Error("Failed to add media");
     return result;
   },
@@ -67,13 +70,22 @@ const mediaResolver = {
     const { label, category, focus } = input;
     let sanitizedLabel: string | undefined;
     if (label) sanitizedLabel = sanitizeString(label);
-    if (category && !validator.isUUID(category)) delete input.category;
-    if (focus) input.focus = sanitizeString(focus);
+    console.log("category:", category);
+    let sanitizedCategory: string | undefined;
+    if (
+      (category && validator.isUUID(category)) ||
+      category === null ||
+      category === ""
+    )
+      sanitizedCategory = category;
+    console.log("sanitizedCategory:", sanitizedCategory);
+    let sanitizedFocus: string | undefined;
+    if (focus) sanitizedFocus = sanitizeString(focus);
     const result = await context.mediaRepo.update({
       id,
       label: sanitizedLabel,
-      category,
-      focus,
+      category: sanitizedCategory,
+      focus: sanitizedFocus,
     });
     if (!result) throw new Error("Failed to update media");
     return result;
