@@ -2,6 +2,7 @@
 export const projectTypes = `
     type Project {
         id: ID!
+        slug: String
         label: String!
         thumbnail: ID
         categories: [ID!]
@@ -169,6 +170,7 @@ export const projectInputs = `
     }
     
     input ProjectInput {
+        slug: String
         label: String!
         thumbnail: ID
         categories: [ID!]

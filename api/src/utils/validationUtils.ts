@@ -53,6 +53,15 @@ export function isValidPassword(password: string): boolean {
 }
 
 /**
+ * Vérifie si une chaîne est un slug valide (lettres minuscules, chiffres, tirets, pas d'espaces)
+ * @param {string} slug Le slug à valider
+ * @return {boolean} true si le slug est valide, false sinon
+ */
+export function isValidSlug(slug: string): boolean {
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug);
+}
+
+/**
  * Vérifie si une chaîne est une URL valide avec un protocole
  * @param {string} url L'URL à valider
  * @return {boolean} true si l'URL est valide, false sinon

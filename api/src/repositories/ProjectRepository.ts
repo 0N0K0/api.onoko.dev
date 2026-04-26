@@ -27,7 +27,6 @@ export default class ProjectRepository extends BaseRepository {
       const ids = projectRows.map((p) => p.id);
       const placeholders = ids.map(() => "?").join(",");
 
-      // 5 requêtes batch au lieu de 5N requêtes individuelles
       const [categories, roles, coworkers, stacks, mockups] = await Promise.all(
         [
           conn.query(
@@ -137,6 +136,7 @@ export default class ProjectRepository extends BaseRepository {
   ): Project {
     const project: Project = {
       id: projectRow.id,
+      slug: projectRow.slug,
       label: projectRow.label,
       thumbnail: projectRow.thumbnail_id,
       startDate: projectRow.start_date,
@@ -264,10 +264,11 @@ export default class ProjectRepository extends BaseRepository {
       // Insère le projet principal
       await conn.query(
         `INSERT INTO project (
-          id, label, thumbnail_id, website_url, website_label, mockup_url, mockup_label, client_label, client_logo_id, manager_name, manager_email, start_date, end_date, intro_context, intro_objective, intro_client, presentation_description, presentation_issue, presentation_audience, need_features, need_functional_constraints, need_technical_constraints, organization_workload, organization_anticipation, organization_methodology, organization_evolution, organization_validation, feedback, feedback_client, kpis_issues, kpis_points, kpis_commits, kpis_pull_requests
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          id, slug, label, thumbnail_id, website_url, website_label, mockup_url, mockup_label, client_label, client_logo_id, manager_name, manager_email, start_date, end_date, intro_context, intro_objective, intro_client, presentation_description, presentation_issue, presentation_audience, need_features, need_functional_constraints, need_technical_constraints, organization_workload, organization_anticipation, organization_methodology, organization_evolution, organization_validation, feedback, feedback_client, kpis_issues, kpis_points, kpis_commits, kpis_pull_requests
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
+          project.slug,
           project.label,
           project.thumbnail || null,
           project.website?.url || null,
@@ -366,6 +367,7 @@ export default class ProjectRepository extends BaseRepository {
     await withTransaction(this.pool, async (conn) => {
       // Construit dynamiquement la requête de mise à jour
       const set = buildSetClause({
+        slug: project.slug,
         label: project.label,
         thumbnail_id: project.thumbnail,
         website_url: project.website?.url,

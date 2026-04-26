@@ -9,8 +9,10 @@ import {
   isValidUrl,
   isValidDate,
   isValidPositiveInteger,
+  isValidSlug,
 } from "../../utils/validationUtils";
 import validator from "validator";
+import { slugify } from "../../utils/stringUtils";
 
 /**
  * Sanitise et valide les champs d'un input projet (commun à create et update).
@@ -19,6 +21,10 @@ import validator from "validator";
  * @throws {Error} Si un champ UUID est invalide ou si un champ string est vide après sanitisation
  */
 function sanitizeProjectInput(input: Partial<Omit<Project, "id">>): void {
+  if (input.slug) {
+    input.slug = sanitizeString(input.slug);
+    if (!isValidSlug(input.slug)) throw new Error("Invalid slug");
+  }
   if (input.thumbnail && !validator.isUUID(input.thumbnail as string))
     delete input.thumbnail;
   if (input.categories) {
@@ -201,6 +207,7 @@ const projectResolver = {
     if (isEmpty(input.label)) throw new Error("Label is required");
     input.label = sanitizeString(input.label);
     sanitizeProjectInput(input);
+    if (isEmpty(input.slug)) input.slug = slugify(input.label);
     const result = await context.projectRepo.create(input);
     if (!result) throw new Error("Failed to create project");
     return result;

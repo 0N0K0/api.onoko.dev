@@ -1,6 +1,7 @@
 // Interface représentant un projet
 export interface Project {
   id: string;
+  slug: string;
   label: string;
   thumbnail?: string;
   categories?: string[];
@@ -63,6 +64,7 @@ export interface Project {
 // Interface représentant une ligne de projet dans la base de données, utilisée pour les opérations de lecture et d'écriture des projets dans la base de données.
 export interface ProjectRow {
   id: string;
+  slug: string;
   label: string;
   thumbnail_id?: string;
   website_url?: string;
