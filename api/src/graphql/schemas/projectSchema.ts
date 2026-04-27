@@ -104,10 +104,15 @@ export const projectInputs = `
         label: String!
     }
 
+    input MockupImageInput {
+        id: ID!
+        position: Int!
+    }
+
     input MockupInput {
         url: String!
         label: String!
-        images: [ID!]
+        images: [MockupImageInput!]
     }
     
     input ClientInput {

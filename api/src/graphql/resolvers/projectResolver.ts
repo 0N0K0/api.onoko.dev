@@ -12,7 +12,7 @@ import {
   isValidSlug,
 } from "../../utils/validationUtils";
 import validator from "validator";
-import { slugify } from "../../utils/stringUtils";
+import { sanitizeWysiwyg, slugify } from "../../utils/stringUtils";
 
 /**
  * Sanitise et valide les champs d'un input projet (commun à create et update).
@@ -81,51 +81,55 @@ function sanitizeProjectInput(input: Partial<Omit<Project, "id">>): void {
   }
   if (input.intro) {
     if (input.intro.context)
-      input.intro.context = sanitizeString(input.intro.context);
+      input.intro.context = sanitizeWysiwyg(input.intro.context);
     if (input.intro.objective)
-      input.intro.objective = sanitizeString(input.intro.objective);
+      input.intro.objective = sanitizeWysiwyg(input.intro.objective);
     if (input.intro.client)
-      input.intro.client = sanitizeString(input.intro.client);
+      input.intro.client = sanitizeWysiwyg(input.intro.client);
   }
   if (input.presentation) {
     if (input.presentation.description)
-      input.presentation.description = sanitizeString(
+      input.presentation.description = sanitizeWysiwyg(
         input.presentation.description,
       );
     if (input.presentation.issue)
-      input.presentation.issue = sanitizeString(input.presentation.issue);
+      input.presentation.issue = sanitizeWysiwyg(input.presentation.issue);
     if (input.presentation.audience)
-      input.presentation.audience = sanitizeString(input.presentation.audience);
+      input.presentation.audience = sanitizeWysiwyg(
+        input.presentation.audience,
+      );
   }
   if (input.need) {
     if (input.need.features)
-      input.need.features = sanitizeString(input.need.features);
+      input.need.features = sanitizeWysiwyg(input.need.features);
     if (input.need.functionalConstraints)
-      input.need.functionalConstraints = sanitizeString(
+      input.need.functionalConstraints = sanitizeWysiwyg(
         input.need.functionalConstraints,
       );
     if (input.need.technicalConstraints)
-      input.need.technicalConstraints = sanitizeString(
+      input.need.technicalConstraints = sanitizeWysiwyg(
         input.need.technicalConstraints,
       );
   }
   if (input.organization) {
     if (input.organization.workload)
-      input.organization.workload = sanitizeString(input.organization.workload);
+      input.organization.workload = sanitizeWysiwyg(
+        input.organization.workload,
+      );
     if (input.organization.anticipation)
-      input.organization.anticipation = sanitizeString(
+      input.organization.anticipation = sanitizeWysiwyg(
         input.organization.anticipation,
       );
     if (input.organization.methodology)
-      input.organization.methodology = sanitizeString(
+      input.organization.methodology = sanitizeWysiwyg(
         input.organization.methodology,
       );
     if (input.organization.evolution)
-      input.organization.evolution = sanitizeString(
+      input.organization.evolution = sanitizeWysiwyg(
         input.organization.evolution,
       );
     if (input.organization.validation)
-      input.organization.validation = sanitizeString(
+      input.organization.validation = sanitizeWysiwyg(
         input.organization.validation,
       );
   }
@@ -167,9 +171,9 @@ function sanitizeProjectInput(input: Partial<Omit<Project, "id">>): void {
   }
   if (input.feedback) {
     if (input.feedback.general)
-      input.feedback.general = sanitizeString(input.feedback.general);
+      input.feedback.general = sanitizeWysiwyg(input.feedback.general);
     if (input.feedback.client)
-      input.feedback.client = sanitizeString(input.feedback.client);
+      input.feedback.client = sanitizeWysiwyg(input.feedback.client);
   }
 }
 
