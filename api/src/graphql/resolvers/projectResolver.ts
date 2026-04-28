@@ -82,19 +82,12 @@ function sanitizeProjectInput(input: Partial<Omit<Project, "id">>): void {
     if (input.startDate && input.endDate < input.startDate)
       throw new Error("End date cannot be before start date");
   }
-  if (input.intro) {
-    if (input.intro.context)
-      input.intro.context = sanitizeWysiwyg(input.intro.context);
-    if (input.intro.objective)
-      input.intro.objective = sanitizeWysiwyg(input.intro.objective);
-    if (input.intro.client)
-      input.intro.client = sanitizeWysiwyg(input.intro.client);
-  }
+  if (input.intro) input.intro = sanitizeWysiwyg(input.intro);
   if (input.presentation) {
-    if (input.presentation.description)
-      input.presentation.description = sanitizeWysiwyg(
-        input.presentation.description,
-      );
+    if (input.presentation.context)
+      input.presentation.context = sanitizeWysiwyg(input.presentation.context);
+    if (input.presentation.client)
+      input.presentation.client = sanitizeWysiwyg(input.presentation.client);
     if (input.presentation.issue)
       input.presentation.issue = sanitizeWysiwyg(input.presentation.issue);
     if (input.presentation.audience)

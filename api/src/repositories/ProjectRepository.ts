@@ -145,6 +145,7 @@ export default class ProjectRepository extends BaseRepository {
       roles: relations.roles,
       coworkers: relations.coworkers,
       stacks: relations.stacks,
+      intro: projectRow.intro,
     };
 
     if (projectRow.website_url) {
@@ -177,24 +178,14 @@ export default class ProjectRepository extends BaseRepository {
     }
 
     if (
-      projectRow.intro_context ||
-      projectRow.intro_objective ||
-      projectRow.intro_client
-    ) {
-      project.intro = {
-        context: projectRow.intro_context,
-        objective: projectRow.intro_objective,
-        client: projectRow.intro_client,
-      };
-    }
-
-    if (
-      projectRow.presentation_description ||
+      projectRow.presentation_context ||
+      projectRow.presentation_client ||
       projectRow.presentation_issue ||
       projectRow.presentation_audience
     ) {
       project.presentation = {
-        description: projectRow.presentation_description,
+        context: projectRow.presentation_context,
+        client: projectRow.presentation_client,
         issue: projectRow.presentation_issue,
         audience: projectRow.presentation_audience,
       };
@@ -281,10 +272,9 @@ export default class ProjectRepository extends BaseRepository {
           project.manager?.email || null,
           project.startDate ? new Date(project.startDate) : null,
           project.endDate ? new Date(project.endDate) : null,
-          project.intro?.context || null,
-          project.intro?.objective || null,
-          project.intro?.client || null,
-          project.presentation?.description || null,
+          project.intro || null,
+          project.presentation?.context || null,
+          project.presentation?.client || null,
           project.presentation?.issue || null,
           project.presentation?.audience || null,
           project.need?.features || null,
@@ -380,10 +370,9 @@ export default class ProjectRepository extends BaseRepository {
         manager_email: project.manager?.email,
         start_date: project.startDate ? new Date(project.startDate) : undefined,
         end_date: project.endDate ? new Date(project.endDate) : undefined,
-        intro_context: project.intro?.context,
-        intro_objective: project.intro?.objective,
-        intro_client: project.intro?.client,
-        presentation_description: project.presentation?.description,
+        intro: project.intro,
+        presentation_context: project.presentation?.context,
+        presentation_client: project.presentation?.client,
         presentation_issue: project.presentation?.issue,
         presentation_audience: project.presentation?.audience,
         need_features: project.need?.features,

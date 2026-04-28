@@ -12,7 +12,7 @@ export const projectTypes = `
         manager: Manager
         startDate: String
         endDate: String
-        intro: Intro
+        intro: String
         presentation: Presentation
         need: Need
         organization: Organization
@@ -49,14 +49,9 @@ export const projectTypes = `
         email: String
     }
 
-    type Intro {
-        context: String
-        objective: String
-        client: String
-    }
-
     type Presentation {
-        description: String
+        context: String
+        client: String
         issue: String
         audience: String
     }
@@ -125,14 +120,9 @@ export const projectInputs = `
         email: String
     }
 
-    input IntroInput {
-        context: String
-        objective: String
-        client: String
-    }
-
     input PresentationInput {
-        description: String
+        context: String
+        client: String
         issue: String
         audience: String
     }
@@ -185,7 +175,7 @@ export const projectInputs = `
         manager: ManagerInput
         startDate: String
         endDate: String
-        intro: IntroInput
+        intro: String
         presentation: PresentationInput
         need: NeedInput
         organization: OrganizationInput

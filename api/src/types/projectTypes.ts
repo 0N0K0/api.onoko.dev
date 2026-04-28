@@ -24,13 +24,10 @@ export interface Project {
   };
   startDate?: Date;
   endDate?: Date;
-  intro?: {
-    context?: string;
-    objective?: string;
-    client?: string;
-  };
+  intro?: string;
   presentation?: {
-    description?: string;
+    context?: string;
+    client?: string;
     issue?: string;
     audience?: string;
   };
@@ -77,10 +74,9 @@ export interface ProjectRow {
   manager_email?: string;
   start_date?: Date;
   end_date?: Date;
-  intro_context?: string;
-  intro_objective?: string;
-  intro_client?: string;
-  presentation_description?: string;
+  intro?: string;
+  presentation_context?: string;
+  presentation_client?: string;
   presentation_issue?: string;
   presentation_audience?: string;
   need_features?: string;
