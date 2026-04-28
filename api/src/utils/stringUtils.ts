@@ -36,7 +36,7 @@ export function sanitizeWysiwyg(html: string): string {
     ]),
     allowedAttributes: {
       ...sanitizeHtml.defaults.allowedAttributes,
-      "*": ["class"],
+      "*": ["class", "style"],
     },
     allowedSchemes: ["data", "http", "https"],
   });
