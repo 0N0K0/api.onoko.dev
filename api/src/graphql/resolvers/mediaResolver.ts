@@ -1,12 +1,9 @@
 import { MediaRepository } from "../../repositories/MediaRepository";
 import { ImageFile, Media } from "../../types/mediaTypes";
 import jwt from "jsonwebtoken";
-import {
-  sanitizeString,
-  checkAuth,
-  validateId,
-} from "../../utils/validationUtils";
+import { checkAuth, validateId } from "../../utils/validationUtils";
 import validator from "validator";
+import { sanitizeString } from "../../utils/stringUtils";
 
 const mediaResolver = {
   /**

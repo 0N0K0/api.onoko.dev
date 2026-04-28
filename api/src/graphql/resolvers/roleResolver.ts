@@ -1,12 +1,8 @@
 import RoleRepository from "../../repositories/RoleRepository";
 import { Role } from "../../types/roleTypes";
 import jwt from "jsonwebtoken";
-import {
-  sanitizeString,
-  isEmpty,
-  checkAuth,
-  validateId,
-} from "../../utils/validationUtils";
+import { isEmpty, checkAuth, validateId } from "../../utils/validationUtils";
+import { sanitizeString } from "../../utils/stringUtils";
 
 // Résolveur GraphQL pour les opérations liées aux rôles
 const roleResolver = {

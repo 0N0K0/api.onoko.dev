@@ -1,12 +1,8 @@
 import CoworkerRepository from "../../repositories/CoworkerRepository";
 import { Coworker } from "../../types/coworkerTypes";
 import jwt from "jsonwebtoken";
-import {
-  sanitizeString,
-  isEmpty,
-  checkAuth,
-  validateId,
-} from "../../utils/validationUtils";
+import { isEmpty, checkAuth, validateId } from "../../utils/validationUtils";
+import { sanitizeString } from "../../utils/stringUtils";
 
 // Résolveur GraphQL pour les opérations liées aux coworkers
 const coworkerResolver = {

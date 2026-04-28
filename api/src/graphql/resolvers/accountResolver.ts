@@ -1,7 +1,6 @@
 import { hashPassword, verifyPassword } from "../../utils/passwordUtils";
 import {
   isValidPassword,
-  sanitizeString,
   isEmpty,
   checkAuth,
 } from "../../utils/validationUtils";
@@ -12,6 +11,7 @@ import { SettingsRepository } from "../../repositories/SettingsRepository";
 import { withConnection } from "../../database/dbHelpers";
 import { getPool } from "../../database/db";
 import validator from "validator";
+import { sanitizeString } from "../../utils/stringUtils";
 
 // Résolveur GraphQL pour les opérations liées au compte utilisateur
 const accountResolver = {

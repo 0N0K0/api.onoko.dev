@@ -20,15 +20,6 @@ export function isEmpty(str: string): boolean {
 }
 
 /**
- * Nettoie une chaîne pour éviter les injections XSS
- * @param {string} str La chaîne à nettoyer
- * @return {string} La chaîne nettoyée
- */
-export function sanitizeString(str: string): string {
-  return validator.escape(str.trim());
-}
-
-/**
  * Vérifie si une valeur est un entier positif ou zéro
  * @param {unknown} value La valeur à vérifier
  * @return {boolean} true si la valeur est un entier positif ou zéro, false sinon

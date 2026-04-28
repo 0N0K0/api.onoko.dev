@@ -1,13 +1,9 @@
 import StackRepository from "../../repositories/StackRepository";
 import { Stack } from "../../types/stackTypes";
 import jwt from "jsonwebtoken";
-import {
-  sanitizeString,
-  isEmpty,
-  checkAuth,
-  validateId,
-} from "../../utils/validationUtils";
+import { isEmpty, checkAuth, validateId } from "../../utils/validationUtils";
 import validator from "validator";
+import { sanitizeString } from "../../utils/stringUtils";
 
 /**
  * Fonction utilitaire pour nettoyer et valider les entrées de stack

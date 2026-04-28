@@ -1,3 +1,4 @@
+import validator from "validator";
 import sanitizeHtml from "sanitize-html";
 
 /**
@@ -17,6 +18,15 @@ export function slugify(text: string): string {
     .replace(/[^a-z0-9\-_]/g, "") // supprime tout sauf a-z, 0-9, - et _
     .replace(/\-\-+/g, "-") // remplace les -- par un seul -
     .replace(/^\-+|\-+$/g, ""); // supprime les - en début/fin
+}
+
+/**
+ * Nettoie une chaîne pour éviter les injections XSS
+ * @param {string} str La chaîne à nettoyer
+ * @return {string} La chaîne nettoyée
+ */
+export function sanitizeString(str: string): string {
+  return validator.escape(str.trim());
 }
 
 /**

@@ -1,5 +1,5 @@
 import { SettingsRepository } from "../../repositories/SettingsRepository";
-import { isEmpty, sanitizeString } from "../../utils/validationUtils";
+import { isEmpty } from "../../utils/validationUtils";
 import {
   generateToken,
   verifyToken as verifyJwtToken,
@@ -10,6 +10,7 @@ import {
   isBlocked,
   resetAttempts,
 } from "../../utils/auth/antiBruteforce.redis";
+import { sanitizeString } from "../../utils/stringUtils";
 
 // Résolveur GraphQL pour les opérations liées à l'authentification
 const authResolver = {

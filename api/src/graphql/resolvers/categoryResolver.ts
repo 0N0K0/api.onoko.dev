@@ -1,13 +1,9 @@
 import CategoryRepository from "../../repositories/CategoryRepository";
 import { Category } from "../../types/categoryTypes";
 import jwt from "jsonwebtoken";
-import {
-  sanitizeString,
-  isEmpty,
-  checkAuth,
-  validateId,
-} from "../../utils/validationUtils";
+import { isEmpty, checkAuth, validateId } from "../../utils/validationUtils";
 import validator from "validator";
+import { sanitizeString } from "../../utils/stringUtils";
 
 /**
  * Fonction utilitaire pour nettoyer et valider les entrées de catégorie

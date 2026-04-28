@@ -2,7 +2,6 @@ import ProjectRepository from "../../repositories/ProjectRepository";
 import { Project } from "../../types/projectTypes";
 import jwt from "jsonwebtoken";
 import {
-  sanitizeString,
   isEmpty,
   checkAuth,
   validateId,
@@ -12,7 +11,11 @@ import {
   isValidSlug,
 } from "../../utils/validationUtils";
 import validator from "validator";
-import { sanitizeWysiwyg, slugify } from "../../utils/stringUtils";
+import {
+  sanitizeWysiwyg,
+  slugify,
+  sanitizeString,
+} from "../../utils/stringUtils";
 
 /**
  * Sanitise et valide les champs d'un input projet (commun à create et update).
