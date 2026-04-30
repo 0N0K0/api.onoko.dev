@@ -152,7 +152,6 @@ function sanitizeProjectInput(input: Partial<Omit<Project, "id">>): void {
     }
   }
   if (input.kpis) {
-    console.log(input.kpis);
     if (input.kpis.issues && !isValidPositiveInteger(input.kpis.issues))
       throw new Error("Invalid issues KPI");
     if (input.kpis.points && !isValidPositiveInteger(input.kpis.points))

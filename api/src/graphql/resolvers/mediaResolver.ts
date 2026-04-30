@@ -67,7 +67,6 @@ const mediaResolver = {
     const { label, category, focus } = input;
     let sanitizedLabel: string | undefined;
     if (label) sanitizedLabel = sanitizeString(label);
-    console.log("category:", category);
     let sanitizedCategory: string | undefined;
     if (
       (category && validator.isUUID(category)) ||
@@ -75,7 +74,6 @@ const mediaResolver = {
       category === ""
     )
       sanitizedCategory = category;
-    console.log("sanitizedCategory:", sanitizedCategory);
     let sanitizedFocus: string | undefined;
     if (focus) sanitizedFocus = sanitizeString(focus);
     const result = await context.mediaRepo.update({
