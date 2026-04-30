@@ -54,6 +54,10 @@ function sanitizeProjectInput(input: Partial<Omit<Project, "id">>): void {
         if (!validator.isUUID(image.id)) delete input.mockup.images[i];
       }
     }
+    if (input.mockup.embed) {
+      if (!isValidUrl(input.mockup.embed))
+        throw new Error("Invalid mockup embed URL");
+    }
   }
   if (input.client) {
     if (input.client.label)

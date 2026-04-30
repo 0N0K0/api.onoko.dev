@@ -37,6 +37,7 @@ export const projectTypes = `
         url: String!
         label: String!
         images: [MockupImage!]
+        embed: String
     }
 
     type Client {
@@ -108,6 +109,7 @@ export const projectInputs = `
         url: String!
         label: String!
         images: [MockupImageInput!]
+        embed: String
     }
     
     input ClientInput {

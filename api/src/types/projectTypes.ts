@@ -7,12 +7,13 @@ export interface Project {
   categories?: string[];
   website?: {
     url: string;
-    label: string;
+    label?: string;
   };
   mockup?: {
-    url: string;
-    label: string;
+    url?: string;
+    label?: string;
     images?: { id: string; position: number }[];
+    embed?: string;
   };
   client?: {
     label: string;
@@ -68,6 +69,7 @@ export interface ProjectRow {
   website_label?: string;
   mockup_url?: string;
   mockup_label?: string;
+  mockup_embed?: string;
   client_label?: string;
   client_logo_id?: string;
   manager_name?: string;

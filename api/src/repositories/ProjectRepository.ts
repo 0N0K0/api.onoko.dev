@@ -151,15 +151,20 @@ export default class ProjectRepository extends BaseRepository {
     if (projectRow.website_url) {
       project.website = {
         url: projectRow.website_url,
-        label: projectRow.website_label || "",
+        label: projectRow.website_label,
       };
     }
 
-    if (projectRow.mockup_url) {
+    if (
+      projectRow.mockup_url ||
+      relations.mockupImages.length > 0 ||
+      projectRow.mockup_embed
+    ) {
       project.mockup = {
         url: projectRow.mockup_url,
-        label: projectRow.mockup_label || "",
+        label: projectRow.mockup_label,
         images: relations.mockupImages,
+        embed: projectRow.mockup_embed,
       };
     }
 
@@ -255,8 +260,8 @@ export default class ProjectRepository extends BaseRepository {
       // Insère le projet principal
       await conn.query(
         `INSERT INTO project (
-          id, slug, label, thumbnail_id, website_url, website_label, mockup_url, mockup_label, client_label, client_logo_id, manager_name, manager_email, start_date, end_date, intro_context, intro_objective, intro_client, presentation_description, presentation_issue, presentation_audience, need_features, need_functional_constraints, need_technical_constraints, organization_workload, organization_anticipation, organization_methodology, organization_evolution, organization_validation, feedback, feedback_client, kpis_issues, kpis_points, kpis_commits, kpis_pull_requests
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          id, slug, label, thumbnail_id, website_url, website_label, mockup_url, mockup_label, mockup_embed, client_label, client_logo_id, manager_name, manager_email, start_date, end_date, intro_context, intro_objective, intro_client, presentation_description, presentation_issue, presentation_audience, need_features, need_functional_constraints, need_technical_constraints, organization_workload, organization_anticipation, organization_methodology, organization_evolution, organization_validation, feedback, feedback_client, kpis_issues, kpis_points, kpis_commits, kpis_pull_requests
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
           project.slug,
@@ -266,6 +271,7 @@ export default class ProjectRepository extends BaseRepository {
           project.website?.label || null,
           project.mockup?.url || null,
           project.mockup?.label || null,
+          project.mockup?.embed || null,
           project.client?.label || null,
           project.client?.logo || null,
           project.manager?.name || null,
@@ -364,6 +370,7 @@ export default class ProjectRepository extends BaseRepository {
         website_label: project.website?.label,
         mockup_url: project.mockup?.url,
         mockup_label: project.mockup?.label,
+        mockup_embed: project.mockup?.embed,
         client_label: project.client?.label,
         client_logo_id: project.client?.logo,
         manager_name: project.manager?.name,
