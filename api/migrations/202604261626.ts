@@ -2,14 +2,15 @@ import { Pool } from "mariadb/*";
 import { MigrationParams } from "umzug";
 
 /**
- * Migration pour ajouter une colonne "position" à la table "project_mockup".
+ * Migration pour ajouter une colonne "slug" à la table "project".
  */
 
 export async function up({ context: pool }: MigrationParams<Pool>) {
   const conn = await pool.getConnection();
   try {
+    await conn.query(`UPDATE project SET slug = id WHERE slug IS NULL;`);
     await conn.query(
-      `ALTER TABLE project_mockup ADD COLUMN IF NOT EXISTS position INT;`,
+      `ALTER TABLE project MODIFY COLUMN slug VARCHAR(255) UNIQUE NOT NULL;`,
     );
   } finally {
     conn.release();
@@ -19,9 +20,8 @@ export async function up({ context: pool }: MigrationParams<Pool>) {
 export async function down({ context: pool }: MigrationParams<Pool>) {
   const conn = await pool.getConnection();
   try {
-    await conn.query(
-      `ALTER TABLE project_mockup DROP COLUMN IF EXISTS position;`,
-    );
+    await conn.query(`UPDATE project SET slug = NULL;`);
+    await conn.query(`ALTER TABLE project MODIFY COLUMN slug VARCHAR(255);`);
   } finally {
     conn.release();
   }

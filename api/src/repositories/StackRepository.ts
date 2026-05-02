@@ -1,11 +1,14 @@
-import mariadb from "mariadb";
-import crypto from "crypto";
 import { Stack } from "../types/stackTypes";
+import {
+  withConnection,
+  withTransaction,
+  buildSetClause,
+} from "../database/dbHelpers";
+import { BaseRepository } from "./BaseRepository";
 
 // Repository pour les opérations liées aux stacks dans la base de données
-export class StackRepository {
-  // Constructeur qui initialise le repository avec un pool de connexions à la base de données MariaDB
-  constructor(private pool: mariadb.Pool) {}
+export default class StackRepository extends BaseRepository {
+  protected readonly tableName = "stack";
 
   /**
    * Récupère toutes les stacks de la base de données, en incluant leurs versions, compétences et catégories associées.
@@ -15,9 +18,7 @@ export class StackRepository {
    * @throws {Error} Une erreur si la récupération des stacks échoue pour une raison quelconque.
    */
   async getAll(): Promise<Stack[]> {
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
+    return withConnection(this.pool, async (conn) => {
       const rows = await conn.query(`
         SELECT s.*, v.version, ss.skill
         FROM stack s
@@ -47,68 +48,7 @@ export class StackRepository {
         stack.skills = Array.from(new Set(stack.skills));
       }
       return Array.from(stackMap.values());
-    } catch (error) {
-      console.error("Error retrieving stacks:", error);
-      throw error;
-    } finally {
-      if (conn) conn.release();
-    }
-  }
-
-  /**
-   * Récupère une stack spécifique de la base de données en fonction d'une clé (id ou label) et d'une valeur correspondante.
-   * La méthode utilise une requête SQL pour joindre les tables "stack", "stack_version", "stack_skill" et "category" afin d'obtenir les informations complètes sur la stack correspondant à la clé et à la valeur spécifiées, ainsi que ses versions, compétences et catégorie associée.
-   * Les résultats sont ensuite transformés en un format structuré où la stack est représentée avec ses propriétés, une liste de ses versions, compétences et sa catégorie associée.
-   * Si aucune stack correspondante n'est trouvée, la méthode retourne null.
-   * @param {string} key La clé à utiliser pour la recherche (id ou label).
-   * @param {string} value La valeur correspondante à rechercher pour la clé spécifiée.
-   * @returns {Promise<boolean>} Indique si la stack correspondant à la requête existe.
-   * @throws {Error} Une erreur si la récupération échoue pour une raison quelconque.
-   */
-  async get(id: string): Promise<boolean> {
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
-      const rows = await conn.query(
-        `
-        SELECT s.*, v.version, ss.skill
-        FROM stack s
-        LEFT JOIN stack_version v ON v.stack_id = s.id
-        LEFT JOIN stack_skill ss ON ss.stack_id = s.id
-        WHERE s.id = ?
-        `,
-        [id],
-      );
-      if (!rows || rows.length === 0) return false;
-      const first = rows[0];
-      const stack: Stack = {
-        id: first.id,
-        label: first.label,
-        icon: first.icon_id,
-        description: first.description,
-        versions: Array.from(
-          new Set(
-            rows
-              .filter((r: { version: string | null }) => r.version != null)
-              .map((r: { version: string }) => r.version),
-          ),
-        ),
-        category: first.category_id,
-        skills: Array.from(
-          new Set(
-            rows
-              .filter((r: { skill: string | null }) => r.skill != null)
-              .map((r: { skill: string }) => r.skill),
-          ),
-        ),
-      };
-    } catch (error) {
-      console.error("Error retrieving stack:", error);
-      throw error;
-    } finally {
-      if (conn) conn.release();
-    }
-    return true;
+    });
   }
 
   /**
@@ -119,11 +59,8 @@ export class StackRepository {
    * @returns {Promise<boolean>} Indique si la création de la stack a réussi.
    */
   async create(stack: Omit<Stack, "id">): Promise<boolean> {
-    const id = crypto.randomUUID();
-
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
+    const id = this.generateId();
+    await withTransaction(this.pool, async (conn) => {
       await conn.query(
         `INSERT INTO stack (id, label, icon_id, description, category_id) VALUES (?, ?, ?, ?, ?);`,
         [
@@ -146,12 +83,7 @@ export class StackRepository {
           stack.skills.flatMap((skill) => [id, skill]),
         );
       }
-    } catch (error) {
-      console.error("Error creating stack:", error);
-      throw error;
-    } finally {
-      if (conn) conn.release();
-    }
+    });
     return true;
   }
 
@@ -166,216 +98,73 @@ export class StackRepository {
    */
   async update(stack: Partial<Stack>): Promise<boolean> {
     if (!stack.id) throw new Error("ID is required for update");
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
-      const fields = [];
-      const values = [];
-      if (stack.label) {
-        fields.push("label = ?");
-        values.push(stack.label);
+    return withTransaction(this.pool, async (conn) => {
+      const set = buildSetClause({
+        label: stack.label || undefined,
+        icon_id: stack.icon ? (stack.icon as string) : undefined,
+        description: stack.description,
+        category_id:
+          stack.category !== undefined ? stack.category || null : undefined,
+      });
+      if (set) {
+        await conn.query(`UPDATE stack SET ${set.sql} WHERE id = ?`, [
+          ...set.values,
+          stack.id,
+        ]);
       }
-      if (stack.icon) {
-        fields.push("icon_id = ?");
-        values.push(stack.icon as string);
-      }
-      if (stack.description !== undefined) {
-        fields.push("description = ?");
-        values.push(stack.description);
-      }
+
       if (stack.versions) {
-        const existingVersions = await this.getVersions(stack.id);
-        const versionsToAdd = stack.versions.filter(
-          (v) => !existingVersions.includes(v),
+        const existingRows = await conn.query(
+          "SELECT version FROM stack_version WHERE stack_id = ?",
+          [stack.id],
         );
-        const versionsToRemove = existingVersions.filter(
-          (v) => !stack.versions!.includes(v),
+        const existing: string[] = existingRows.map(
+          (r: { version: string }) => r.version,
         );
-        for (const version of versionsToAdd) {
-          await this.addVersion(stack.id, version);
+        const toAdd = stack.versions.filter((v) => !existing.includes(v));
+        const toRemove = existing.filter((v) => !stack.versions!.includes(v));
+        if (toRemove.length) {
+          await conn.batch(
+            "DELETE FROM stack_version WHERE stack_id = ? AND version = ?",
+            toRemove.map((v) => [stack.id, v]),
+          );
         }
-        for (const version of versionsToRemove) {
-          await this.removeVersion(stack.id, version);
+        if (toAdd.length) {
+          await conn.batch(
+            "INSERT INTO stack_version (stack_id, version) VALUES (?, ?)",
+            toAdd.map((v) => [stack.id, v]),
+          );
         }
       }
-      if (stack.category !== undefined) {
-        fields.push("category_id = ?");
-        values.push(stack.category ? stack.category : null);
-      }
+
       if (stack.skills) {
-        const existingSkills = await this.getSkills(stack.id);
-        const skillsToAdd = stack.skills.filter(
-          (s) => !existingSkills.includes(s),
+        const existingRows = await conn.query(
+          "SELECT skill FROM stack_skill WHERE stack_id = ?",
+          [stack.id],
         );
-        const skillsToRemove = existingSkills.filter(
-          (s) => !stack.skills!.includes(s),
+        const existing: string[] = existingRows.map(
+          (r: { skill: string }) => r.skill,
         );
-        for (const skill of skillsToAdd) {
-          await this.addSkill(stack.id, skill);
+        const toAdd = stack.skills.filter((s) => !existing.includes(s));
+        const toRemove = existing.filter((s) => !stack.skills!.includes(s));
+        if (toRemove.length) {
+          await conn.batch(
+            "DELETE FROM stack_skill WHERE stack_id = ? AND skill = ?",
+            toRemove.map((s) => [stack.id, s]),
+          );
         }
-        for (const skill of skillsToRemove) {
-          await this.removeSkill(stack.id, skill);
+        if (toAdd.length) {
+          await conn.batch(
+            "INSERT INTO stack_skill (stack_id, skill) VALUES (?, ?)",
+            toAdd.map((s) => [stack.id, s]),
+          );
         }
       }
-      if (fields.length === 0) return false;
-      values.push(stack.id);
-      await conn.query(
-        `UPDATE stack SET ${fields.join(", ")} WHERE id = ?`,
-        values,
-      );
-    } catch (error) {
-      console.error("Error updating stack:", error);
-      throw error;
-    } finally {
-      if (conn) conn.release();
-    }
-    return true;
-  }
 
-  /**
-   * Supprime une stack de la base de données en fonction de son ID.
-   * La méthode exécute une requête SQL pour supprimer la stack correspondante à l'ID spécifié de la table "stack" de la base de données.
-   * Avant de supprimer la stack, la méthode récupère le nom du fichier d'icône associé à la stack et tente de supprimer ce fichier du système de fichiers si il existe.
-   * Après l'exécution de la requête de suppression, la méthode ne retourne rien.
-   * @param {string} id L'ID de la stack à supprimer de la base de données.
-   * @returns {Promise<boolean>} Indique si la suppression de la stack a réussi.
-   * @throws {Error} Une erreur si la suppression échoue pour une raison quelconque.
-   */
-  async delete(id: string): Promise<boolean> {
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
-      await conn.query("DELETE FROM stack WHERE id = ?", [id]);
-    } catch (error) {
-      console.error("Error deleting stack:", error);
-      throw error;
-    } finally {
-      if (conn) conn.release();
-    }
-    return true;
-  }
-
-  // Méthodes privées pour gérer les versions et compétences associées à une stack
-
-  /**
-   * Récupère les versions associées à une stack spécifique en fonction de son ID.
-   * La méthode exécute une requête SQL pour sélectionner les versions de la table "stack_version" correspondant à l'ID de la stack spécifiée.
-   * Les résultats sont ensuite transformés en un tableau de chaînes de caractères représentant les versions associées à la stack.
-   * @param {string} stackId L'ID de la stack pour laquelle récupérer les versions associées.
-   * @returns {Promise<string[]>} Un tableau de chaînes de caractères représentant les versions associées à la stack spécifiée.
-   */
-  private async getVersions(stackId: string): Promise<string[]> {
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
-      const rows = await conn.query(
-        "SELECT version FROM stack_version WHERE stack_id = ?",
-        [stackId],
-      );
-      return rows.map((row: { version: string }) => row.version);
-    } finally {
-      if (conn) conn.release();
-    }
-  }
-
-  /**
-   * Ajoute une version associée à une stack spécifique dans la base de données.
-   * La méthode exécute une requête SQL pour insérer une nouvelle version dans la table "stack_version" de la base de données, en associant la version spécifiée à l'ID de la stack correspondante.
-   * Après l'exécution de la requête d'insertion, la méthode ne retourne rien.
-   * @param {string} stackId L'ID de la stack à laquelle associer la nouvelle version.
-   * @param {string} version La version à ajouter et associer à la stack spécifiée.
-   * @returns {Promise<void>} Une promesse qui se résout lorsque l'ajout de la version est terminé, ou rejette une erreur si l'opération échoue pour une raison quelconque.
-   * @throws {Error} Une erreur si l'opération échoue pour une raison quelconque.
-   */
-  private async addVersion(stackId: string, version: string): Promise<void> {
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
-      await conn.query(
-        "INSERT INTO stack_version (stack_id, version) VALUES (?, ?)",
-        [stackId, version],
-      );
-    } finally {
-      if (conn) conn.release();
-    }
-  }
-
-  /**
-   * Supprime une version associée à une stack spécifique de la base de données.
-   * La méthode exécute une requête SQL pour supprimer la version correspondante à l'ID de la stack et à la version spécifiée de la table "stack_version" de la base de données.
-   * Après l'exécution de la requête de suppression, la méthode ne retourne rien.
-   * @param {string} stackId L'ID de la stack dont supprimer la version associée.
-   * @param {string} version La version à supprimer et dissocier de la stack spécifiée.
-   * @returns {Promise<void>} Une promesse qui se résout lorsque la suppression de la version est terminée, ou rejette une erreur si l'opération échoue pour une raison quelconque.
-   * @throws {Error} Une erreur si l'opération échoue pour une raison quelconque.
-   */
-  private async removeVersion(stackId: string, version: string): Promise<void> {
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
-      await conn.query(
-        "DELETE FROM stack_version WHERE stack_id = ? AND version = ?",
-        [stackId, version],
-      );
-    } finally {
-      if (conn) conn.release();
-    }
-  }
-
-  /**
-   * Récupère les compétences associées à une stack spécifique en fonction de son ID.
-   * La méthode exécute une requête SQL pour sélectionner les compétences de la table "stack_skill" correspondant à l'ID de la stack spécifiée.
-   * Les résultats sont ensuite transformés en un tableau de chaînes de caractères représentant les compétences associées à la stack.
-   * @param {string} stackId L'ID de la stack pour laquelle récupérer les compétences associées.
-   * @returns {Promise<string[]>} Un tableau de chaînes de caractères représentant les compétences associées à la stack spécifiée.
-   */
-  private async getSkills(stackId: string): Promise<string[]> {
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
-      const rows = await conn.query(
-        "SELECT skill FROM stack_skill WHERE stack_id = ?",
-        [stackId],
-      );
-      return rows.map((row: { skill: string }) => row.skill);
-    } finally {
-      if (conn) conn.release();
-    }
-  }
-
-  /**
-   * Ajoute une compétence associée à une stack spécifique dans la base de données.
-   * La méthode exécute une requête SQL pour insérer une nouvelle compétence dans la table "stack_skill" de la base de données, en associant la compétence spécifiée à l'ID de la stack correspondante.
-   * Après l'exécution de la requête d'insertion, la méthode ne retourne rien.
-   * @param {string} stackId L'ID de la stack à laquelle associer la nouvelle compétence.
-   * @param {string} skill La compétence à ajouter et associer à la stack spécifiée.
-   * @returns {Promise<void>} Une promesse qui se résout lorsque l'ajout de la compétence est terminé, ou rejette une erreur si l'opération échoue pour une raison quelconque.
-   * @throws {Error} Une erreur si l'opération échoue pour une raison quelconque.
-   */
-  private async addSkill(stackId: string, skill: string): Promise<void> {
-    const id = crypto.randomUUID();
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
-      await conn.query(
-        "INSERT INTO stack_skill (id, stack_id, skill) VALUES (?, ?, ?)",
-        [id, stackId, skill],
-      );
-    } finally {
-      if (conn) conn.release();
-    }
-  }
-
-  private async removeSkill(stackId: string, skill: string): Promise<void> {
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
-      await conn.query(
-        "DELETE FROM stack_skill WHERE stack_id = ? AND skill = ?",
-        [stackId, skill],
-      );
-    } finally {
-      if (conn) conn.release();
-    }
+      if (!set && !stack.versions && !stack.skills) {
+        return false;
+      }
+      return true;
+    });
   }
 }

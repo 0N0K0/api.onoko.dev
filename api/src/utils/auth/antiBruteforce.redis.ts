@@ -1,12 +1,10 @@
 import Redis from "ioredis";
-
-const ATTEMPT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
-const MAX_ATTEMPTS = 5;
-
-// Configure Redis connection (URL from env or default localhost)
-const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
-
-const ATTEMPT_PREFIX = "abf:"; // anti-bruteforce prefix
+import {
+  ATTEMPT_PREFIX,
+  ATTEMPT_WINDOW_MS,
+  MAX_ATTEMPTS,
+  redis,
+} from "../../constants/abfConstants";
 
 /**
  * Enregistre une tentative de connexion pour une adresse IP donnée.
@@ -49,4 +47,13 @@ export async function isBlocked(ip: string): Promise<boolean> {
 export async function resetAttempts(ip: string): Promise<void> {
   const key = ATTEMPT_PREFIX + ip;
   await redis.del(key);
+}
+
+/**
+ * Ferme la connexion Redis proprement en appelant la méthode quit sur l'instance Redis.
+ * Cela permet de s'assurer que toutes les ressources sont libérées et que la connexion est fermée correctement.
+ * @returns {Promise<void>} Une promesse qui se résout lorsque la connexion Redis est fermée.
+ */
+export async function disconnectRedis(): Promise<void> {
+  await redis.quit();
 }

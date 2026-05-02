@@ -1,11 +1,8 @@
 import CoworkerRepository from "../../repositories/CoworkerRepository";
 import { Coworker } from "../../types/coworkerTypes";
 import jwt from "jsonwebtoken";
-import {
-  sanitizeString,
-  isEmpty,
-  isValidUUID,
-} from "../../utils/validationUtils";
+import { isEmpty, checkAuth, validateId } from "../../utils/validationUtils";
+import { sanitizeString } from "../../utils/stringUtils";
 
 // Résolveur GraphQL pour les opérations liées aux coworkers
 const coworkerResolver = {
@@ -17,7 +14,7 @@ const coworkerResolver = {
    * @returns {Promise<Coworker[]>} Un tableau de coworkers récupérés de la base de données.
    */
   coworkers: async (
-    _args: any,
+    _args: Record<string, never>,
     context: { coworkerRepo: CoworkerRepository },
   ): Promise<Coworker[]> => {
     return await context.coworkerRepo.getAll();
@@ -36,7 +33,7 @@ const coworkerResolver = {
     _args: { input: Omit<Coworker, "id"> },
     context: { user: jwt.JwtPayload | null; coworkerRepo: CoworkerRepository },
   ): Promise<boolean> => {
-    if (!context.user) throw new Error("Unauthorized");
+    checkAuth(context);
     const input = { ..._args.input };
     if (isEmpty(input.name)) throw new Error("Name is required");
     input.name = sanitizeString(input.name);
@@ -58,9 +55,8 @@ const coworkerResolver = {
     _args: { id: string; input: Partial<Omit<Coworker, "id">> },
     context: { user: jwt.JwtPayload | null; coworkerRepo: CoworkerRepository },
   ): Promise<boolean> => {
-    if (!context.user) throw new Error("Unauthorized");
-    if (!_args.id) throw new Error("ID is required");
-    if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
+    checkAuth(context);
+    validateId(_args.id);
     const input = { ..._args.input, id: _args.id };
     if (input.name) input.name = sanitizeString(input.name);
     const result = await context.coworkerRepo.update(input);
@@ -80,9 +76,8 @@ const coworkerResolver = {
     _args: { id: string },
     context: { user: jwt.JwtPayload | null; coworkerRepo: CoworkerRepository },
   ): Promise<boolean> => {
-    if (!context.user) throw new Error("Unauthorized");
-    if (!_args.id) throw new Error("ID is required");
-    if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
+    checkAuth(context);
+    validateId(_args.id);
     const result = await context.coworkerRepo.delete(_args.id);
     if (!result) throw new Error("Failed to delete coworker");
     return result;

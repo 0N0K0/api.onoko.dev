@@ -1,5 +1,3 @@
-import { Category } from "./categoryTypes";
-
 import { Readable } from "stream";
 
 export type ImageFile = {
@@ -16,4 +14,5 @@ export interface Media {
   type: string;
   file?: ImageFile;
   category?: string;
+  focus?: string;
 }

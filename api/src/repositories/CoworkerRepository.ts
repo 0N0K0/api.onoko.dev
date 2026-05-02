@@ -1,11 +1,14 @@
-import mariadb from "mariadb";
-import crypto from "crypto";
 import { Coworker } from "../types/coworkerTypes";
+import {
+  withConnection,
+  withTransaction,
+  buildSetClause,
+} from "../database/dbHelpers";
+import { BaseRepository } from "./BaseRepository";
 
 // Repository pour les opérations liées aux collaborateurs dans la base de données
-export default class CoworkerRepository {
-  // Constructeur qui initialise le repository avec un pool de connexions à la base de données MariaDB
-  constructor(private pool: mariadb.Pool) {}
+export default class CoworkerRepository extends BaseRepository {
+  protected readonly tableName = "coworker";
 
   /**
    * Récupère tous les collaborateurs de la base de données, en incluant leurs rôles associés.
@@ -15,9 +18,7 @@ export default class CoworkerRepository {
    * @throws {Error} Une erreur si la récupération des collaborateurs échoue pour une raison quelconque.
    */
   async getAll(): Promise<Coworker[]> {
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
+    return withConnection(this.pool, async (conn) => {
       const coworkers = await conn.query(`
         SELECT c.*, cr.role_id AS role_id
         FROM coworker c
@@ -40,12 +41,7 @@ export default class CoworkerRepository {
         },
       );
       return Object.values(coworkerMap);
-    } catch (error) {
-      console.error("Error retrieving coworkers:", error);
-      throw error;
-    } finally {
-      if (conn) conn.release();
-    }
+    });
   }
 
   /**
@@ -58,28 +54,19 @@ export default class CoworkerRepository {
    * @throws {Error} Une erreur si la création échoue pour une raison quelconque.
    */
   async create(coworker: Omit<Coworker, "id">): Promise<boolean> {
-    const id = crypto.randomUUID();
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
+    const id = this.generateId();
+    await withTransaction(this.pool, async (conn) => {
       await conn.query(`INSERT INTO coworker (id, name) VALUES (?, ?)`, [
         id,
         coworker.name,
       ]);
       if (coworker.roles && coworker.roles.length > 0) {
-        for (const role of coworker.roles) {
-          await conn.query(
-            `INSERT INTO coworker_role (coworker_id, role_id) VALUES (?, ?)`,
-            [id, role],
-          );
-        }
+        await conn.batch(
+          `INSERT INTO coworker_role (coworker_id, role_id) VALUES (?, ?)`,
+          coworker.roles.map((role) => [id, role]),
+        );
       }
-    } catch (error) {
-      console.error("Error creating coworker:", error);
-      throw error;
-    } finally {
-      if (conn) conn.release();
-    }
+    });
     return true;
   }
 
@@ -94,63 +81,26 @@ export default class CoworkerRepository {
    */
   async update(coworker: Partial<Coworker>): Promise<boolean> {
     if (!coworker.id) throw new Error("ID is required for update");
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
-      const fields = [];
-      const values = [];
-      if (coworker.name) {
-        fields.push("name = ?");
-        values.push(coworker.name);
-      }
-      if (fields.length > 0) {
-        values.push(coworker.id);
-        await conn.query(
-          `UPDATE coworker SET ${fields.join(", ")} WHERE id = ?`,
-          values,
-        );
+    await withConnection(this.pool, async (conn) => {
+      const set = buildSetClause({ name: coworker.name || undefined });
+      if (set) {
+        await conn.query(`UPDATE coworker SET ${set.sql} WHERE id = ?`, [
+          ...set.values,
+          coworker.id,
+        ]);
       }
       if (coworker.roles) {
         await conn.query(`DELETE FROM coworker_role WHERE coworker_id = ?`, [
           coworker.id,
         ]);
         if (coworker.roles.length > 0) {
-          for (const role of coworker.roles) {
-            await conn.query(
-              `INSERT INTO coworker_role (coworker_id, role_id) VALUES (?, ?)`,
-              [coworker.id, role],
-            );
-          }
+          await conn.batch(
+            `INSERT INTO coworker_role (coworker_id, role_id) VALUES (?, ?)`,
+            coworker.roles.map((role) => [coworker.id, role]),
+          );
         }
       }
-    } catch (error) {
-      console.error("Error updating coworker:", error);
-      throw error;
-    } finally {
-      if (conn) conn.release();
-    }
-    return true;
-  }
-
-  /**
-   * Supprime un collaborateur de la base de données en fonction de son ID.
-   * La méthode exécute une requête SQL pour supprimer le collaborateur correspondant à l'ID spécifié de la table "coworker" de la base de données.
-   * Après l'exécution de la requête de suppression, la méthode retourne un booléen indiquant si la suppression a réussi.
-   * @param {string} id - L'ID du collaborateur à supprimer de la base de données.
-   * @returns {Promise<boolean>} Indique si la suppression a réussi.
-   * @throws {Error} Une erreur si la suppression échoue pour une raison quelconque.
-   */
-  async delete(id: string): Promise<boolean> {
-    let conn;
-    try {
-      conn = await this.pool.getConnection();
-      await conn.query(`DELETE FROM coworker WHERE id = ?`, [id]);
-    } catch (error) {
-      console.error("Error deleting coworker:", error);
-      throw error;
-    } finally {
-      if (conn) conn.release();
-    }
+    });
     return true;
   }
 }

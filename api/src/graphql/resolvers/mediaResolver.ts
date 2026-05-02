@@ -1,7 +1,9 @@
 import { MediaRepository } from "../../repositories/MediaRepository";
-import { Category } from "../../types/categoryTypes";
 import { ImageFile, Media } from "../../types/mediaTypes";
-import { isValidUUID, sanitizeString } from "../../utils/validationUtils";
+import jwt from "jsonwebtoken";
+import { checkAuth, validateId } from "../../utils/validationUtils";
+import validator from "validator";
+import { sanitizeString } from "../../utils/stringUtils";
 
 const mediaResolver = {
   /**
@@ -12,7 +14,7 @@ const mediaResolver = {
    * @returns {Promise<Category[] | null | undefined>} Un tableau de catégories avec leurs médias associés, ou null/undefined si aucune catégorie n'est trouvée.
    */
   medias: async (
-    _args: any,
+    _args: Record<string, never>,
     context: { mediaRepo: MediaRepository },
   ): Promise<Media[] | null | undefined> => {
     return await context.mediaRepo.getAll();
@@ -28,13 +30,17 @@ const mediaResolver = {
    * @throws {Error} Une erreur si le fichier est manquant ou invalide.
    */
   addMedia: async (
-    _args: { input: { file: any } },
-    context: { mediaRepo: MediaRepository },
+    _args: { input: { file: any; category?: string } },
+    context: { user: jwt.JwtPayload | null; mediaRepo: MediaRepository },
   ): Promise<boolean> => {
+    checkAuth(context);
     const upload = _args.input?.file;
     if (!upload) throw new Error("File is required");
     const file: ImageFile = await (upload.promise ?? upload);
-    const result = await context.mediaRepo.add({ file });
+    let category: string | undefined;
+    if (_args.input.category && validator.isUUID(_args.input.category))
+      category = _args.input.category;
+    const result = await context.mediaRepo.add({ file, category });
     if (!result) throw new Error("Failed to add media");
     return result;
   },
@@ -49,21 +55,32 @@ const mediaResolver = {
    * @throws {Error} Une erreur si l'ID du média ou la nouvelle catégorie est manquante ou invalide.
    */
   updateMedia: async (
-    _args: { id: string; input: { label?: string; category?: string } },
-    context: { mediaRepo: MediaRepository },
+    _args: {
+      id: string;
+      input: { label?: string; category?: string; focus?: string };
+    },
+    context: { user: jwt.JwtPayload | null; mediaRepo: MediaRepository },
   ): Promise<boolean> => {
+    checkAuth(context);
+    validateId(_args.id);
     const { id, input } = _args;
-    const { label, category } = input;
-    if (!id) throw new Error("ID is required");
-    if (!isValidUUID(id)) throw new Error("Invalid ID");
+    const { label, category, focus } = input;
     let sanitizedLabel: string | undefined;
     if (label) sanitizedLabel = sanitizeString(label);
-    if (category && !isValidUUID(category))
-      throw new Error("Invalid category ID");
+    let sanitizedCategory: string | undefined;
+    if (
+      (category && validator.isUUID(category)) ||
+      category === null ||
+      category === ""
+    )
+      sanitizedCategory = category;
+    let sanitizedFocus: string | undefined;
+    if (focus) sanitizedFocus = sanitizeString(focus);
     const result = await context.mediaRepo.update({
       id,
       label: sanitizedLabel,
-      category,
+      category: sanitizedCategory,
+      focus: sanitizedFocus,
     });
     if (!result) throw new Error("Failed to update media");
     return result;
@@ -79,11 +96,11 @@ const mediaResolver = {
    */
   removeMedia: async (
     _args: { id: string },
-    context: { mediaRepo: MediaRepository },
+    context: { user: jwt.JwtPayload | null; mediaRepo: MediaRepository },
   ): Promise<boolean> => {
+    checkAuth(context);
+    validateId(_args.id);
     const { id } = _args;
-    if (!id) throw new Error("ID is required");
-    if (!isValidUUID(id)) throw new Error("Invalid ID");
     const result = await context.mediaRepo.remove(id);
     if (!result) throw new Error("Failed to remove media");
     return result;

@@ -1,11 +1,25 @@
 import CategoryRepository from "../../repositories/CategoryRepository";
 import { Category } from "../../types/categoryTypes";
 import jwt from "jsonwebtoken";
-import {
-  sanitizeString,
-  isEmpty,
-  isValidUUID,
-} from "../../utils/validationUtils";
+import { isEmpty, checkAuth, validateId } from "../../utils/validationUtils";
+import validator from "validator";
+import { sanitizeString } from "../../utils/stringUtils";
+
+/**
+ * Fonction utilitaire pour nettoyer et valider les entrées de catégorie
+ * Cette fonction prend un objet d'entrée partiel pour une catégorie (sans l'ID) et applique des transformations de nettoyage et de validation sur les champs pertinents.
+ * - Si le champ "label" est présent, il est nettoyé en supprimant les espaces superflus et les caractères indésirables.
+ * - Si le champ "entity" est présent, il est également nettoyé de la même manière que "label".
+ * - Si le champ "description" est présent, il est nettoyé de la même manière que "label".
+ * - Si le champ "parent" est présent, il est vérifié pour s'assurer qu'il s'agit d'un UUID valide. Si ce n'est pas le cas, le champ "parent" est supprimé de l'entrée.
+ * @param {Partial<Omit<Category, "id">>} input L'objet d'entrée partiel pour une catégorie, qui peut contenir les champs "label", "entity", "description" et "parent".
+ */
+function sanitizeCategoryInput(input: Partial<Omit<Category, "id">>) {
+  if (input.label) input.label = sanitizeString(input.label);
+  if (input.entity) input.entity = sanitizeString(input.entity);
+  if (input.description) input.description = sanitizeString(input.description);
+  if (input.parent && !validator.isUUID(input.parent)) delete input.parent;
+}
 
 // Résolveur GraphQL pour les opérations liées aux catégories
 const categoryResolver = {
@@ -17,7 +31,7 @@ const categoryResolver = {
    * @returns {Promise<Category[]>} Un tableau de catégories récupérées de la base de données.
    */
   categories: async (
-    _args: any,
+    _args: Record<string, never>,
     context: { categoryRepo: CategoryRepository },
   ): Promise<Category[]> => {
     return await context.categoryRepo.getAll();
@@ -36,20 +50,12 @@ const categoryResolver = {
     _args: { input: Omit<Category, "id"> },
     context: { user: jwt.JwtPayload | null; categoryRepo: CategoryRepository },
   ): Promise<boolean> => {
-    if (!context.user) throw new Error("Unauthorized");
+    checkAuth(context);
     const input = { ..._args.input };
     if (isEmpty(input.label)) throw new Error("Label is required");
-    input.label = sanitizeString(input.label);
-
     if (!input.entity || isEmpty(input.entity))
       throw new Error("Entity is required");
-    input.entity = sanitizeString(input.entity);
-
-    if (input.description)
-      input.description = sanitizeString(input.description);
-
-    if (input.parent && !isValidUUID(input.parent)) delete input.parent;
-
+    sanitizeCategoryInput(input);
     const result = await context.categoryRepo.create(input);
     if (!result) throw new Error("Failed to create category");
     return result;
@@ -68,15 +74,10 @@ const categoryResolver = {
     _args: { id: string; input: Partial<Omit<Category, "id">> },
     context: { user: jwt.JwtPayload | null; categoryRepo: CategoryRepository },
   ): Promise<boolean> => {
-    if (!context.user) throw new Error("Unauthorized");
-    if (!_args.id) throw new Error("ID is required");
-    if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
+    checkAuth(context);
+    validateId(_args.id);
     const input = { ..._args.input, id: _args.id };
-    if (input.label) input.label = sanitizeString(input.label);
-    if (input.entity) input.entity = sanitizeString(input.entity);
-    if (input.description)
-      input.description = sanitizeString(input.description);
-    if (input.parent && !isValidUUID(input.parent)) delete input.parent;
+    sanitizeCategoryInput(input);
     const result = await context.categoryRepo.update(input);
     if (!result) throw new Error("Failed to update category");
     return result;
@@ -94,9 +95,8 @@ const categoryResolver = {
     _args: { id: string },
     context: { user: jwt.JwtPayload | null; categoryRepo: CategoryRepository },
   ): Promise<boolean> => {
-    if (!context.user) throw new Error("Unauthorized");
-    if (!_args.id) throw new Error("ID is required");
-    if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
+    checkAuth(context);
+    validateId(_args.id);
     const result = await context.categoryRepo.delete(_args.id);
     if (!result) throw new Error("Failed to delete category");
     return result;

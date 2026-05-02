@@ -1,17 +1,19 @@
 // Interface représentant un projet
 export interface Project {
   id: string;
+  slug: string;
   label: string;
   thumbnail?: string;
   categories?: string[];
   website?: {
     url: string;
-    label: string;
+    label?: string;
   };
   mockup?: {
-    url: string;
-    label: string;
-    images?: { id: string; position: number }[] | string[]; // Peut être un tableau de chaînes (IDs) ou d'objets avec ID et position
+    url?: string;
+    label?: string;
+    images?: { id: string; position: number }[];
+    embed?: string;
   };
   client?: {
     label: string;
@@ -23,13 +25,10 @@ export interface Project {
   };
   startDate?: Date;
   endDate?: Date;
-  intro?: {
-    context?: string;
-    objective?: string;
-    client?: string;
-  };
+  intro?: string;
   presentation?: {
-    description?: string;
+    context?: string;
+    client?: string;
     issue?: string;
     audience?: string;
   };
@@ -63,22 +62,23 @@ export interface Project {
 // Interface représentant une ligne de projet dans la base de données, utilisée pour les opérations de lecture et d'écriture des projets dans la base de données.
 export interface ProjectRow {
   id: string;
+  slug: string;
   label: string;
   thumbnail_id?: string;
   website_url?: string;
   website_label?: string;
   mockup_url?: string;
   mockup_label?: string;
+  mockup_embed?: string;
   client_label?: string;
   client_logo_id?: string;
   manager_name?: string;
   manager_email?: string;
   start_date?: Date;
   end_date?: Date;
-  intro_context?: string;
-  intro_objective?: string;
-  intro_client?: string;
-  presentation_description?: string;
+  intro?: string;
+  presentation_context?: string;
+  presentation_client?: string;
   presentation_issue?: string;
   presentation_audience?: string;
   need_features?: string;

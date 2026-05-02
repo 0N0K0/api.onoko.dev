@@ -1,4 +1,4 @@
-// Types GraphQL pour le compte utilisateur
+// Type GraphQL pour le compte utilisateur
 export const accountTypes = `
   type Account {
     login: String!
@@ -6,10 +6,8 @@ export const accountTypes = `
   }
 `;
 
-// Requêtes GraphQL pour le compte utilisateur
-export const accountQueries = `
-  account: Account!
-`;
+// Requête GraphQL pour le compte utilisateur
+export const accountQueries = `account: Account!`;
 
 // Mutations GraphQL pour le compte utilisateur
 export const accountMutations = `

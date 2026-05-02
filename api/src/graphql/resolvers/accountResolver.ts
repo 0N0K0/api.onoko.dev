@@ -1,14 +1,17 @@
 import { hashPassword, verifyPassword } from "../../utils/passwordUtils";
 import {
-  isValidEmail,
   isValidPassword,
-  sanitizeString,
   isEmpty,
+  checkAuth,
 } from "../../utils/validationUtils";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
 import { SettingsRepository } from "../../repositories/SettingsRepository";
+import { withConnection } from "../../database/dbHelpers";
+import { getPool } from "../../database/db";
+import validator from "validator";
+import { sanitizeString } from "../../utils/stringUtils";
 
 // Résolveur GraphQL pour les opérations liées au compte utilisateur
 const accountResolver = {
@@ -20,13 +23,13 @@ const accountResolver = {
    * @throws {Error} Une erreur si l'utilisateur n'est pas authentifié.
    */
   account: async (
-    _args: any,
+    _args: Record<string, never>,
     context: {
       user: jwt.JwtPayload | null;
       settingsRepo: SettingsRepository;
     },
   ): Promise<{ login: string | null; email: string | null }> => {
-    if (!context.user) throw new Error("Unauthorized");
+    checkAuth(context);
 
     const login = await context.settingsRepo.get("login");
     const email = await context.settingsRepo.get("email");
@@ -54,7 +57,7 @@ const accountResolver = {
       settingsRepo: SettingsRepository;
     },
   ): Promise<{ login: string | null; email: string | null }> => {
-    if (!context.user) throw new Error("Unauthorized");
+    checkAuth(context);
 
     const storedHash = await context.settingsRepo.get("password_hash");
     if (!storedHash || !(await verifyPassword(_args.oldPassword, storedHash))) {
@@ -67,13 +70,13 @@ const accountResolver = {
     }
     if (_args.email) {
       const email = sanitizeString(_args.email);
-      if (!isValidEmail(email)) throw new Error("Invalid email");
+      if (!validator.isEmail(email)) throw new Error("Invalid email");
       await context.settingsRepo.set("email", email);
     }
     if (_args.newPassword) {
       if (!isValidPassword(_args.newPassword)) {
         throw new Error(
-          "Password trop faible (min 8 caractères, maj, min, chiffre)",
+          "Password trop faible (min 20 caractères, maj, min, chiffre, symbole)",
         );
       }
       const hash = await hashPassword(_args.newPassword);
@@ -99,18 +102,19 @@ const accountResolver = {
     if (!storedEmail || storedEmail !== _args.email) return true; // Ne pas révéler l'existence
     const token = crypto.randomBytes(32).toString("hex");
     const expires = new Date(Date.now() + 1000 * 60 * 15); // 15 min
-    const pool = context.settingsRepo["pool"];
-    let conn;
-    try {
-      conn = await pool.getConnection();
+    const pool = getPool();
+    await withConnection(pool, async (conn) => {
+      await conn.query(
+        "DELETE FROM password_reset_tokens WHERE expires < NOW()",
+      );
       await conn.query(
         "INSERT INTO password_reset_tokens (token, email, expires) VALUES (?, ?, ?)",
         [token, _args.email, expires],
       );
-    } finally {
-      if (conn) conn.release();
-    }
-    const resetUrl = `${process.env.RESET_URL || "http://localhost:4000"}?token=${token}`;
+    });
+
+    if (!process.env.RESET_URL) throw new Error("RESET_URL is not defined");
+    const resetUrl = `${process.env.RESET_URL}?token=${token}`;
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: Number(process.env.SMTP_PORT),
@@ -147,11 +151,12 @@ const accountResolver = {
     const { token, newPassword } = _args;
     if (isEmpty(token) || isEmpty(newPassword))
       throw new Error("Token and newPassword required");
-    const pool = context.settingsRepo["pool"];
-    let conn;
+    const pool = getPool();
     let entry;
-    try {
-      conn = await pool.getConnection();
+    await withConnection(pool, async (conn) => {
+      await conn.query(
+        "DELETE FROM password_reset_tokens WHERE expires < NOW()",
+      );
       const rows = await conn.query(
         "SELECT email, expires FROM password_reset_tokens WHERE token = ?",
         [token],
@@ -161,9 +166,7 @@ const accountResolver = {
       if (new Date(entry.expires).getTime() < Date.now()) {
         throw new Error("Invalid or expired token");
       }
-    } finally {
-      if (conn) conn.release();
-    }
+    });
     if (!isValidPassword(newPassword)) {
       throw new Error(
         "Password trop faible (min 20 caractères, maj, min, chiffre, symbole)",
@@ -171,15 +174,9 @@ const accountResolver = {
     }
     const hash = await hashPassword(newPassword);
     await context.settingsRepo.set("password_hash", hash);
-    // Supprime le token en base
-    try {
-      conn = await pool.getConnection();
-      await conn.query("DELETE FROM password_reset_tokens WHERE token = ?", [
-        token,
-      ]);
-    } finally {
-      if (conn) conn.release();
-    }
+    await withConnection(pool, (conn) =>
+      conn.query("DELETE FROM password_reset_tokens WHERE token = ?", [token]),
+    );
     return true;
   },
 };

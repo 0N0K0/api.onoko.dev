@@ -2,6 +2,7 @@
 export const projectTypes = `
     type Project {
         id: ID!
+        slug: String
         label: String!
         thumbnail: ID
         categories: [ID!]
@@ -11,7 +12,7 @@ export const projectTypes = `
         manager: Manager
         startDate: String
         endDate: String
-        intro: Intro
+        intro: String
         presentation: Presentation
         need: Need
         organization: Organization
@@ -27,10 +28,16 @@ export const projectTypes = `
         label: String!
     }
 
+    type MockupImage {
+        id: ID!
+        position: Int!
+    }
+
     type Mockup {
         url: String!
         label: String!
-        images: [ID!]
+        images: [MockupImage!]
+        embed: String
     }
 
     type Client {
@@ -43,14 +50,9 @@ export const projectTypes = `
         email: String
     }
 
-    type Intro {
-        context: String
-        objective: String
-        client: String
-    }
-
     type Presentation {
-        description: String
+        context: String
+        client: String
         issue: String
         audience: String
     }
@@ -92,18 +94,22 @@ export const projectTypes = `
         client: String
     }
 `;
-
-// Types GraphQL pour les entrées de projet (utilisées pour les mutations)
 export const projectInputs = `
     input WebsiteInput {
         url: String!
         label: String!
     }
 
+    input MockupImageInput {
+        id: ID!
+        position: Int!
+    }
+
     input MockupInput {
         url: String!
         label: String!
-        images: [ID!]
+        images: [MockupImageInput!]
+        embed: String
     }
     
     input ClientInput {
@@ -116,14 +122,9 @@ export const projectInputs = `
         email: String
     }
 
-    input IntroInput {
-        context: String
-        objective: String
-        client: String
-    }
-
     input PresentationInput {
-        description: String
+        context: String
+        client: String
         issue: String
         audience: String
     }
@@ -166,6 +167,7 @@ export const projectInputs = `
     }
     
     input ProjectInput {
+        slug: String
         label: String!
         thumbnail: ID
         categories: [ID!]
@@ -175,7 +177,7 @@ export const projectInputs = `
         manager: ManagerInput
         startDate: String
         endDate: String
-        intro: IntroInput
+        intro: String
         presentation: PresentationInput
         need: NeedInput
         organization: OrganizationInput
@@ -187,11 +189,8 @@ export const projectInputs = `
     }
 `;
 
-// Requêtes GraphQL pour les projets
-export const projectQueries = `
-    projects: [Project!]!
-    project(id: ID!): Project
-`;
+// Requête GraphQL pour les projets
+export const projectQueries = `projects: [Project!]!`;
 
 // Mutations GraphQL pour les projets
 export const projectMutations = `

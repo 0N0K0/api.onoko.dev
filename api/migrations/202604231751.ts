@@ -2,14 +2,14 @@ import { Pool } from "mariadb/*";
 import { MigrationParams } from "umzug";
 
 /**
- * Migration pour ajouter une colonne "position" à la table "project_mockup".
+ * Migration pour ajouter une colonne "focus" à la table "medias".
  */
 
 export async function up({ context: pool }: MigrationParams<Pool>) {
   const conn = await pool.getConnection();
   try {
     await conn.query(
-      `ALTER TABLE project_mockup ADD COLUMN IF NOT EXISTS position INT;`,
+      `ALTER TABLE medias ADD COLUMN IF NOT EXISTS focus VARCHAR(255);`,
     );
   } finally {
     conn.release();
@@ -19,9 +19,7 @@ export async function up({ context: pool }: MigrationParams<Pool>) {
 export async function down({ context: pool }: MigrationParams<Pool>) {
   const conn = await pool.getConnection();
   try {
-    await conn.query(
-      `ALTER TABLE project_mockup DROP COLUMN IF EXISTS position;`,
-    );
+    await conn.query(`ALTER TABLE medias DROP COLUMN IF EXISTS focus;`);
   } finally {
     conn.release();
   }

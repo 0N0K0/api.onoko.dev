@@ -1,11 +1,8 @@
 import RoleRepository from "../../repositories/RoleRepository";
 import { Role } from "../../types/roleTypes";
 import jwt from "jsonwebtoken";
-import {
-  sanitizeString,
-  isEmpty,
-  isValidUUID,
-} from "../../utils/validationUtils";
+import { isEmpty, checkAuth, validateId } from "../../utils/validationUtils";
+import { sanitizeString } from "../../utils/stringUtils";
 
 // Résolveur GraphQL pour les opérations liées aux rôles
 const roleResolver = {
@@ -17,7 +14,7 @@ const roleResolver = {
    * @returns {Promise<Role[]>} Un tableau de rôles récupérés de la base de données.
    */
   roles: async (
-    _args: any,
+    _args: Record<string, never>,
     context: { roleRepo: RoleRepository },
   ): Promise<Role[]> => {
     return await context.roleRepo.getAll();
@@ -36,7 +33,7 @@ const roleResolver = {
     _args: { input: Omit<Role, "id"> },
     context: { user: jwt.JwtPayload | null; roleRepo: RoleRepository },
   ): Promise<boolean> => {
-    if (!context.user) throw new Error("Unauthorized");
+    checkAuth(context);
     const input = { ..._args.input };
     if (isEmpty(input.label)) throw new Error("Label is required");
     input.label = sanitizeString(input.label);
@@ -58,9 +55,8 @@ const roleResolver = {
     _args: { id: string; input: Partial<Omit<Role, "id">> },
     context: { user: jwt.JwtPayload | null; roleRepo: RoleRepository },
   ): Promise<boolean> => {
-    if (!context.user) throw new Error("Unauthorized");
-    if (!_args.id) throw new Error("ID is required");
-    if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
+    checkAuth(context);
+    validateId(_args.id);
     const input = { ..._args.input, id: _args.id };
     if (input.label) input.label = sanitizeString(input.label);
     const result = await context.roleRepo.update(input);
@@ -80,9 +76,8 @@ const roleResolver = {
     _args: { id: string },
     context: { user: jwt.JwtPayload | null; roleRepo: RoleRepository },
   ): Promise<boolean> => {
-    if (!context.user) throw new Error("Unauthorized");
-    if (!_args.id) throw new Error("ID is required");
-    if (!isValidUUID(_args.id)) throw new Error("Invalid ID");
+    checkAuth(context);
+    validateId(_args.id);
     const result = await context.roleRepo.delete(_args.id);
     if (!result) throw new Error("Failed to delete role");
     return result;

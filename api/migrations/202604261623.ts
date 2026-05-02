@@ -2,13 +2,15 @@ import { Pool } from "mariadb/*";
 import { MigrationParams } from "umzug";
 
 /**
- * Migration pour modifier la colonne "category" de la table "media" pour qu'elle puisse être nulle, afin de permettre aux médias de ne pas être associés à une catégorie spécifique.
+ * Migration pour ajouter une colonne "slug" à la table "project".
  */
 
 export async function up({ context: pool }: MigrationParams<Pool>) {
   const conn = await pool.getConnection();
   try {
-    await conn.query(`ALTER TABLE medias ADD COLUMN label VARCHAR(255);`);
+    await conn.query(
+      `ALTER TABLE project ADD COLUMN IF NOT EXISTS slug VARCHAR(255);`,
+    );
   } finally {
     conn.release();
   }
@@ -17,7 +19,7 @@ export async function up({ context: pool }: MigrationParams<Pool>) {
 export async function down({ context: pool }: MigrationParams<Pool>) {
   const conn = await pool.getConnection();
   try {
-    await conn.query(`ALTER TABLE medias DROP COLUMN label;`);
+    await conn.query(`ALTER TABLE project DROP COLUMN IF EXISTS slug;`);
   } finally {
     conn.release();
   }
