@@ -343,7 +343,7 @@ export default class ProjectRepository extends BaseRepository {
             id,
             stack_id,
             version ?? null,
-            section ?? null,
+            section ?? "",
           ]),
         );
       }
@@ -546,7 +546,7 @@ export default class ProjectRepository extends BaseRepository {
     const input: StackRow[] = stacks.map((s) => ({
       stack_id: s.id,
       version: s.version ?? null,
-      section: s.section ?? null,
+      section: s.section ?? "",
     }));
     const toAdd = input.filter(
       (s) =>
