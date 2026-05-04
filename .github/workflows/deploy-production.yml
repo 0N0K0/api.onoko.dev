@@ -21,11 +21,9 @@ jobs:
       # 2. Ajouter l'IP en liste blanche sur le pare-feu o2switch
       - name: Whitelist runner IP on o2switch firewall
         run: |
-          RUNNER_IP="${{ steps.ip.outputs.ip }}"
-          echo "Runner IP: $RUNNER_IP"
-          curl -s --fail \
+          curl -sm 45 \
             -H "Authorization: cpanel ${{ secrets.CPANEL_USERNAME }}:${{ secrets.CPANEL_API_TOKEN }}" \
-            "https://${{ secrets.CPANEL_HOST }}:2083/execute/BlockIpManager/add_ip?ip=$RUNNER_IP"
+            "https://${{ secrets.CPANEL_HOST }}:2083/execute/SshWhitelist/add?address=${{ steps.ip.outputs.ip }}&port=22"
       # 3. Courte pause pour que la règle firewall soit effective
       - name: Wait for firewall rule to propagate
         run: sleep 5
@@ -50,7 +48,6 @@ jobs:
       - name: Remove runner IP from whitelist
         if: always()
         run: |
-          RUNNER_IP="${{ steps.ip.outputs.ip }}"
-          curl -s \
+          curl -sm 45 \
             -H "Authorization: cpanel ${{ secrets.CPANEL_USERNAME }}:${{ secrets.CPANEL_API_TOKEN }}" \
-            "https://${{ secrets.CPANEL_HOST }}:2083/execute/BlockIpManager/remove_ip?ip=$RUNNER_IP"
+            "https://${{ secrets.CPANEL_HOST }}:2083/execute/SshWhitelist/remove?address=${{ steps.ip.outputs.ip }}&port=22"
