@@ -10,12 +10,28 @@ import type mariadb from "mariadb";
  * @param {mariadb.Pool} pool - Le pool de connexions à la base de données MariaDB.
  */
 export async function runMigrations(pool: mariadb.Pool) {
-  const isProd =
-    process.env.NODE_ENV === "production" ||
-    fs.existsSync(path.join(process.cwd(), "migrations", "202603252047.js"));
-  const migrationsPath = isProd
-    ? path.join(process.cwd(), "migrations", "*.js")
-    : path.join(process.cwd(), "migrations", "*.ts");
+  const distMigrationsGlob = path.join(
+    process.cwd(),
+    "dist",
+    "migrations",
+    "*.js",
+  );
+  const rootJsMigrationsGlob = path.join(process.cwd(), "migrations", "*.js");
+  const rootTsMigrationsGlob = path.join(process.cwd(), "migrations", "*.ts");
+
+  const hasDistMigrations = fs.existsSync(
+    path.join(process.cwd(), "dist", "migrations"),
+  );
+  const hasRootJsMigrations = fs.existsSync(
+    path.join(process.cwd(), "migrations", "202603252047.js"),
+  );
+
+  const migrationsPath =
+    process.env.NODE_ENV === "production" || hasDistMigrations
+      ? distMigrationsGlob
+      : hasRootJsMigrations
+        ? rootJsMigrationsGlob
+        : rootTsMigrationsGlob;
 
   const umzug = new Umzug({
     migrations: { glob: migrationsPath },
