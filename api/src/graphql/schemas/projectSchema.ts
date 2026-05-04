@@ -34,8 +34,8 @@ export const projectTypes = `
     }
 
     type Mockup {
-        url: String!
-        label: String!
+        url: String
+        label: String
         images: [MockupImage!]
         embed: String
     }
@@ -106,8 +106,8 @@ export const projectInputs = `
     }
 
     input MockupInput {
-        url: String!
-        label: String!
+        url: String
+        label: String
         images: [MockupImageInput!]
         embed: String
     }
