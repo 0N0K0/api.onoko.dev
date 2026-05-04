@@ -1,0 +1,56 @@
+name: deploy-production
+run-name: Deploy Production 🚀
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - prod
+
+jobs:
+  deploy:
+    name: Deploy
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Récupérer l'IP publique du runner
+      - name: Get runner public IP
+        id: ip
+        run: echo "ip=$(curl -s https://api.ipify.org)" >> $GITHUB_OUTPUT
+      # 2. Ajouter l'IP en liste blanche sur le pare-feu o2switch
+      - name: Whitelist runner IP on o2switch firewall
+        run: |
+          RUNNER_IP="${{ steps.ip.outputs.ip }}"
+          echo "Runner IP: $RUNNER_IP"
+          curl -s --fail \
+            -H "Authorization: cpanel ${{ secrets.CPANEL_USERNAME }}:${{ secrets.CPANEL_API_TOKEN }}" \
+            "https://${{ secrets.CPANEL_HOST }}:2083/execute/BlockIpManager/add_ip?ip=$RUNNER_IP"
+      # 3. Courte pause pour que la règle firewall soit effective
+      - name: Wait for firewall rule to propagate
+        run: sleep 5
+      # 4. Checkout du code
+      - name: Checkout repository ⬇️
+        uses: actions/checkout@v2
+      # 5. Déploiement SSH
+      - name: Open SSH and deploy 🚀
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.CPANEL_HOST }}
+          username: ${{ secrets.CPANEL_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            cd ~/api.onoko.dev
+            git pull origin prod
+            cd ./api
+            npm install
+            npm run build
+      # 6. Retirer l'IP de la liste blanche (nettoyage)
+      - name: Remove runner IP from whitelist
+        if: always()
+        run: |
+          RUNNER_IP="${{ steps.ip.outputs.ip }}"
+          curl -s \
+            -H "Authorization: cpanel ${{ secrets.CPANEL_USERNAME }}:${{ secrets.CPANEL_API_TOKEN }}" \
+            "https://${{ secrets.CPANEL_HOST }}:2083/execute/BlockIpManager/remove_ip?ip=$RUNNER_IP"
