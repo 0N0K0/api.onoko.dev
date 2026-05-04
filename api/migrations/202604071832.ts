@@ -9,7 +9,7 @@ export async function up({ context: pool }: MigrationParams<Pool>) {
   const conn = await pool.getConnection();
   try {
     await conn.query(
-      `ALTER TABLE medias MODIFY COLUMN category VARCHAR(255) NULL;`,
+      `ALTER TABLE IF EXISTS medias MODIFY COLUMN IF EXISTS category VARCHAR(255) NULL;`,
     );
   } finally {
     conn.release();
@@ -20,7 +20,7 @@ export async function down({ context: pool }: MigrationParams<Pool>) {
   const conn = await pool.getConnection();
   try {
     await conn.query(
-      `ALTER TABLE medias MODIFY COLUMN category VARCHAR(255) NOT NULL;`,
+      `ALTER TABLE IF EXISTS medias MODIFY COLUMN IF EXISTS category VARCHAR(255) NOT NULL;`,
     );
   } finally {
     conn.release();
