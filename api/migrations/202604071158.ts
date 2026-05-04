@@ -21,26 +21,34 @@ export async function up({ context: pool }: MigrationParams<Pool>) {
           category VARCHAR(255) NOT NULL,
           FOREIGN KEY (category) REFERENCES category(id) ON DELETE CASCADE
       );`);
-    await conn.query(`ALTER TABLE stack MODIFY COLUMN icon VARCHAR(255) NULL;`);
-    await conn.query(`UPDATE stack SET icon = NULL WHERE icon IS NOT NULL;`);
+    await conn.query(
+      `ALTER TABLE IF EXISTS stack MODIFY COLUMN IF EXISTS icon VARCHAR(255) NULL;`,
+    );
+    const [iconExists] = await conn.query(
+      `SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stack' AND COLUMN_NAME = 'icon'`,
+    );
+    if (iconExists) {
+      await conn.query(`UPDATE stack SET icon = NULL WHERE icon IS NOT NULL;`);
+    }
     await conn.query(`
-      ALTER TABLE stack
-      CHANGE COLUMN icon icon_id VARCHAR(255),
+      ALTER TABLE IF EXISTS stack
+      CHANGE COLUMN IF EXISTS icon icon_id VARCHAR(255),
       ADD FOREIGN KEY (icon_id) REFERENCES medias(id) ON DELETE SET NULL
     `);
     await conn.query(`
-      ALTER TABLE project
-      CHANGE COLUMN thumbnail thumbnail_id VARCHAR(255),
+      ALTER TABLE IF EXISTS project
+      CHANGE COLUMN IF EXISTS thumbnail thumbnail_id VARCHAR(255),
       ADD FOREIGN KEY (thumbnail_id) REFERENCES medias(id) ON DELETE SET NULL
     `);
     await conn.query(`
-      ALTER TABLE project
-      CHANGE COLUMN client_logo client_logo_id VARCHAR(255),
+      ALTER TABLE IF EXISTS project
+      CHANGE COLUMN IF EXISTS client_logo client_logo_id VARCHAR(255),
       ADD FOREIGN KEY (client_logo_id) REFERENCES medias(id) ON DELETE SET NULL;
     `);
     await conn.query(`
-      ALTER TABLE project_mockup
-      CHANGE COLUMN mockup media_id VARCHAR(255),
+      ALTER TABLE IF EXISTS project_mockup
+      CHANGE COLUMN IF EXISTS mockup media_id VARCHAR(255),
       ADD FOREIGN KEY (media_id) REFERENCES medias(id) ON DELETE CASCADE;
       `);
   } finally {
@@ -52,19 +60,19 @@ export async function down({ context: pool }: MigrationParams<Pool>) {
   const conn = await pool.getConnection();
   try {
     await conn.query(`
-      ALTER TABLE project
+      ALTER TABLE IF EXISTS project
       DROP FOREIGN KEY project_thumbnail_id_foreign,
-      CHANGE COLUMN thumbnail_id thumbnail VARCHAR(255);
+      CHANGE COLUMN IF EXISTS thumbnail_id thumbnail VARCHAR(255);
     `);
     await conn.query(`
-      ALTER TABLE project
+      ALTER TABLE IF EXISTS project
       DROP FOREIGN KEY project_client_logo_id_foreign,
-      CHANGE COLUMN client_logo_id client_logo VARCHAR(255);
+      CHANGE COLUMN IF EXISTS client_logo_id client_logo VARCHAR(255);
     `);
     await conn.query(`
-      ALTER TABLE project_mockup
+      ALTER TABLE IF EXISTS project_mockup
       DROP FOREIGN KEY project_mockup_media_id_foreign,
-      CHANGE COLUMN media_id mockup VARCHAR(255);
+      CHANGE COLUMN IF EXISTS media_id mockup VARCHAR(255);
      `);
     await conn.query(`
       DROP TABLE IF EXISTS medias;

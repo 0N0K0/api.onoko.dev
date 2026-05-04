@@ -9,7 +9,7 @@ export async function up({ context: pool }: MigrationParams<Pool>) {
   const conn = await pool.getConnection();
   try {
     await conn.query(
-      `ALTER TABLE project ADD COLUMN IF NOT EXISTS slug VARCHAR(255);`,
+      `ALTER TABLE IF EXISTS project ADD COLUMN IF NOT EXISTS slug VARCHAR(255);`,
     );
   } finally {
     conn.release();
@@ -19,7 +19,9 @@ export async function up({ context: pool }: MigrationParams<Pool>) {
 export async function down({ context: pool }: MigrationParams<Pool>) {
   const conn = await pool.getConnection();
   try {
-    await conn.query(`ALTER TABLE project DROP COLUMN IF EXISTS slug;`);
+    await conn.query(
+      `ALTER TABLE IF EXISTS project DROP COLUMN IF EXISTS slug;`,
+    );
   } finally {
     conn.release();
   }
