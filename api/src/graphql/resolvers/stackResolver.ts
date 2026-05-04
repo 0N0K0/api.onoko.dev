@@ -20,8 +20,8 @@ function sanitizeStackInput(input: Partial<Omit<Stack, "id">>) {
   if (input.label) input.label = sanitizeString(input.label);
   if (input.icon && !validator.isUUID(input.icon as string)) delete input.icon;
   if (input.description) input.description = sanitizeString(input.description);
-  if (input.versions) input.versions = input.versions.map(sanitizeString);
-  if (input.skills) input.skills = input.skills.map(sanitizeString);
+  if (input.versions) input.versions = input.versions.map((v) => sanitizeString(v));
+  if (input.skills) input.skills = input.skills.map((s) => sanitizeString(s));
   if (input.category && !validator.isUUID(input.category as string))
     delete input.category;
 }
