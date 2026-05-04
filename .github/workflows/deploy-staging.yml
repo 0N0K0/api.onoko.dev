@@ -41,7 +41,7 @@ jobs:
           script: |
             cd ~/api.s8sfgknu.onoko.dev
             git pull origin main
-            cd ./api
+            source /home/kono7602/nodevenv/api.s8sfgknu.onoko.dev/api/24/bin/activate && cd /home/kono7602/api.s8sfgknu.onoko.dev/api
             npm install
             npm run build
       # 6. Retirer l'IP de la liste blanche (nettoyage)
