@@ -6,6 +6,7 @@ export const projectTypes = `
         label: String!
         thumbnail: ID
         categories: [ID!]
+        pined: Boolean
         website: Website
         mockup: Mockup
         client: Client
@@ -171,6 +172,7 @@ export const projectInputs = `
         label: String!
         thumbnail: ID
         categories: [ID!]
+        pined: Boolean
         website: WebsiteInput
         mockup: MockupInput
         client: ClientInput

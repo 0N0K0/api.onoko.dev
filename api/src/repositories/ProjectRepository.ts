@@ -139,6 +139,7 @@ export default class ProjectRepository extends BaseRepository {
       slug: projectRow.slug,
       label: projectRow.label,
       thumbnail: projectRow.thumbnail_id,
+      pined: projectRow.pined,
       startDate: projectRow.start_date,
       endDate: projectRow.end_date,
       categories: relations.categories,
@@ -260,13 +261,14 @@ export default class ProjectRepository extends BaseRepository {
       // Insère le projet principal
       await conn.query(
         `INSERT INTO project (
-          id, slug, label, thumbnail_id, website_url, website_label, mockup_url, mockup_label, mockup_embed, client_label, client_logo_id, manager_name, manager_email, start_date, end_date, intro, presentation_context, presentation_client, presentation_issue, presentation_audience, need_features, need_functional_constraints, need_technical_constraints, organization_workload, organization_anticipation, organization_methodology, organization_evolution, organization_validation, feedback, feedback_client, kpis_issues, kpis_points, kpis_commits, kpis_pull_requests
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          id, slug, label, thumbnail_id, pined, website_url, website_label, mockup_url, mockup_label, mockup_embed, client_label, client_logo_id, manager_name, manager_email, start_date, end_date, intro, presentation_context, presentation_client, presentation_issue, presentation_audience, need_features, need_functional_constraints, need_technical_constraints, organization_workload, organization_anticipation, organization_methodology, organization_evolution, organization_validation, feedback, feedback_client, kpis_issues, kpis_points, kpis_commits, kpis_pull_requests
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
           project.slug,
           project.label,
           project.thumbnail || null,
+          project.pined || false,
           project.website?.url || null,
           project.website?.label || null,
           project.mockup?.url || null,
@@ -341,7 +343,7 @@ export default class ProjectRepository extends BaseRepository {
             id,
             stack_id,
             version ?? null,
-            section ?? null,
+            section ?? "",
           ]),
         );
       }
@@ -366,6 +368,7 @@ export default class ProjectRepository extends BaseRepository {
         slug: project.slug,
         label: project.label,
         thumbnail_id: project.thumbnail,
+        pined: project.pined,
         website_url: project.website?.url,
         website_label: project.website?.label,
         mockup_url: project.mockup?.url,
@@ -543,7 +546,7 @@ export default class ProjectRepository extends BaseRepository {
     const input: StackRow[] = stacks.map((s) => ({
       stack_id: s.id,
       version: s.version ?? null,
-      section: s.section ?? null,
+      section: s.section ?? "",
     }));
     const toAdd = input.filter(
       (s) =>

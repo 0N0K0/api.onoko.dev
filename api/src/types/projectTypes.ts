@@ -5,6 +5,7 @@ export interface Project {
   label: string;
   thumbnail?: string;
   categories?: string[];
+  pined?: boolean;
   website?: {
     url: string;
     label?: string;
@@ -65,6 +66,7 @@ export interface ProjectRow {
   slug: string;
   label: string;
   thumbnail_id?: string;
+  pined?: boolean;
   website_url?: string;
   website_label?: string;
   mockup_url?: string;
