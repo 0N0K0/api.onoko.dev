@@ -23,10 +23,36 @@ export function slugify(text: string): string {
 /**
  * Nettoie une chaîne pour éviter les injections XSS
  * @param {string} str La chaîne à nettoyer
+ * @param {{ preserveEntities?: boolean }} [options] Options de nettoyage
  * @return {string} La chaîne nettoyée
  */
-export function sanitizeString(str: string): string {
-  return validator.escape(str.trim());
+export function sanitizeString(
+  str: string,
+  options?: { preserveEntities?: boolean },
+): string {
+  const trimmed = str.trim();
+
+  if (!options?.preserveEntities) {
+    return validator.escape(trimmed);
+  }
+
+  const preservedEntities = ["&shy;", "&#8203;", "&nbsp;"];
+  const placeholders = new Map<string, string>();
+  let protectedValue = trimmed;
+
+  preservedEntities.forEach((entity, index) => {
+    const token = `__ENTITY_${index}__`;
+    const re = new RegExp(entity.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
+    protectedValue = protectedValue.replace(re, token);
+    placeholders.set(token, entity);
+  });
+
+  let escaped = validator.escape(protectedValue);
+  placeholders.forEach((entity, token) => {
+    escaped = escaped.replaceAll(token, entity);
+  });
+
+  return escaped;
 }
 
 /**

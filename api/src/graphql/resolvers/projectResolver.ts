@@ -41,14 +41,18 @@ function sanitizeProjectInput(input: Partial<Omit<Project, "id">>): void {
         throw new Error("Invalid website URL");
     }
     if (input.website.label)
-      input.website.label = sanitizeString(input.website.label);
+      input.website.label = sanitizeString(input.website.label, {
+        preserveEntities: true,
+      });
   }
   if (input.mockup) {
     if (input.mockup.url) {
       if (!isValidUrl(input.mockup.url)) throw new Error("Invalid mockup URL");
     }
     if (input.mockup.label)
-      input.mockup.label = sanitizeString(input.mockup.label);
+      input.mockup.label = sanitizeString(input.mockup.label, {
+        preserveEntities: true,
+      });
     if (input.mockup.images) {
       for (const [i, image] of input.mockup.images.entries()) {
         if (!validator.isUUID(image.id)) delete input.mockup.images[i];
@@ -61,15 +65,18 @@ function sanitizeProjectInput(input: Partial<Omit<Project, "id">>): void {
   }
   if (input.client) {
     if (input.client.label)
-      input.client.label = sanitizeString(input.client.label);
+      input.client.label = sanitizeString(input.client.label, {
+        preserveEntities: true,
+      });
     if (input.client.logo && !validator.isUUID(input.client.logo as string))
       delete input.client.logo;
   }
   if (input.manager) {
     if (input.manager.name)
-      input.manager.name = sanitizeString(input.manager.name);
+      input.manager.name = sanitizeString(input.manager.name, {
+        preserveEntities: true,
+      });
     if (input.manager.email) {
-      input.manager.email = sanitizeString(input.manager.email);
       if (!validator.isEmail(input.manager.email))
         throw new Error("Invalid manager email");
     }
@@ -208,7 +215,7 @@ const projectResolver = {
     checkAuth(context);
     const input = { ..._args.input };
     if (isEmpty(input.label)) throw new Error("Label is required");
-    input.label = sanitizeString(input.label);
+    input.label = sanitizeString(input.label, { preserveEntities: true });
     sanitizeProjectInput(input);
     if (isEmpty(input.slug)) input.slug = slugify(input.label);
     const result = await context.projectRepo.create(input);
@@ -233,7 +240,8 @@ const projectResolver = {
     validateId(_args.id);
 
     const input = { ..._args.input, id: _args.id };
-    if (input.label) input.label = sanitizeString(input.label);
+    if (input.label)
+      input.label = sanitizeString(input.label, { preserveEntities: true });
     sanitizeProjectInput(input);
     const result = await context.projectRepo.update(_args.id, input);
     if (!result) throw new Error("Failed to update project");
