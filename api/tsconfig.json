@@ -9,15 +9,8 @@
     "rootDir": "./src",
     "strict": true,
     "esModuleInterop": true,
-    "typeRoots": [
-      "./src/types",
-      "./node_modules/@types"
-    ],
+    "typeRoots": ["./src/types", "./node_modules/@types"],
     "skipLibCheck": true
-  }
-  ,
-  "include": [
-    "src",
-    "../migrations"
-  ]
+  },
+  "include": ["src"]
 }

@@ -3,4 +3,5 @@
 /api/tsconfig.tsbuild.json
 /api/.env
 /api/umzug.json
-/api/public/*
+/api/public
+/api/dist
