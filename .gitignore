@@ -1,7 +1,7 @@
-/api/node_modules
-/api/package-lock.json
-/api/tsconfig.tsbuild.json
-/api/.env
-/api/umzug.json
-/api/public
-/api/dist
+node_modules
+package-lock.json
+tsconfig.tsbuild.json
+.env
+umzug.json
+public
+dist
