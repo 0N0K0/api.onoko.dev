@@ -41,9 +41,8 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script: |
-            cd ~/api.onoko.dev
+            source /home/kono7602/nodevenv/api.onoko.dev/24/bin/activate && cd /home/kono7602/api.onoko.dev
             git pull origin prod
-            source /home/kono7602/nodevenv/api.onoko.dev/api/24/bin/activate && cd /home/kono7602/api.onoko.dev/api
             npm install --include=dev
             npm run build
       # 6. Retirer l'IP de la liste blanche (nettoyage)
