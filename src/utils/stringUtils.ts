@@ -1,4 +1,3 @@
-import validator from "validator";
 import sanitizeHtml from "sanitize-html";
 
 /**
@@ -30,10 +29,17 @@ export function sanitizeString(
   str: string,
   options?: { preserveEntities?: boolean },
 ): string {
-  const trimmed = str.trim();
+  const trimmed = str.trim().normalize("NFC");
+
+  const sanitizePlainText = (value: string): string =>
+    sanitizeHtml(value, {
+      allowedTags: [],
+      allowedAttributes: {},
+      disallowedTagsMode: "discard",
+    });
 
   if (!options?.preserveEntities) {
-    return validator.escape(trimmed);
+    return sanitizePlainText(trimmed);
   }
 
   const preservedEntities = ["&shy;", "&#8203;", "&nbsp;"];
@@ -47,7 +53,7 @@ export function sanitizeString(
     placeholders.set(token, entity);
   });
 
-  let escaped = validator.escape(protectedValue);
+  let escaped = sanitizePlainText(protectedValue);
   placeholders.forEach((entity, token) => {
     escaped = escaped.replaceAll(token, entity);
   });
