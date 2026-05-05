@@ -26,7 +26,7 @@ export const projectTypes = `
 
     type Website {
         url: String!
-        label: String!
+        label: String
     }
 
     type MockupImage {
