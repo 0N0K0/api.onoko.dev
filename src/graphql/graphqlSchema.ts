@@ -49,6 +49,12 @@ import {
   mediaTypes,
 } from "./schemas/mediaSchema";
 import mediaResolver from "./resolvers/mediaResolver";
+import {
+  settingsMutations,
+  settingsQueries,
+  settingsTypes,
+} from "./schemas/settingsSchema";
+import settingsResolver from "./resolvers/settingsResolver";
 
 /**
  * Construit le schéma GraphQL en combinant les types, requêtes et mutations de tous les modules.
@@ -70,6 +76,7 @@ export function getSchema() {
     ${coworkerInputs}
     ${projectTypes}
     ${projectInputs}
+    ${settingsTypes}
     type Query {
       ${accountQueries}
       ${categoryQueries}
@@ -78,6 +85,7 @@ export function getSchema() {
       ${coworkerQueries}
       ${projectQueries}
       ${mediaQueries}
+      ${settingsQueries}
     }
     type Mutation {
       ${authMutations}
@@ -88,6 +96,7 @@ export function getSchema() {
       ${coworkerMutations}
       ${projectMutations}
       ${mediaMutations}
+      ${settingsMutations}
     }
   `);
 }
@@ -106,5 +115,6 @@ export function getRoot() {
     ...coworkerResolver,
     ...projectResolver,
     ...mediaResolver,
+    ...settingsResolver,
   };
 }

@@ -39,6 +39,7 @@ export async function initAdmin(
   await settingsRepo.set("login", INIT_LOGIN);
   await settingsRepo.set("password_hash", hash);
   await settingsRepo.set("email", INIT_EMAIL);
+  await settingsRepo.set("maintenance", "true");
 
   console.log("Initial admin credentials set.");
 }
