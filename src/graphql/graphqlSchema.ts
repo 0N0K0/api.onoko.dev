@@ -55,6 +55,8 @@ import {
   settingsTypes,
 } from "./schemas/settingsSchema";
 import settingsResolver from "./resolvers/settingsResolver";
+import { contactMutation, contactTypes } from "./schemas/contactSchema";
+import contactResolver from "./resolvers/contactResolver";
 
 /**
  * Construit le schéma GraphQL en combinant les types, requêtes et mutations de tous les modules.
@@ -77,6 +79,7 @@ export function getSchema() {
     ${projectTypes}
     ${projectInputs}
     ${settingsTypes}
+    ${contactTypes}
     type Query {
       ${accountQueries}
       ${categoryQueries}
@@ -97,6 +100,7 @@ export function getSchema() {
       ${projectMutations}
       ${mediaMutations}
       ${settingsMutations}
+      ${contactMutation}
     }
   `);
 }
@@ -116,5 +120,6 @@ export function getRoot() {
     ...projectResolver,
     ...mediaResolver,
     ...settingsResolver,
+    ...contactResolver,
   };
 }
