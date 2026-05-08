@@ -7,6 +7,7 @@ import { SettingsRepository } from "../repositories/SettingsRepository";
 import { Pool } from "mariadb/*";
 import jwt from "jsonwebtoken";
 import { MediaRepository } from "../repositories/MediaRepository";
+import TestimonyRepository from "../repositories/TestimonyRepository";
 
 /**
  * Fonction pour créer le contexte GraphQL, qui sera passé à tous les résolveurs.
@@ -45,6 +46,7 @@ export function getGraphqlContext({
   coworkerRepo: CoworkerRepository;
   projectRepo: ProjectRepository;
   mediaRepo: MediaRepository;
+  testimonyRepo: TestimonyRepository;
 } {
   return {
     user,
@@ -56,5 +58,6 @@ export function getGraphqlContext({
     coworkerRepo: new CoworkerRepository(pool),
     projectRepo: new ProjectRepository(pool),
     mediaRepo: new MediaRepository(pool),
+    testimonyRepo: new TestimonyRepository(pool),
   };
 }
