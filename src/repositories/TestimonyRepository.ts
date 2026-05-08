@@ -16,7 +16,7 @@ export default class TestimonyRepository extends BaseRepository {
   async getAll(): Promise<Testimony[]> {
     return withConnection(this.pool, (conn) =>
       conn.query(
-        `SELECT id, name, company, content, created_at AS createdAt FROM testimony ORDER BY created_at ASC`,
+        `SELECT id, name, company, content, created_at AS createdAt FROM testimony ORDER BY created_at DESC`,
       ),
     );
   }
