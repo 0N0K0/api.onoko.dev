@@ -16,7 +16,7 @@ export default class TestimonyRepository extends BaseRepository {
   async getAll(): Promise<Testimony[]> {
     return withConnection(this.pool, (conn) =>
       conn.query(
-        `SELECT id, name, company, content, created_at, \`insert\` FROM testimony ORDER BY created_at DESC`,
+        `SELECT id, name, company, content, created_at AS createdAt, \`insert\` FROM testimony ORDER BY createdAt DESC, name DESC`,
       ),
     );
   }
@@ -62,6 +62,7 @@ export default class TestimonyRepository extends BaseRepository {
       name: testimony.name || undefined,
       company: testimony.company || undefined,
       content: testimony.content || undefined,
+      created_at: testimony.createdAt || undefined,
     };
     if (typeof testimony.insert !== "undefined") {
       updateData["`insert`"] = testimony.insert;

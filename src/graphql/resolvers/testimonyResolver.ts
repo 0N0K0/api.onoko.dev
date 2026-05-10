@@ -22,7 +22,9 @@ const testimonyResolver = {
     _args: Record<string, never>,
     context: { testimonyRepo: TestimonyRepository },
   ): Promise<Testimony[]> => {
-    return await context.testimonyRepo.getAll();
+    const testimonies = await context.testimonyRepo.getAll();
+    console.log("Retrieved testimonies:", testimonies);
+    return testimonies;
   },
 
   /**
