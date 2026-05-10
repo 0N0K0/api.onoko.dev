@@ -43,9 +43,8 @@ const testimonyResolver = {
   ): Promise<boolean> => {
     checkAuth(context);
     const input = { ..._args.input };
-    if (isEmpty(input.name)) throw new Error("Name is required");
     if (isEmpty(input.content)) throw new Error("Content is required");
-    input.name = sanitizeString(input.name);
+    if (input.name) input.name = sanitizeString(input.name);
     if (input.company) input.company = sanitizeString(input.company);
     input.content = sanitizeWysiwyg(input.content);
     input.createdAt = new Date(input.createdAt || Date.now());

@@ -16,7 +16,7 @@ export default class TestimonyRepository extends BaseRepository {
   async getAll(): Promise<Testimony[]> {
     return withConnection(this.pool, (conn) =>
       conn.query(
-        `SELECT id, name, company, content, created_at AS createdAt FROM testimony ORDER BY created_at DESC`,
+        `SELECT id, name, company, content, created_at, \`insert\` FROM testimony ORDER BY created_at DESC`,
       ),
     );
   }
@@ -33,13 +33,14 @@ export default class TestimonyRepository extends BaseRepository {
     const id = this.generateId();
     await withConnection(this.pool, (conn) =>
       conn.query(
-        `INSERT INTO testimony (id, name, company, content, created_at) VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO testimony (id, name, company, content, created_at, \`insert\`) VALUES (?, ?, ?, ?, ?, ?)`,
         [
           id,
           testimony.name,
           testimony.company || null,
           testimony.content,
           testimony.createdAt || new Date().toISOString(),
+          testimony.insert || false,
         ],
       ),
     );
@@ -60,6 +61,7 @@ export default class TestimonyRepository extends BaseRepository {
       name: testimony.name || undefined,
       company: testimony.company || undefined,
       content: testimony.content || undefined,
+      insert: testimony.insert || undefined,
     });
   }
 }
