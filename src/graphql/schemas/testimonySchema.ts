@@ -2,18 +2,20 @@
 export const testimonyTypes = `
     type Testimony {
         id: ID!
-        name: String!
+        name: String
         company: String
         content: String!
-        createdAt: String!
+        createdAt: String
+        insert: Boolean
     }
 `;
 export const testimonyInputs = `
     input TestimonyInput {
-        name: String!
+        name: String
         company: String
         content: String!
         createdAt: String
+        insert: Boolean
     }
 `;
 

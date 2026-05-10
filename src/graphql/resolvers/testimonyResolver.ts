@@ -22,7 +22,9 @@ const testimonyResolver = {
     _args: Record<string, never>,
     context: { testimonyRepo: TestimonyRepository },
   ): Promise<Testimony[]> => {
-    return await context.testimonyRepo.getAll();
+    const testimonies = await context.testimonyRepo.getAll();
+    console.log("Retrieved testimonies:", testimonies);
+    return testimonies;
   },
 
   /**
@@ -43,9 +45,8 @@ const testimonyResolver = {
   ): Promise<boolean> => {
     checkAuth(context);
     const input = { ..._args.input };
-    if (isEmpty(input.name)) throw new Error("Name is required");
     if (isEmpty(input.content)) throw new Error("Content is required");
-    input.name = sanitizeString(input.name);
+    if (input.name) input.name = sanitizeString(input.name);
     if (input.company) input.company = sanitizeString(input.company);
     input.content = sanitizeWysiwyg(input.content);
     input.createdAt = new Date(input.createdAt || Date.now());
