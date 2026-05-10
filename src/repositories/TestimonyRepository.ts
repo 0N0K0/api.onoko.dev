@@ -57,11 +57,15 @@ export default class TestimonyRepository extends BaseRepository {
    */
   async update(testimony: Partial<Testimony>): Promise<boolean> {
     if (!testimony.id) throw new Error("ID is required for update");
-    return this.updateOne(testimony.id, {
+    // Utilise la clé '`insert`' pour éviter le conflit SQL
+    const updateData: Record<string, any> = {
       name: testimony.name || undefined,
       company: testimony.company || undefined,
       content: testimony.content || undefined,
-      insert: testimony.insert || undefined,
-    });
+    };
+    if (typeof testimony.insert !== "undefined") {
+      updateData["`insert`"] = testimony.insert;
+    }
+    return this.updateOne(testimony.id, updateData);
   }
 }
