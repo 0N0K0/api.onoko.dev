@@ -20,10 +20,11 @@ export default class StackRepository extends BaseRepository {
   async getAll(): Promise<Stack[]> {
     return withConnection(this.pool, async (conn) => {
       const rows = await conn.query(`
-        SELECT s.*, v.version, ss.skill
+        SELECT s.*, v.version, ss.skill, sc.category_id
         FROM stack s
         LEFT JOIN stack_version v ON v.stack_id = s.id
         LEFT JOIN stack_skill ss ON ss.stack_id = s.id
+        LEFT JOIN stack_category sc ON sc.stack_id = s.id
         ORDER BY s.label
       `);
       const stackMap = new Map();
@@ -36,16 +37,18 @@ export default class StackRepository extends BaseRepository {
             description: row.description,
             versions: [],
             skills: [],
-            category: row.category_id,
+            categories: [],
           });
         }
         if (row.version) stackMap.get(row.id).versions.push(row.version);
         if (row.skill) stackMap.get(row.id).skills.push(row.skill);
+        if (row.category_id) stackMap.get(row.id).categories.push(row.category_id);
       }
       // Dédupliquer les versions et skills
       for (const stack of stackMap.values()) {
         stack.versions = Array.from(new Set(stack.versions));
         stack.skills = Array.from(new Set(stack.skills));
+        stack.categories = Array.from(new Set(stack.categories));
       }
       return Array.from(stackMap.values());
     });
@@ -62,14 +65,8 @@ export default class StackRepository extends BaseRepository {
     const id = this.generateId();
     await withTransaction(this.pool, async (conn) => {
       await conn.query(
-        `INSERT INTO stack (id, label, icon_id, description, category_id) VALUES (?, ?, ?, ?, ?);`,
-        [
-          id,
-          stack.label,
-          stack.icon,
-          stack.description || null,
-          stack.category || null,
-        ],
+        `INSERT INTO stack (id, label, icon_id, description) VALUES (?, ?, ?, ?);`,
+        [id, stack.label, stack.icon, stack.description || null],
       );
       if (stack.versions && stack.versions.length > 0) {
         await conn.query(
@@ -81,6 +78,12 @@ export default class StackRepository extends BaseRepository {
         await conn.query(
           `INSERT INTO stack_skill (stack_id, skill) VALUES ${stack.skills.map(() => "(?, ?)").join(", ")};`,
           stack.skills.flatMap((skill) => [id, skill]),
+        );
+      }
+      if (stack.categories && stack.categories.length > 0) {
+        await conn.query(
+          `INSERT INTO stack_category (stack_id, category_id) VALUES ${stack.categories.map(() => "(?, ?)").join(", ")};`,
+          stack.categories.flatMap((category) => [id, category]),
         );
       }
     });
@@ -103,8 +106,6 @@ export default class StackRepository extends BaseRepository {
         label: stack.label || undefined,
         icon_id: stack.icon ? (stack.icon as string) : undefined,
         description: stack.description,
-        category_id:
-          stack.category !== undefined ? stack.category || null : undefined,
       });
       if (set) {
         await conn.query(`UPDATE stack SET ${set.sql} WHERE id = ?`, [
@@ -161,7 +162,31 @@ export default class StackRepository extends BaseRepository {
         }
       }
 
-      if (!set && !stack.versions && !stack.skills) {
+      if (stack.categories) {
+        const existingRows = await conn.query(
+          "SELECT category_id FROM stack_category WHERE stack_id = ?",
+          [stack.id],
+        );
+        const existing: string[] = existingRows.map(
+          (r: { category_id: string }) => r.category_id,
+        );
+        const toAdd = stack.categories.filter((c) => !existing.includes(c));
+        const toRemove = existing.filter((c) => !stack.categories!.includes(c));
+        if (toRemove.length) {
+          await conn.batch(
+            "DELETE FROM stack_category WHERE stack_id = ? AND category_id = ?",
+            toRemove.map((c) => [stack.id, c]),
+          );
+        }
+        if (toAdd.length) {
+          await conn.batch(
+            "INSERT INTO stack_category (stack_id, category_id) VALUES (?, ?)",
+            toAdd.map((c) => [stack.id, c]),
+          );
+        }
+      }
+
+      if (!set && !stack.versions && !stack.skills && !stack.categories) {
         return false;
       }
       return true;
