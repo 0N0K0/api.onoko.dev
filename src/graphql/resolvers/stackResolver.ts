@@ -22,8 +22,11 @@ function sanitizeStackInput(input: Partial<Omit<Stack, "id">>) {
   if (input.description) input.description = sanitizeString(input.description);
   if (input.versions) input.versions = input.versions.map((v) => sanitizeString(v));
   if (input.skills) input.skills = input.skills.map((s) => sanitizeString(s));
-  if (input.category && !validator.isUUID(input.category as string))
-    delete input.category;
+  if (input.categories) {
+    input.categories = input.categories.filter((category) =>
+      validator.isUUID(category as string),
+    );
+  }
 }
 
 // Résolveur GraphQL pour les opérations liées aux stacks
