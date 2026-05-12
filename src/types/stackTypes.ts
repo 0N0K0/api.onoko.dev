@@ -6,5 +6,5 @@ export interface Stack {
   description?: string;
   versions: string[];
   skills: string[];
-  category?: string | null;
+  categories?: string[];
 }

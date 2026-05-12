@@ -7,7 +7,7 @@ export const stackTypes = `
     description: String
     versions: [String!]
     skills: [String!]
-    category: ID
+    categories: [ID!]
   }
 `;
 export const stackInputs = `
@@ -17,7 +17,7 @@ export const stackInputs = `
     description: String
     versions: [String!]
     skills: [String!]
-    category: ID
+    categories: [ID!]
   }
 `;
 
